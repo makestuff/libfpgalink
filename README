@@ -1,0 +1,43 @@
+A library for JTAG-programming and subsequently interacting with an FPGA over USB using a
+microcontroller (primarily the Cypress FX2LP). It allows you to:
+
+   * Load and save Cypress FX2LP firmware
+   * Communicate with the FPGA using HiSpeed USB (~25Mbyte/s)
+   * Reprogram the FPGA using JTAG over USB
+   * Bootstrap an FPGA design standalone using minimal components
+
+The project build assumes this directory ("libfpgalink") lives within a structure like this:
+
+src
+|
++-common
+|
++-apps
+|
++-libs
+| |
+| +-neopurgo
+|
++-3rd
+
+*** BUILDING ON WINDOWS ***
+
+Prerequisites:
+   * MakeStuff Build Environment
+   * Visual Studio Express 2008 or 2010
+   * SDCC 2.9.0
+   * Xilinx ISE WebPACK
+   * A connection to the Internet
+
+To build, just type "make". The build will download and install the things it needs.
+
+*** BUILDING ON LINUX ***
+
+Prerequisites:
+   * sudo apt-get install g++
+   * sudo apt-get install libusb-dev
+   * sudo apt-get install sdcc
+   * Xilinx ISE WebPACK
+   * A connection to the Internet
+
+To build, just type "make". The build will download and install the things it needs.

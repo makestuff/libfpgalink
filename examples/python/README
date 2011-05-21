@@ -1,0 +1,21 @@
+Calling FPGALink from Python
+
+Linux:
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
+  sudo LD_LIBRARY_PATH=../../linux/rel ./fpgalink.py ../../xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+
+This connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the onboard FX2 chip
+with a new firmware, loads the nexys2.xsvf design into the board's FPGA, and then does some register
+reads and writes. The changes to the board are lost on the next power cycle, so it's safe to try.
+
+You can also use it in interactive mode:
+  chris@wotan$ sudo LD_LIBRARY_PATH=../../libs python
+  Python 2.6.6 (r266:84292, Sep 15 2010, 15:52:39) 
+  [GCC 4.4.5] on linux2
+  Type "help", "copyright", "credits" or "license" for more information.
+  >>> from fpgalink import *
+  >>> handle = flOpen(0x1443, 0x0005)
+  >>> flWriteRegister(handle, 1000, 0x00, 0x10)
+  >>> flClose(handle)
+  >>> 
+  chris@wotan$ 

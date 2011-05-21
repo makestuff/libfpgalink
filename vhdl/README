@@ -1,0 +1,16 @@
+The "wbtc.exe" binary in Xilinx ISE WebPACK 13.1 appears to crash during the build process for some
+reason. I think this is just the WebTalk thing that sends information about your design to Xilinx,
+so it's safe to replace with something innocuous (and functional):
+
+  cd %XILINX%\bin\nt\unwrapped
+  mv wbtc.exe wbtc.exe.old
+  printf "#include <stdio.h>\nvoid main() { printf(\"wbtc.exe was called\\n\"); }\n" > wbtc.c
+  cl wbtc.c
+
+You can do it on Linux too if you like:
+
+  cd ${XILINX}/bin/lin/unwrapped
+  mv wbtc wbtc.old
+  printf "#include <stdio.h>\nvoid main() { printf(\"wbtc.exe was called\\\n\"); }\n" > wbtc.c
+  gcc -o wbtc wbtc.c
+
