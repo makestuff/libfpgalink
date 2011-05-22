@@ -18,7 +18,8 @@ ROOT          := $(realpath ../..)
 DEPS          := error usbwrap fx2loader nero sync buffer
 TYPE          := dll
 SUBDIRS       := 
-PRE_BUILD     := gen_fw gen_xsvf
+PRE_BUILD     := gen_fw
+POST_BUILD    := gen_xsvf
 EXTRA_CC_SRCS := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
 
 -include $(ROOT)/common/top.mk
@@ -52,8 +53,11 @@ gen_xsvf:
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/s3board.xsvf
 	make -C vhdl clean
 
+tests: FORCE
+	make -C tests rel
+
 genclean: clean
-	rm -rf $(PRE_BUILD)
+	rm -rf gen_xsvf gen_fw
+	make -C vhdl clean
 	make -C mkfw clean
 	make -C firmware clean
-	make -C vhdl clean

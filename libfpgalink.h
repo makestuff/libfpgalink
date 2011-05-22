@@ -55,15 +55,6 @@ extern "C" {
 		FL_FILE_ERR,      ///< There was a file-related problem.
 		FL_INTERNAL_ERR   ///< An internal error occurred. Please report it!
 	} FLStatus;
-
-	/**
-	 * Boolean type; maps to signed 32-bit integer on Windows and Linux. This is here just to make
-	 * boolean parameter lengths explicit, thereby simplifying interfacing from other languages.
-	 */
-	typedef enum {
-		FL_FALSE,   ///< False (=0)
-		FL_TRUE     ///< True (=1)
-	} FLBool;
 	//@}
 
 	struct FLContext;  // Opaque context type
@@ -148,14 +139,14 @@ extern "C" {
 	 * for the device beforehand.
 	 *
 	 * There is a short period of time following a call to \c flLoadStandardFirmware() or
-	 * \c flLoadCustomFirmware() during which this function will still return \c FL_TRUE for the
+	 * \c flLoadCustomFirmware() during which this function will still return true for the
 	 * "current" VID/PID, so when you load new firmware, it's important to ensure that the "new"
 	 * VID/PID is different from the "current" VID/PID to avoid such false positives.
 	 *
 	 * @param vid The Vendor ID of the device.
 	 * @param pid The Product ID of the device.
-	 * @param isAvailable A pointer to a 32-bit integer which will be set on exit to \c FL_FALSE
-	 *            or \c FL_TRUE.
+	 * @param isAvailable A pointer to an 8-bit integer which will be set on exit to 1 if available
+	 *            else 0.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -166,7 +157,7 @@ extern "C" {
 	 *     - \c FL_USB_ERR if no USB buses were found; did you remember to call \c flInitialise()?
 	 */
 	DLLEXPORT(FLStatus) flIsDeviceAvailable(
-		uint16 vid, uint16 pid, FLBool *isAvailable, const char **error
+		uint16 vid, uint16 pid, bool *isAvailable, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -179,9 +170,9 @@ extern "C" {
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @returns \c FL_TRUE if the device supports NeroJTAG, else \c FL_FALSE.
+	 * @returns An 8-bit integer: 1 if the device supports NeroJTAG, else 0.
 	 */
-	DLLEXPORT(FLBool) flIsNeroCapable(struct FLContext *handle);
+	DLLEXPORT(bool) flIsNeroCapable(struct FLContext *handle);
 
 	/**
 	 * @brief Check to see if the device supports \b CommFPGA.
@@ -195,13 +186,13 @@ extern "C" {
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @returns \c FL_TRUE if the device supports \b CommFPGA, else \c FL_FALSE.
+	 * @returns An 8-bit integer: 1 if the device supports \b CommFPGA, else 0.
 	 */
-	DLLEXPORT(FLBool) flIsCommCapable(struct FLContext *handle);
+	DLLEXPORT(bool) flIsCommCapable(struct FLContext *handle);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
-	// CommFPGA register read/write functions (only if flIsCommCapable() returns \c FL_TRUE)
+	// CommFPGA register read/write functions (only if flIsCommCapable() returns true)
 	// ---------------------------------------------------------------------------------------------
 	/**
 	 * @name CommFPGA Operations
@@ -210,14 +201,14 @@ extern "C" {
 	/**
 	 * @brief Check to see if the FPGA is running.
 	 *
-	 * This may only be called if \c flIsCommCapable() returns \c FL_TRUE. It merely verifies that
+	 * This may only be called if \c flIsCommCapable() returns true. It merely verifies that
 	 * the FPGA is asserting that it's ready to read. Before calling \c flIsFPGARunning(), you
 	 * should verify that the \b FPGALink device actually supports \b CommFPGA using
 	 * \c flIsCommCapable().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param isRunning A pointer to a 32-bit integer which will be set on exit to \c FL_FALSE
-	 *            or \c FL_TRUE.
+	 * @param isRunning A pointer to an 8-bit integer which will be set on exit to 1 if available
+	 *            else 0.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -229,7 +220,7 @@ extern "C" {
 	 *     - \c FL_USB_ERR if the device no longer responds.
 	 */
 	DLLEXPORT(FLStatus) flIsFPGARunning(
-		struct FLContext *handle, FLBool *isRunning, const char **error
+		struct FLContext *handle, bool *isRunning, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -294,7 +285,7 @@ extern "C" {
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
-	// JTAG functions (only if flIsNeroCapable() returns \c FL_TRUE)
+	// JTAG functions (only if flIsNeroCapable() returns true)
 	// ---------------------------------------------------------------------------------------------
 	/**
 	 * @name NeroJTAG Operations

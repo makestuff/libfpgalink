@@ -30,8 +30,8 @@ extern "C" {
 	struct FLContext {
 		struct usb_dev_handle *device;
 		struct Buffer initBuffer;
-		FLBool isNeroCapable;
-		FLBool isCommCapable;
+		bool isNeroCapable;
+		bool isCommCapable;
 	};
 
 	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will

@@ -15,8 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <makestuff.h>
 #include <libusbwrap.h>
+#include <usb.h>
 #include <libsync.h>
 #include <liberror.h>
 #include <libbuffer.h>
@@ -36,13 +38,11 @@ DLLEXPORT(void) flFreeError(const char *err) {
 }
 
 DLLEXPORT(FLStatus) flIsDeviceAvailable(
-	uint16 vid, uint16 pid, FLBool *isAvailable, const char **error)
+	uint16 vid, uint16 pid, bool *isAvailable, const char **error)
 {
 	FLStatus returnCode;
-	bool isAvailBool;
-	USBStatus uStatus = usbIsDeviceAvailable(vid, pid, &isAvailBool, error);
+	USBStatus uStatus = usbIsDeviceAvailable(vid, pid, isAvailable, error);
 	CHECK_STATUS(uStatus, "flIsDeviceAvailable()", FL_USB_ERR);
-	*isAvailable = isAvailBool ? FL_TRUE : FL_FALSE;
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;
@@ -107,18 +107,18 @@ DLLEXPORT(void) flClose(struct FLContext *handle) {
 
 // Check to see if the device supports NeroJTAG
 //
-DLLEXPORT(FLBool) flIsNeroCapable(struct FLContext *handle) {
+DLLEXPORT(bool) flIsNeroCapable(struct FLContext *handle) {
 	return handle->isNeroCapable;
 }
 
 // Check to see if the device supports CommFPGA
 //
-DLLEXPORT(FLBool) flIsCommCapable(struct FLContext *handle) {
+DLLEXPORT(bool) flIsCommCapable(struct FLContext *handle) {
 	return handle->isCommCapable;
 }
 
 DLLEXPORT(FLStatus) flIsFPGARunning(
-	struct FLContext *handle, FLBool *isRunning, const char **error)
+	struct FLContext *handle, bool *isRunning, const char **error)
 {
 	FLStatus returnCode, fStatus;
 	uint8 statusBuffer[16];
@@ -128,7 +128,7 @@ DLLEXPORT(FLStatus) flIsFPGARunning(
 	}
 	fStatus = getStatus(handle, statusBuffer, error);
 	CHECK_STATUS(fStatus, "flIsFPGARunning()", fStatus);
-	*isRunning = (statusBuffer[5] & 0x01) ? FL_TRUE : FL_FALSE;
+	*isRunning = (statusBuffer[5] & 0x01) ? true : false;
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;
@@ -277,14 +277,14 @@ static FLStatus trySync(struct FLContext *newCxt, const uint8 *statusBuffer) {
 	FLStatus returnCode;
 	if ( statusBuffer[6] ) {
 		// TODO: actually honour the endpoints specified by the device. For now assume 2&4.
-		newCxt->isNeroCapable = FL_TRUE;
+		newCxt->isNeroCapable = true;
 		if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
 			FAIL(FL_SYNC_ERR);
 		}
 	}
 	if ( statusBuffer[7] ) {
 		// TODO: actually honour the endpoints specified by the device. For now assume 6&8.
-		newCxt->isCommCapable = FL_TRUE;
+		newCxt->isCommCapable = true;
 		if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
 			FAIL(FL_SYNC_ERR);
 		}

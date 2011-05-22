@@ -20,6 +20,7 @@
 #include <libfx2loader.h>
 #include <liberror.h>
 #include <libusbwrap.h>
+#include <usb.h>
 #include "firmware/defs.h"
 #include "libfpgalink.h"
 #include "xsvf2csvf.h"

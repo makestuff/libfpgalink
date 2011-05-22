@@ -33,8 +33,8 @@ int main(int argc, const char *argv[]) {
 	const char *error = NULL;
 	uint8 byte = 0x10;
 	uint8 buf[256];
-	FLBool flag;
-	FLBool isNeroCapable, isCommCapable;
+	bool flag;
+	bool isNeroCapable, isCommCapable;
 	uint16 VID, PID, iVID, iPID;
 	uint32 fileLen;
 	uint8 *buffer = NULL;
