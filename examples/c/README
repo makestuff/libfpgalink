@@ -6,10 +6,9 @@ Linux:
   sudo ../../linux/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 Windows:
-  mkdir -p /var/tmp
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  cl -O2 -Oi -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../../../../common  -I../.. -DNDEBUG -D_CONSOLE -FD -MD -Gy -GL -Zi -Fe../../win32/rel/main.exe main.c ../../win32/rel/libfpgalink.lib kernel32.lib user32.lib
-  ../../linux/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  cl -O2 -Oi -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../../../../common  -I../.. -DNDEBUG -D_CONSOLE -FD -MD -Gy -GL -Zi -Fe../../win32/rel/fpgalink.exe main.c ../../win32/rel/libfpgalink.lib kernel32.lib user32.lib
+  ../../win32/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 This connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the onboard FX2 chip
 with a new firmware, loads the nexys2.xsvf design into the board's FPGA, and then does some register
