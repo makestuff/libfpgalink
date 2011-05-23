@@ -1,9 +1,15 @@
 Calling FPGALink from C
 
 Linux:
-  make
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo linux/rel/c ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../../../../common  -I../.. -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux/rel -o ../../linux/rel/fpgalink main.c -L../../linux/rel -lfpgalink
+  sudo ../../linux/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+
+Windows:
+  mkdir -p /var/tmp
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
+  cl -O2 -Oi -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../../../../common  -I../.. -DNDEBUG -D_CONSOLE -FD -MD -Gy -GL -Zi -Fe../../win32/rel/main.exe main.c ../../win32/rel/libfpgalink.lib kernel32.lib user32.lib
+  ../../linux/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 This connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the onboard FX2 chip
 with a new firmware, loads the nexys2.xsvf design into the board's FPGA, and then does some register
