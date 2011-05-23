@@ -18,7 +18,7 @@ ROOT          := $(realpath ../..)
 DEPS          := error usbwrap fx2loader nero sync buffer
 TYPE          := dll
 SUBDIRS       := 
-PRE_BUILD     := ../../3rd/fx2lib/lib/fx2.lib gen_fw
+PRE_BUILD     := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 POST_BUILD    := gen_xsvf
 EXTRA_CC_SRCS := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
 
@@ -53,7 +53,7 @@ gen_xsvf:
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/s3board.xsvf
 	make -C vhdl clean
 
-../../3rd/fx2lib/lib/fx2.lib: ../../3rd/fx2lib
+$(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
 	make -C $<
 
 tests: FORCE
