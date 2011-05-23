@@ -29,7 +29,7 @@ static struct FLContext *avrHandle;
 
 TEST(FL_isDeviceAvailable) {
 	FLStatus fStatus;
-	FLBool isAvailable;
+	bool isAvailable;
 	const char *error = NULL;
 
 	// Verify error message allocation
@@ -39,15 +39,15 @@ TEST(FL_isDeviceAvailable) {
 	flFreeError(error);
 
 	// Verify that isAvailable remains unchanged on error
-	isAvailable = FL_FALSE;
+	isAvailable = false;
 	fStatus = flIsDeviceAvailable(0x0000, 0x0000, &isAvailable, NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
-	CHECK_EQUAL(FL_FALSE, isAvailable);
+	CHECK_EQUAL(false, isAvailable);
 
-	isAvailable = FL_TRUE;
+	isAvailable = true;
 	fStatus = flIsDeviceAvailable(0x0000, 0x0000, &isAvailable, NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
-	CHECK_EQUAL(FL_TRUE, isAvailable);
+	CHECK_EQUAL(true, isAvailable);
 
 	// After this things should stop failing
 	flInitialise();
@@ -55,17 +55,17 @@ TEST(FL_isDeviceAvailable) {
 	// Verify that a silly VID/PID is not found
 	fStatus = flIsDeviceAvailable(0x0000, 0x0000, &isAvailable, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
-	CHECK_EQUAL(FL_FALSE, isAvailable);
+	CHECK_EQUAL(false, isAvailable);
 
 	// Verify that a good VID/PID IS found
 	fStatus = flIsDeviceAvailable(FX2_VID, FX2_PID, &isAvailable, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
-	CHECK_EQUAL(FL_TRUE, isAvailable);
+	CHECK_EQUAL(true, isAvailable);
 
 	// Verify that a good VID/PID IS found
 	fStatus = flIsDeviceAvailable(AVR_VID, AVR_PID, &isAvailable, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
-	CHECK_EQUAL(FL_TRUE, isAvailable);
+	CHECK_EQUAL(true, isAvailable);
 }
 
 TEST(FL_openFails) {
@@ -111,7 +111,7 @@ TEST(FL_loadCustomFirmware) {
 
 TEST(FL_loadStandardFirmware) {
 	FLStatus fStatus;
-	FLBool isAvailable;
+	bool isAvailable;
 	int count;
 
 	// Verify that a silly current VID/PID gives an error
