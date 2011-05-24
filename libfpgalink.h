@@ -440,29 +440,6 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Save existing EEPROM data to an <code>.iic</code> file.
-	 *
-	 * The existing EEPROM firmware is saved to a file, for backup purposes.
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
-	 * @param saveFile An <code>.iic</code> file to save the EEPROM to.
-	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
-	 * @returns
-	 *     - \c FL_SUCCESS if the firmware loaded successfully.
-	 *     - \c FL_FILE_ERR if the firmware file could not be loaded.
-	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
-	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
-	 */
-	DLLEXPORT(FLStatus) flSaveFirmware(
-		struct FLContext *handle, uint32 eepromSize, const char *saveFile, const char **error
-	) WARN_UNUSED_RESULT;
-
-	/**
 	 * @brief Flash a custom firmware from a <code>.hex</code> or <code>.iic</code> file into the
 	 *            FX2's EEPROM.
 	 *
@@ -493,17 +470,27 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Clean the init buffer (if any).
-	 * 
-	 * The init buffer is like a notepad onto which one or more FPGA register write commands can be
-	 * written (by \c flAppendWriteRegisterCommand()). The current state of the notepad can then be
-	 * written (by \c flFlashStandardFirmware()) to the FX2's EEPROM for execution on power-on.
+	 * @brief Save existing EEPROM data to an <code>.iic</code> file.
+	 *
+	 * The existing EEPROM firmware is saved to a file, for backup purposes.
 	 *
 	 * @param handle The handle returned by \c flOpen().
+	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
+	 * @param saveFile An <code>.iic</code> file to save the EEPROM to.
+	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the firmware loaded successfully.
+	 *     - \c FL_FILE_ERR if the firmware file could not be loaded.
+	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
+	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
-	DLLEXPORT(void) flCleanInitBuffer(
-		struct FLContext *handle
-	);
+	DLLEXPORT(FLStatus) flSaveFirmware(
+		struct FLContext *handle, uint32 eepromSize, const char *saveFile, const char **error
+	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Append a write command to the end of the init buffer.
@@ -532,6 +519,19 @@ extern "C" {
 	DLLEXPORT(FLStatus) flAppendWriteRegisterCommand(
 		struct FLContext *handle, uint8 reg, uint32 count, const uint8 *data, const char **error
 	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Clean the init buffer (if any).
+	 * 
+	 * The init buffer is like a notepad onto which one or more FPGA register write commands can be
+	 * written (by \c flAppendWriteRegisterCommand()). The current state of the notepad can then be
+	 * written (by \c flFlashStandardFirmware()) to the FX2's EEPROM for execution on power-on.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 */
+	DLLEXPORT(void) flCleanInitBuffer(
+		struct FLContext *handle
+	);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
