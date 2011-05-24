@@ -1,0 +1,10 @@
+Calling FPGALink from Excel VBA
+
+This example sheet connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the
+onboard FX2 chip with a new firmware, loads the nexys2.xsvf design into the board's FPGA, and then
+does some register reads and writes. The changes to the board are lost on the next power cycle, so
+it's safe to try.
+
+You may need to install the Visual C++ redistributable package. You can download it from Microsoft.
+
+The C functions in the FPGALink DLL are wrapped in VBA functions in the FPGALink module.
