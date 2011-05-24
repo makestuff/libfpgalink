@@ -41,15 +41,15 @@ fpgalink.flClose.argtypes = [FLHandle]
 fpgalink.flClose.restype = None
 
 # Device Capabilities and Status
-fpgalink.flIsDeviceAvailable.argtypes = [uint16, uint16, POINTER(uint32), POINTER(ErrorString)]
+fpgalink.flIsDeviceAvailable.argtypes = [uint16, uint16, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flIsDeviceAvailable.restype = FLStatus
 fpgalink.flIsNeroCapable.argtypes = [FLHandle]
-fpgalink.flIsNeroCapable.restype = uint32
+fpgalink.flIsNeroCapable.restype = uint8
 fpgalink.flIsCommCapable.argtypes = [FLHandle]
-fpgalink.flIsCommCapable.restype = uint32
+fpgalink.flIsCommCapable.restype = uint8
 
 # CommFPGA Operations
-fpgalink.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint32), POINTER(ErrorString)]
+fpgalink.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flIsFPGARunning.restype = FLStatus
 fpgalink.flWriteRegister.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flWriteRegister.restype = FLStatus
@@ -92,7 +92,7 @@ def flClose(handle):
 # Await renumeration - return true if found before timeout
 def flAwaitDevice(vid, pid, timeout):
     error = ErrorString()
-    isAvailable = uint32()
+    isAvailable = uint8()
     while ( True ):
         fpgalink.flSleep(100);
         status = fpgalink.flIsDeviceAvailable(vid, pid, byref(isAvailable), byref(error))
@@ -123,7 +123,7 @@ def flIsCommCapable(handle):
 # Return true if the FPGA is actually running
 def flIsFPGARunning(handle):
     error = ErrorString()
-    isRunning = uint32()
+    isRunning = uint8()
     status = fpgalink.flIsFPGARunning(handle, byref(isRunning), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
