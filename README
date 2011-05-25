@@ -29,7 +29,7 @@ Prerequisites:
    * SDCC 2.9.0 (http://bit.ly/k7wyYn)
    * Xilinx ISE WebPACK (http://bit.ly/bRf82e)
 
-To build, just type "make". The build will download and install the things it needs.
+To build, just type "make deps". The build will download and install the things it needs.
 
 *** BUILDING ON LINUX ***
 
@@ -39,4 +39,4 @@ Prerequisites:
    * sudo apt-get install sdcc
    * Xilinx ISE WebPACK (http://bit.ly/bRf82e)
 
-To build, just type "make". The build will download and install the things it needs.
+To build, just type "make deps". The build will download and install the things it needs.
