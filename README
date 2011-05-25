@@ -6,9 +6,11 @@ microcontroller (primarily the Cypress FX2LP). It allows you to:
    * Reprogram the FPGA using JTAG over USB
    * Bootstrap an FPGA design standalone using minimal components
 
-The project build assumes this directory ("libfpgalink") lives within a structure like this:
+To build, first you need to install the MakeStuff Build Environment (http://bit.ly/k0ydbN) for your
+platform, and then make sure that this directory is called "libfpgalink", and that it is in the
+"libs" directory like this:
 
-src
+makestuff
 |
 +-common
 |
@@ -16,18 +18,16 @@ src
 |
 +-libs
 | |
-| +-neopurgo
+| +-libfpgalink
 |
 +-3rd
 
 *** BUILDING ON WINDOWS ***
 
 Prerequisites:
-   * MakeStuff Build Environment
-   * Visual Studio Express 2008 or 2010
-   * SDCC 2.9.0
-   * Xilinx ISE WebPACK
-   * A connection to the Internet
+   * Visual Studio Express 2010 or 2008
+   * SDCC 2.9.0 (http://bit.ly/k7wyYn)
+   * Xilinx ISE WebPACK (http://bit.ly/bRf82e)
 
 To build, just type "make". The build will download and install the things it needs.
 
@@ -37,7 +37,6 @@ Prerequisites:
    * sudo apt-get install g++
    * sudo apt-get install libusb-dev
    * sudo apt-get install sdcc
-   * Xilinx ISE WebPACK
-   * A connection to the Internet
+   * Xilinx ISE WebPACK (http://bit.ly/bRf82e)
 
 To build, just type "make". The build will download and install the things it needs.

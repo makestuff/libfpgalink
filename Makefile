@@ -14,13 +14,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-ROOT          := $(realpath ../..)
-DEPS          := error usbwrap fx2loader nero sync buffer
-TYPE          := dll
-SUBDIRS       := 
-PRE_BUILD     := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-POST_BUILD    := gen_xsvf
-EXTRA_CC_SRCS := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
+ROOT             := $(realpath ../..)
+DEPS             := error usbwrap fx2loader nero sync buffer
+TYPE             := dll
+SUBDIRS          := 
+PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
+POST_BUILD       := gen_xsvf
+EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
+EXTRA_CLEAN      := gen_xsvf gen_fw
+EXTRA_CLEAN_DIRS := vhdl mkfw firmware
 
 -include $(ROOT)/common/top.mk
 
@@ -58,9 +60,3 @@ $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
 
 tests: FORCE
 	make -C tests rel
-
-genclean: clean
-	rm -rf gen_xsvf gen_fw
-	make -C vhdl clean
-	make -C mkfw clean
-	make -C firmware clean
