@@ -26,7 +26,6 @@ entity TopLevel is
 
 		-- Unused connections must be configured as inputs
 		flagA_in     : in std_logic;
-		flagB_in     : in std_logic;
 		int0_in      : in std_logic;                     -- PA0
 		int1_in      : in std_logic;                     -- PA1
 		pa3_in       : in std_logic;                     -- PA3
@@ -239,11 +238,9 @@ begin
 
 	-- Mop up all the unused inputs to prevent synthesis warnings
 	dummy_out <=
-		clkout_in and flagA_in and flagB_in and int0_in and int1_in and pa3_in and pa7_in
+		clkout_in and flagA_in and int0_in and int1_in and pa3_in and pa7_in
 		and pd_in(0) and pd_in(1) and pd_in(2) and pd_in(3)
 		and pd_in(4) and pd_in(5) and pd_in(6) and pd_in(7);
-
-
 	
 	led_out     <= r0;
 	sseg_out(7) <= '1';  -- Decimal point off
