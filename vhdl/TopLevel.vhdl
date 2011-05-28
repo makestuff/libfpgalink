@@ -75,9 +75,9 @@ architecture Behavioural of TopLevel is
 	signal r0, r1, r0_next, r1_next : std_logic_vector(7 downto 0);
 	signal r2, r3, r2_next, r3_next : std_logic_vector(7 downto 0);
 	signal fifoOp                   : std_logic_vector(2 downto 0);
-	constant FIFO_READ        : std_logic_vector(2 downto 0) := "100";  -- assert slrd_out & sloe_out
-	constant FIFO_WRITE       : std_logic_vector(2 downto 0) := "011";  -- assert slwr_out
-	constant FIFO_NOP         : std_logic_vector(2 downto 0) := "111";  -- assert nothing
+	constant FIFO_READ              : std_logic_vector(2 downto 0) := "100";  -- assert slrd_out & sloe_out
+	constant FIFO_WRITE             : std_logic_vector(2 downto 0) := "011";  -- assert slwr_out
+	constant FIFO_NOP               : std_logic_vector(2 downto 0) := "111";  -- assert nothing
 	constant OUT_FIFO               : std_logic_vector(1 downto 0) := "10"; -- EP6OUT
 	constant IN_FIFO                : std_logic_vector(1 downto 0) := "11"; -- EP8IN
 begin
