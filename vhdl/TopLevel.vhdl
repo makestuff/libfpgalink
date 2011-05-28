@@ -63,13 +63,15 @@ architecture Behavioural of TopLevel is
 		STATE_GET_COUNT3,
 		STATE_BEGIN_WRITE,
 		STATE_WRITE,
-		STATE_END_WRITE,
+		STATE_END_WRITE_ALIGNED,
+		STATE_END_WRITE_NONALIGNED,
 		STATE_READ
 	);
 	signal state, state_next        : StateType;
 	signal wcount, wcount_next      : unsigned(31 downto 0);  -- Read/Write count
 	signal addr, addr_next          : std_logic_vector(1 downto 0);
 	signal dowrite, dowrite_next    : std_logic;
+	signal isAligned, isAligned_next : std_logic;
 	signal checksum, checksum_next  : std_logic_vector(15 downto 0);
 	signal r0, r1, r0_next, r1_next : std_logic_vector(7 downto 0);
 	signal r2, r3, r2_next, r3_next : std_logic_vector(7 downto 0);
@@ -87,6 +89,7 @@ begin
 			wcount   <= (others => '0');
 			addr     <= (others => '0');
 			dowrite  <= '0';
+			isAligned <= '0';
 			checksum <= (others => '0');
 			r0       <= (others => '0');
 			r1       <= (others => '0');
@@ -97,6 +100,7 @@ begin
 			wcount   <= wcount_next;
 			addr     <= addr_next;
 			dowrite  <= dowrite_next;
+			isAligned <= isAligned_next;
 			checksum <= checksum_next;
 			r0       <= r0_next;
 			r1       <= r1_next;
@@ -107,13 +111,14 @@ begin
 
 	-- Next state logic
 	process(
-		state, fifodata_io, gotdata_in, gotroom_in, wcount, addr, r0, r1, r2, r3, checksum, dowrite,
-		sw_in)
+		state, fifodata_io, gotdata_in, gotroom_in, wcount, isAligned, dowrite, addr,
+		r0, r1, r2, r3, checksum, sw_in)
 	begin
 		state_next    <= state;
 		wcount_next   <= wcount;
 		addr_next     <= addr;
 		dowrite_next  <= dowrite;
+		isAligned_next <= isAligned;  -- does this FIFO write end on a block (512-byte) boundary?
 		checksum_next <= checksum;
 		r0_next       <= r0;
 		r1_next       <= r1;
@@ -174,6 +179,7 @@ begin
 			when STATE_BEGIN_WRITE =>
 				fifoaddr_out <= IN_FIFO;   -- Writing to FX2LP
 				fifoOp       <= FIFO_NOP;
+				isAligned_next <= not(wcount(0) or wcount(1) or wcount(2) or wcount(3) or wcount(4) or wcount(5) or wcount(6) or wcount(7) or wcount(8));
 				state_next   <= STATE_WRITE;
 
 			when STATE_WRITE =>
@@ -192,13 +198,22 @@ begin
 					end case;
 					wcount_next  <= wcount - 1;
 					if ( wcount = 1 ) then
-						state_next <= STATE_END_WRITE;
+						if ( isAligned = '1' ) then
+							state_next <= STATE_END_WRITE_ALIGNED;  -- don't assert pktend
+						else
+							state_next <= STATE_END_WRITE_NONALIGNED;  -- assert pktend to commit small packet
+						end if;
 					end if;
 				else
 					fifoOp <= FIFO_NOP;
 				end if;
 
-			when STATE_END_WRITE =>
+			when STATE_END_WRITE_ALIGNED =>
+				fifoaddr_out <= IN_FIFO;   -- Writing to FX2LP
+				fifoOp       <= FIFO_NOP;
+				state_next   <= STATE_IDLE;
+
+			when STATE_END_WRITE_NONALIGNED =>
 				fifoaddr_out <= IN_FIFO;   -- Writing to FX2LP
 				fifoOp       <= FIFO_NOP;
 				pktend_out   <= '0';  	   -- Active: FPGA commits the packet.
