@@ -28,9 +28,9 @@ NET "fifodata_io<6>"  LOC = "P10";   # PB6
 NET "fifodata_io<7>"  LOC = "R10";   # PB7
 
 NET "flagA_in"        LOC = "V14";
-NET "flagB_in"        LOC = "U14";
 NET "ifclk_in"        LOC = "T15";
 NET "gotdata_in"      LOC = "V16";   # FLAGC
+NET "gotroom_in"      LOC = "U14";   # FLAGB
 
 # PortA
 NET "int0_in"         LOC = "U15";   # PA0

@@ -28,9 +28,9 @@ NET "fifodata_io<6>"  LOC = "C7"  | IOSTANDARD=LVCMOS33;   # PB6
 NET "fifodata_io<7>"  LOC = "D7"  | IOSTANDARD=LVCMOS33;   # PB7
 
 NET "flagA_in"        LOC = "C8"  | IOSTANDARD=LVCMOS33;
-NET "flagB_in"        LOC = "D8"  | IOSTANDARD=LVCMOS33;
 NET "ifclk_in"        LOC = "C9"  | IOSTANDARD=LVCMOS33;
 NET "gotdata_in"      LOC = "D10" | IOSTANDARD=LVCMOS33;   # FLAGC
+NET "gotroom_in"      LOC = "D8"  | IOSTANDARD=LVCMOS33;   # FLAGB
 
 # PortA
 NET "int0_in"         LOC = "A3"  | IOSTANDARD=LVCMOS33;   # PA0
