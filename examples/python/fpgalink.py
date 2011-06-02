@@ -69,8 +69,8 @@ fpgalink.flSaveFirmware.argtypes = [FLHandle, uint32, c_char_p, POINTER(ErrorStr
 fpgalink.flSaveFirmware.restype = FLStatus
 fpgalink.flFlashCustomFirmware.argtypes = [FLHandle, c_char_p, uint32, POINTER(ErrorString)]
 fpgalink.flFlashCustomFirmware.restype = FLStatus
-fpgalink.flCleanInitBuffer.argtypes = [FLHandle]
-fpgalink.flCleanInitBuffer.restype = None
+fpgalink.flCleanWriteBuffer.argtypes = [FLHandle]
+fpgalink.flCleanWriteBuffer.restype = None
 fpgalink.flAppendWriteRegisterCommand.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flAppendWriteRegisterCommand.restype = FLStatus
 
