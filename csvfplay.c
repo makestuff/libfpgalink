@@ -62,7 +62,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 	thisByte = getRawByte(&cp);
 	if ( thisByte ) {
 		// Header byte may be used for something later. For now, ensure it's zero.
-		errRender(error, "Bad CSVF header!");
+		errRender(error, "csvfPlay(): Bad CSVF header!");
 		FAIL(CPLAY_HEADER_ERR);
 	}
 	cp.count = readLength(&cp);
@@ -134,7 +134,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 					dumpSimple(tdoExpected, numBytes, expected);
 					errRender(
 						error,
-						"XSDRTDO failed:\n  Got: %s\n  Mask: %s\n  Expecting: %s",
+						"csvfPlay(): XSDRTDO failed:\n  Got: %s\n  Mask: %s\n  Expecting: %s",
 						data, mask, expected);
 					FAIL(CPLAY_COMPARE_ERR);
 				}
@@ -204,7 +204,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			break;
 
 		default:
-			errRender(error, "Unsupported command 0x%02X", thisByte);
+			errRender(error, "csvfPlay(): Unsupported command 0x%02X", thisByte);
 			FAIL(CPLAY_UNKNOWN_CMD_ERR);
 		}
 		thisByte = getNextByte(&cp);

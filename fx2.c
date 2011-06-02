@@ -304,7 +304,7 @@ static FLStatus appendCsvfFromXsvf(struct Buffer *dest, const char *xsvfFile, co
 	xStatus = loadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
 	CHECK_STATUS(xStatus, "appendCsvfFromXsvf()", FL_JTAG_ERR);
 	if ( maxBufSize > CSVF_BUF_SIZE ) {
-		errRender(error, "This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
+		errRender(error, "appendCsvfFromXsvf(): This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
 		FAIL(FL_JTAG_ERR);
 	}
 	bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);

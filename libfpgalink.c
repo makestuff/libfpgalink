@@ -63,20 +63,20 @@ DLLEXPORT(FLStatus) flOpen(uint16 vid, uint16 pid, struct FLContext **handle, co
 	{
 		errRender(
 			error,
-			"flOpen(): device at %04X:%04X not recognised",
+			"flOpen(): Device at %04X:%04X not recognised",
 			vid, pid);
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	if ( !statusBuffer[6] && !statusBuffer[7] ) {
 		errRender(
 			error,
-			"flOpen(): device at %04X:%04X supports neither NeroJTAG nor CommFPGA",
+			"flOpen(): Device at %04X:%04X supports neither NeroJTAG nor CommFPGA",
 			vid, pid);
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	fStatus = trySync(newCxt, statusBuffer);
 	if ( fStatus != FL_SUCCESS ) {
-		errRender(error, "flOpen(): unable to sync device at %04X:%04X", vid, pid);
+		errRender(error, "flOpen(): Unable to sync device at %04X:%04X", vid, pid);
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	*handle = newCxt;
