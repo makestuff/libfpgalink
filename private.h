@@ -29,7 +29,7 @@ extern "C" {
 	struct usb_dev_handle;
 	struct FLContext {
 		struct usb_dev_handle *device;
-		struct Buffer initBuffer;
+		struct Buffer writeBuffer;
 		bool isNeroCapable;
 		bool isCommCapable;
 	};

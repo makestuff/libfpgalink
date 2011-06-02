@@ -53,6 +53,7 @@ extern "C" {
 		FL_FX2_ERR,       ///< There was some problem talking to the FX2 chip.
 		FL_JTAG_ERR,      ///< There was some problem with the \b NeroJTAG interface.
 		FL_FILE_ERR,      ///< There was a file-related problem.
+		FL_WBUF_ERR,      ///< There was some problem with the write buffer.
 		FL_INTERNAL_ERR   ///< An internal error occurred. Please report it!
 	} FLStatus;
 	//@}
@@ -224,6 +225,36 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
+	 * @brief Read the specified register into the supplied buffer.
+	 *
+	 * Read \c count bytes from the FPGA register \c reg to the \c data array, with the given
+	 * \c timeout in milliseconds. In the event of a timeout, the connection between host and FPGA
+	 * will be left in an undefined state; before the two can resynchronise it's likely the FPGA
+	 * will need to be reset and the host side disconnected (\c flOpen()) and reconnected
+	 * (\c flClose()) again. Before calling \c flReadRegister(), you should verify that the
+	 * \b FPGALink device actually supports \b CommFPGA using \c flIsCommCapable().
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param timeout The time to wait (in milliseconds) for the read to complete before giving up.
+	 * @param reg The FPGA register to read.
+	 * @param count The number of bytes to read.
+	 * @param buf The address of a buffer to store the bytes read from the FPGA.
+	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support \b CommFPGA.
+	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
+	 */
+	DLLEXPORT(FLStatus) flReadRegister(
+		struct FLContext *handle, uint32 timeout, uint8 reg, uint32 count, uint8 *buf,
+		const char **error
+	) WARN_UNUSED_RESULT;
+
+	/**
 	 * @brief Write the supplied data to the specified register.
 	 *
 	 * Write \c count bytes from the \c data array to FPGA register \c reg, with the given
@@ -254,34 +285,70 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Read the specified register into the supplied buffer.
+	 * @brief Append a write command to the end of the write buffer.
 	 *
-	 * Read \c count bytes from the FPGA register \c reg to the \c data array, with the given
-	 * \c timeout in milliseconds. In the event of a timeout, the connection between host and FPGA
-	 * will be left in an undefined state; before the two can resynchronise it's likely the FPGA
-	 * will need to be reset and the host side disconnected (\c flOpen()) and reconnected
-	 * (\c flClose()) again. Before calling \c flReadRegister(), you should verify that the
-	 * \b FPGALink device actually supports \b CommFPGA using \c flIsCommCapable().
+	 * The write buffer is like a notepad onto which one or more FPGA register write commands can be
+	 * written by calls to this function. The current state of the notepad can then be played in one
+	 * go (by \c flPlayWriteBuffer()) or written (by \c flFlashStandardFirmware()) to the FX2's
+	 * EEPROM for execution on power-on.
+	 *
+	 * You'll notice that apart from the lack of a \c timeout parameter, the signature of this
+	 * function is identical to that of \c flWriteRegister(), but rather than executing the write
+	 * immediately, it just appends the write command to the write buffer for playback later.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param timeout The time to wait (in milliseconds) for the read to complete before giving up.
-	 * @param reg The FPGA register to read.
-	 * @param count The number of bytes to read.
-	 * @param buf The address of a buffer to store the bytes read from the FPGA.
+	 * @param reg The FPGA register to write.
+	 * @param count The number of bytes to write.
+	 * @param data The address of the array of bytes to be written to the FPGA.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the write completed successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support \b CommFPGA.
+	 *     - \c FL_SUCCESS if the write command was successfully appended to the write buffer.
+	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
+	 */
+	DLLEXPORT(FLStatus) flAppendWriteRegisterCommand(
+		struct FLContext *handle, uint8 reg, uint32 count, const uint8 *data, const char **error
+	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Play the write buffer into the \b FPGALink device immediately.
+	 *
+	 * Appending several small (i.e <10KiB) register writes to the write buffer and playing them in
+	 * one go is more efficient than making several calls to \c flWriteRegister().
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param timeout The time to wait (in milliseconds) for the operation to complete before giving
+	 *            up.
+	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the write buffer played successfully.
+	 *     - \c FL_WBUF_ERR if there was no write buffer.
 	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
 	 */
-	DLLEXPORT(FLStatus) flReadRegister(
-		struct FLContext *handle, uint32 timeout, uint8 reg, uint32 count, uint8 *buf,
-		const char **error
+	DLLEXPORT(FLStatus) flPlayWriteBuffer(
+		struct FLContext *handle, uint32 timeout, const char **error
 	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Clean the write buffer (if any).
+	 * 
+	 * The write buffer is like a notepad onto which one or more FPGA register write commands can be
+	 * written (by \c flAppendWriteRegisterCommand()). The current state of the notepad can then be
+	 * played in one go (by \c flPlayWriteBuffer()) or written (by \c flFlashStandardFirmware()) to
+	 * the FX2's EEPROM for execution on power-on.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 */
+	DLLEXPORT(void) flCleanWriteBuffer(
+		struct FLContext *handle
+	);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
@@ -389,9 +456,9 @@ extern "C" {
 	 *
 	 * Load a precompiled firmware into the FX2's EEPROM such that it will enumerate on power-on as
 	 * the "new" VID/PID. If \c xsvfFile is not \c NULL, its contents are compressed and appended to
-	 * the end of the FX2 firmware, and played into the JTAG chain on power-on. If an initialisation
-	 * buffer has been built (by calls to \c flAppendWriteRegisterCommand()), this will be appended
-	 * to the end of the XSVF data and played into the FPGA on power-on.
+	 * the end of the FX2 firmware, and played into the JTAG chain on power-on. If a write buffer
+	 * has been built (by calls to \c flAppendWriteRegisterCommand()), this will be appended to the
+	 * end of the XSVF data and played into the FPGA on power-on.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param newVid The Vendor ID you want the FX2 to enumerate as on power-on.
@@ -491,47 +558,6 @@ extern "C" {
 	DLLEXPORT(FLStatus) flSaveFirmware(
 		struct FLContext *handle, uint32 eepromSize, const char *saveFile, const char **error
 	) WARN_UNUSED_RESULT;
-
-	/**
-	 * @brief Append a write command to the end of the init buffer.
-	 *
-	 * The init buffer is like a notepad onto which one or more FPGA register write commands can be
-	 * written by calls to this function. The current state of the notepad can then be written (by
-	 * \c flFlashStandardFirmware()) to the FX2's EEPROM for execution on power-on.
-	 *
-	 * You'll notice that apart from the lack of a \c timeout parameter, the signature of this
-	 * function is identical to that of \c flWriteRegister(), but rather than executing the write
-	 * immediately, it appends the write command to the init buffer for playback on power-on.
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 * @param reg The FPGA register to write.
-	 * @param count The number of bytes to write.
-	 * @param data The address of the array of bytes to be written to the FPGA.
-	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
-	 * @returns
-	 *     - \c FL_SUCCESS if the write command was successfully appended to the init buffer.
-	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
-	 */
-	DLLEXPORT(FLStatus) flAppendWriteRegisterCommand(
-		struct FLContext *handle, uint8 reg, uint32 count, const uint8 *data, const char **error
-	) WARN_UNUSED_RESULT;
-
-	/**
-	 * @brief Clean the init buffer (if any).
-	 * 
-	 * The init buffer is like a notepad onto which one or more FPGA register write commands can be
-	 * written (by \c flAppendWriteRegisterCommand()). The current state of the notepad can then be
-	 * written (by \c flFlashStandardFirmware()) to the FX2's EEPROM for execution on power-on.
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 */
-	DLLEXPORT(void) flCleanInitBuffer(
-		struct FLContext *handle
-	);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------

@@ -98,8 +98,8 @@ DLLEXPORT(void) flClose(struct FLContext *handle) {
 	if ( handle ) {
 		usb_release_interface(handle->device, 0);
 		usb_close(handle->device);
-		if ( handle->initBuffer.data ) {
-			bufDestroy(&handle->initBuffer);
+		if ( handle->writeBuffer.data ) {
+			bufDestroy(&handle->writeBuffer);
 		}
 		free((void*)handle);
 	}
@@ -194,6 +194,51 @@ DLLEXPORT(FLStatus) flWriteRegister(
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;
+}
+
+// Append a write command to the end of the write buffer
+DLLEXPORT(FLStatus) flAppendWriteRegisterCommand(
+	struct FLContext *handle, uint8 reg, uint32 count, const uint8 *data, const char **error)
+{
+	FLStatus returnCode;
+	BufferStatus bStatus;
+	uint8 command[] = {reg & 0x7F, 0x00, 0x00, 0x00, 0x00};
+	if ( !handle->writeBuffer.data ) {
+		bStatus = bufInitialise(&handle->writeBuffer, 1024, 0x00, error);
+		CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
+	}
+	flWriteLong(count, command+1);
+	bStatus = bufAppendBlock(&handle->writeBuffer, command, 5, error);
+	CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
+	bStatus = bufAppendBlock(&handle->writeBuffer, data, count, error);
+	CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
+	return FL_SUCCESS;
+cleanup:
+	return returnCode;
+}
+
+// Play the write buffer into the USB cable immediately
+//
+DLLEXPORT(FLStatus) flPlayWriteBuffer(struct FLContext *handle, uint32 timeout, const char **error)
+{
+	FLStatus returnCode, fStatus;
+	if ( handle->writeBuffer.length == 0 ) {
+		errRender(error, "flPlayWriteBuffer(): The write buffer is empty");
+		FAIL(FL_WBUF_ERR);
+	}
+	fStatus = flWrite(handle, handle->writeBuffer.data, handle->writeBuffer.length, timeout, error);
+	CHECK_STATUS(fStatus, "flPlayWriteBuffer()", fStatus);
+	return FL_SUCCESS;
+cleanup:
+	return returnCode;
+}
+
+// Clear the write buffer (if any)
+//
+DLLEXPORT(void) flCleanWriteBuffer(struct FLContext *handle) {
+	if ( handle->writeBuffer.data ) {
+		bufZeroLength(&handle->writeBuffer);
+	}
 }
 
 DLLEXPORT(FLStatus) flReadRegister(

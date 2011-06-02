@@ -88,23 +88,23 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 		flStatus = appendCsvfFromXsvf(&i2cBuf, xsvfFile, error);
 		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
 		xsvfSize = i2cBuf.length - fwSize;
-		if ( handle->initBuffer.length ) {
+		if ( handle->writeBuffer.length ) {
 			// Write a big-endian uint16 length for the init data, then the data itself
-			if ( handle->initBuffer.length > 0xFFFF ) {
+			if ( handle->writeBuffer.length > 0xFFFF ) {
 				errRender(
 					error,
 					"flFlashStandardFirmware(): Cannot cope with %lu bytes of init data",
-					handle->initBuffer.length);
+					handle->writeBuffer.length);
 				FAIL(FL_FX2_ERR);
 			}
-			bStatus = bufAppendByte(&i2cBuf, (uint8)(handle->initBuffer.length >> 8), error);
+			bStatus = bufAppendByte(&i2cBuf, (uint8)(handle->writeBuffer.length >> 8), error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			bStatus = bufAppendByte(&i2cBuf, (uint8)(handle->initBuffer.length & 0xFF), error);
+			bStatus = bufAppendByte(&i2cBuf, (uint8)(handle->writeBuffer.length & 0xFF), error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 			bStatus = bufAppendBlock(
-				&i2cBuf, handle->initBuffer.data, handle->initBuffer.length, error);
+				&i2cBuf, handle->writeBuffer.data, handle->writeBuffer.length, error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			initSize = handle->initBuffer.length + 2;
+			initSize = handle->writeBuffer.length + 2;
 		} else {
 			// Write a zero length so the firmware knows there's no init data to follow
 			bStatus = bufAppendByte(&i2cBuf, 0x00, error);
@@ -222,35 +222,6 @@ cleanup:
 	bufDestroy(&iicBuf);
 	bufDestroy(&fwMask);
 	bufDestroy(&fwData);
-	return returnCode;
-}
-
-// Clear the initstruct Buffer (if any)
-//
-DLLEXPORT(void) flCleanInitBuffer(struct FLContext *handle) {
-	if ( handle->initBuffer.data ) {
-		bufZeroLength(&handle->initBuffer);
-	}
-}
-
-// Append a write command to the end of the init buffer
-DLLEXPORT(FLStatus) flAppendWriteRegisterCommand(
-	struct FLContext *handle, uint8 reg, uint32 count, const uint8 *data, const char **error)
-{
-	FLStatus returnCode;
-	BufferStatus bStatus;
-	uint8 command[] = {reg & 0x7F, 0x00, 0x00, 0x00, 0x00};
-	if ( !handle->initBuffer.data ) {
-		bStatus = bufInitialise(&handle->initBuffer, 1024, 0x00, error);
-		CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
-	}
-	flWriteLong(count, command+1);
-	bStatus = bufAppendBlock(&handle->initBuffer, command, 5, error);
-	CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
-	bStatus = bufAppendBlock(&handle->initBuffer, data, count, error);
-	CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
-	return FL_SUCCESS;
-cleanup:
 	return returnCode;
 }
 
