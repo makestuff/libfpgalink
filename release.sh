@@ -9,6 +9,12 @@ cp -rp linux/rel/*.so libfpgalink-${DATE}/linux/rel/
 mkdir -p libfpgalink-${DATE}/linux/dbg
 cp -rp linux/dbg/*.so libfpgalink-${DATE}/linux/dbg/
 
+# MacOS binaries
+mkdir -p libfpgalink-${DATE}/darwin/rel
+cp -rp darwin/rel/*.dylib libfpgalink-${DATE}/darwin/rel/
+mkdir -p libfpgalink-${DATE}/darwin/dbg
+cp -rp darwin/dbg/*.dylib libfpgalink-${DATE}/darwin/dbg/
+
 # Windows binaries
 mkdir -p libfpgalink-${DATE}/win32/rel
 cp -rp win32/rel/*.dll libfpgalink-${DATE}/win32/rel/
