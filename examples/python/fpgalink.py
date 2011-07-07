@@ -19,8 +19,15 @@ uint8 = c_ubyte
 ErrorString = c_char_p
 
 # Get DLL
-cdll.LoadLibrary("libfpgalink.so")
-fpgalink = CDLL("libfpgalink.so")
+if ( sys.platform == "linux2" ):
+    cdll.LoadLibrary("libfpgalink.so")
+    fpgalink = CDLL("libfpgalink.so")
+elif ( sys.platform == "darwin" ):
+    cdll.LoadLibrary("libfpgalink.dylib")
+    fpgalink = CDLL("libfpgalink.dylib")
+elif ( sys.platform == "win32" ):
+    windll.LoadLibrary("libfpgalink.dll")
+    fpgalink = WinDLL("libfpgalink.dll")
 
 # Miscellaneous Functions
 fpgalink.flInitialise.argtypes = []

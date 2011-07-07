@@ -13,12 +13,12 @@ Linux (Debug):
 MacOS (Release):
   gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -o ../../darwin/rel/fpgalink main.c -L../../darwin/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../darwin/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  ../../darwin/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 MacOS (Debug):
   gcc -g  -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -o ../../darwin/dbg/fpgalink main.c -L../../darwin/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../darwin/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  ../../darwin/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 Windows (Release):
   (assuming running from http://bit.ly/k0ydbN)
