@@ -6,17 +6,17 @@ Linux (Release):
   sudo ../../linux/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 Linux (Debug):
-  gcc -g  -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux/dbg -o ../../linux/dbg/fpgalink main.c -L../../linux/dbg -lfpgalink
+  gcc -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux/dbg -o ../../linux/dbg/fpgalink main.c -L../../linux/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   sudo ../../linux/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 MacOS (Release):
-  gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -o ../../darwin/rel/fpgalink main.c -L../../darwin/rel -lfpgalink
+  gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/rel/fpgalink main.c -L../../darwin/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   ../../darwin/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 MacOS (Debug):
-  gcc -g  -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -o ../../darwin/dbg/fpgalink main.c -L../../darwin/dbg -lfpgalink
+  gcc -gstabs+ -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/dbg/fpgalink main.c -L../../darwin/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   ../../darwin/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
@@ -28,7 +28,7 @@ Windows (Release):
 
 Windows (Debug):
   (assuming running from http://bit.ly/k0ydbN)
-  cl -Od     -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -D_DEBUG -D_CONSOLE -Gm -RTC1 -MDd -ZI  -Fe../../win32/dbg/fpgalink.exe main.c ../../win32/dbg/libfpgalink.lib kernel32.lib user32.lib
+  cl -Od -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -D_DEBUG -D_CONSOLE -Gm -RTC1 -MDd -ZI  -Fe../../win32/dbg/fpgalink.exe main.c ../../win32/dbg/libfpgalink.lib kernel32.lib user32.lib
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   ../../win32/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
