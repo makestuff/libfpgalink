@@ -6,37 +6,30 @@ microcontroller (primarily the Cypress FX2LP). It allows you to:
    * Reprogram the FPGA using JTAG over USB
    * Bootstrap an FPGA design standalone using minimal components
 
-To build, first you need to install the MakeStuff Build Environment (http://bit.ly/k0ydbN) for your
-platform, and then make sure that this directory is called "libfpgalink", and that it is in the
-"libs" directory like this:
+See http://bit.ly/fpgalnk-api for the API docs.
 
-makestuff
-|
-+-common
-|
-+-apps
-|
-+-libs
-| |
-| +-libfpgalink
-|
-+-3rd
+To build, first you need to install the MakeStuff Build Environment (http://bit.ly/makestuff) for
+your platform, then do:
 
-*** BUILDING ON WINDOWS ***
+chris@wotan$ cd makestuff/libs
+chris@wotan$ ../common/msget.sh libfpgalink   # or msgit.sh if you want a local git repo
+chris@wotan$ cd libfpgalink
+chris@wotan$ make deps
 
-Prerequisites:
-   * Visual Studio Express 2010 or 2008
-   * SDCC 2.9.0 (http://bit.ly/k7wyYn)
-   * Xilinx ISE WebPACK (http://bit.ly/bRf82e)
+*** WINDOWS PREREQUISITES ***
 
-To build, just type "make deps". The build will download and install the things it needs.
+* Visual Studio Express 2010 or 2008
+* SDCC 2.9.0 (http://bit.ly/k7wyYn)
+* Xilinx ISE WebPACK (http://bit.ly/bRf82e)
 
-*** BUILDING ON LINUX ***
+*** LINUX PREREQUISITES ***
 
-Prerequisites:
-   * sudo apt-get install g++
-   * sudo apt-get install libusb-dev
-   * sudo apt-get install sdcc
-   * Xilinx ISE WebPACK (http://bit.ly/bRf82e)
+* sudo apt-get install g++
+* sudo apt-get install libusb-dev
+* sudo apt-get install sdcc
+* Xilinx ISE WebPACK (http://bit.ly/bRf82e)
 
-To build, just type "make deps". The build will download and install the things it needs.
+*** MACOS PREREQUISITES ***
+
+* XCode (http://bit.ly/apple-connect)
+* LibUSB (http://bit.ly/libusb-macos)
