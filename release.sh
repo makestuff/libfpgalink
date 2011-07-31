@@ -1,43 +1,44 @@
 #!/bin/bash
+export LIB=libfpgalink
 export DATE=$(date +%Y%m%d)
-rm -rf libfpgalink-${DATE}
-mkdir libfpgalink-${DATE}
+rm -rf ${LIB}-${DATE}
+mkdir ${LIB}-${DATE}
 
 # Linux binaries
-mkdir -p libfpgalink-${DATE}/linux/rel
-cp -rp linux/rel/*.so libfpgalink-${DATE}/linux/rel/
-mkdir -p libfpgalink-${DATE}/linux/dbg
-cp -rp linux/dbg/*.so libfpgalink-${DATE}/linux/dbg/
+mkdir -p ${LIB}-${DATE}/linux/rel
+cp -rp linux/rel/*.so ${LIB}-${DATE}/linux/rel/
+mkdir -p ${LIB}-${DATE}/linux/dbg
+cp -rp linux/dbg/*.so ${LIB}-${DATE}/linux/dbg/
 
 # MacOS binaries
-mkdir -p libfpgalink-${DATE}/darwin/rel
-cp -rp darwin/rel/*.dylib libfpgalink-${DATE}/darwin/rel/
-mkdir -p libfpgalink-${DATE}/darwin/dbg
-cp -rp darwin/dbg/*.dylib libfpgalink-${DATE}/darwin/dbg/
+mkdir -p ${LIB}-${DATE}/darwin/rel
+cp -rp darwin/rel/*.dylib ${LIB}-${DATE}/darwin/rel/
+mkdir -p ${LIB}-${DATE}/darwin/dbg
+cp -rp darwin/dbg/*.dylib ${LIB}-${DATE}/darwin/dbg/
 
 # Windows binaries
-mkdir -p libfpgalink-${DATE}/win32/rel
-cp -rp win32/rel/*.dll libfpgalink-${DATE}/win32/rel/
-cp -rp win32/rel/*.lib libfpgalink-${DATE}/win32/rel/
-cp -rp win32/rel/*.pdb libfpgalink-${DATE}/win32/rel/
-mkdir -p libfpgalink-${DATE}/win32/dbg
-cp -rp win32/dbg/*.dll libfpgalink-${DATE}/win32/dbg/
-cp -rp win32/dbg/*.lib libfpgalink-${DATE}/win32/dbg/
-cp -rp win32/dbg/*.pdb libfpgalink-${DATE}/win32/dbg/
+mkdir -p ${LIB}-${DATE}/win32/rel
+cp -rp win32/rel/*.dll ${LIB}-${DATE}/win32/rel/
+cp -rp win32/rel/*.lib ${LIB}-${DATE}/win32/rel/
+cp -rp win32/rel/*.pdb ${LIB}-${DATE}/win32/rel/
+mkdir -p ${LIB}-${DATE}/win32/dbg
+cp -rp win32/dbg/*.dll ${LIB}-${DATE}/win32/dbg/
+cp -rp win32/dbg/*.lib ${LIB}-${DATE}/win32/dbg/
+cp -rp win32/dbg/*.pdb ${LIB}-${DATE}/win32/dbg/
 
 # Headers
-cp -rp ../../common/makestuff.h libfpgalink-${DATE}/
-cp -rp libfpgalink.h libfpgalink-${DATE}/
+cp -rp ../../common/makestuff.h ${LIB}-${DATE}/
+cp -rp ${LIB}.h ${LIB}-${DATE}/
 
 # XSVF files
-cp -rp gen_xsvf libfpgalink-${DATE}/
+cp -rp gen_xsvf ${LIB}-${DATE}/
 
 # Examples
-cp -rp examples libfpgalink-${DATE}/
-rm -f libfpgalink-${DATE}/examples/c/Makefile
+cp -rp examples ${LIB}-${DATE}/
+rm -f ${LIB}-${DATE}/examples/c/Makefile
 
-cp -p LICENSE.txt libfpgalink-${DATE}/
-cat > libfpgalink-${DATE}/README <<EOF
+cp -p LICENSE.txt ${LIB}-${DATE}/
+cat > ${LIB}-${DATE}/README <<EOF
 FPGALink Binary Distribution
 
 FPGALink is a library for JTAG-programming and subsequently interacting with an FPGA over USB using
@@ -50,10 +51,11 @@ a microcontroller (primarily the Cypress FX2LP). It allows you to:
 
 Overview here: http://www.makestuff.eu/wordpress/?page_id=1400
 Source code here: https://github.com/makestuff/libfpgalink
-API docs here: http://www.swaton.ukfsn.org/apidocs/libfpgalink_8h.html
+API docs here: http://bit.ly/fpgalnk-api
+Example code here: http://bit.ly/fpgalnk-ex
 EOF
 
 # Package it up
-tar zcf libfpgalink-${DATE}.tar.gz libfpgalink-${DATE}
-zip -r libfpgalink-${DATE}.zip libfpgalink-${DATE}
-rm -rf libfpgalink-${DATE}
+tar zcf ${LIB}-${DATE}.tar.gz ${LIB}-${DATE}
+rm -rf ${LIB}-${DATE}
+cp -p ${LIB}-${DATE}.tar.gz /mnt/ukfsn/bin/

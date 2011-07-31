@@ -33,3 +33,4 @@ chris@wotan$ make deps
 
 * XCode (http://bit.ly/apple-connect)
 * LibUSB (http://bit.ly/libusb-macos)
+* Wget (http://bit.ly/wget-macos)
