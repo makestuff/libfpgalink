@@ -198,7 +198,9 @@ static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize
 			status = bufAppendByte(outBuf, XSTATE, error);
 			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
 			thisByte = getNextByte(xc);
-			if ( thisByte != TAPSTATE_TEST_LOGIC_RESET && thisByte != TAPSTATE_RUN_TEST_IDLE ) {
+			if ( thisByte != TAPSTATE_TEST_LOGIC_RESET && thisByte != TAPSTATE_RUN_TEST_IDLE &&
+			     thisByte != TAPSTATE_SELECT_DR && thisByte != TAPSTATE_SELECT_IR )
+			{
 				FAIL(X2C_UNSUPPORTED_DATA_ERR);
 			}
 			status = bufAppendByte(outBuf, thisByte, error);
