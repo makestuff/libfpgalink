@@ -54,6 +54,9 @@ gen_xsvf:
 	make -C vhdl PLATFORM=s3board TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/s3board.xsvf
 	make -C vhdl clean
+	make -C vhdl PLATFORM=atlys TopLevel.xsvf
+	cp -rp vhdl/TopLevel.xsvf gen_xsvf/atlys.xsvf
+	make -C vhdl clean
 
 $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
 	make -C $<
