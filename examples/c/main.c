@@ -69,13 +69,17 @@ int main(int argc, const char *argv[]) {
 		status = flLoadStandardFirmware(iVID, iPID, VID, PID, &error);
 		CHECK(1);
 		
-		printf("Awaiting renumeration...\n");
+		printf("Awaiting renumeration");
+		flSleep(1000);
 		do {
+			printf(".");
+			fflush(stdout);
 			flSleep(100);
 			status = flIsDeviceAvailable(VID, PID, &flag, &error);
 			CHECK(1);
 			count--;
 		} while ( !flag && count );
+		printf("\n");
 		if ( !flag ) {
 			fprintf(stderr, "FPGALink device %04X:%04X did not renumerate properly\n", VID, PID);
 			exitCode = 1;

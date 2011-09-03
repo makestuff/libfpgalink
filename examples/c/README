@@ -1,14 +1,24 @@
 Calling FPGALink from C
 
-Linux (Release):
-  gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux/rel -o ../../linux/rel/fpgalink main.c -L../../linux/rel -lfpgalink
+Linux i686 (Release):
+  gcc -m32 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/rel -o ../../linux.i686/rel/fpgalink main.c -L../../linux.i686/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.i686/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
-Linux (Debug):
-  gcc -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux/dbg -o ../../linux/dbg/fpgalink main.c -L../../linux/dbg -lfpgalink
+Linux i686 (Debug):
+  gcc -m32 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/dbg -o ../../linux.i686/dbg/fpgalink main.c -L../../linux.i686/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.i686/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+
+Linux x86_64 (Release):
+  gcc -m64 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/rel -o ../../linux.x86_64/rel/fpgalink main.c -L../../linux.x86_64/rel -lfpgalink
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
+  sudo ../../linux.x86_64/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+
+Linux x86_64 (Debug):
+  gcc -m64 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/dbg -o ../../linux.x86_64/dbg/fpgalink main.c -L../../linux.x86_64/dbg -lfpgalink
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
+  sudo ../../linux.x86_64/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 MacOS (Release):
   gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/rel/fpgalink main.c -L../../darwin/rel -lfpgalink

@@ -4,11 +4,17 @@ export DATE=$(date +%Y%m%d)
 rm -rf ${LIB}-${DATE}
 mkdir ${LIB}-${DATE}
 
-# Linux binaries
-mkdir -p ${LIB}-${DATE}/linux/rel
-cp -rp linux/rel/*.so ${LIB}-${DATE}/linux/rel/
-mkdir -p ${LIB}-${DATE}/linux/dbg
-cp -rp linux/dbg/*.so ${LIB}-${DATE}/linux/dbg/
+# Linux i686 binaries
+mkdir -p ${LIB}-${DATE}/linux.i686/rel
+cp -rp linux.i686/rel/*.so ${LIB}-${DATE}/linux.i686/rel/
+mkdir -p ${LIB}-${DATE}/linux.i686/dbg
+cp -rp linux.i686/dbg/*.so ${LIB}-${DATE}/linux.i686/dbg/
+
+# Linux x86_64 binaries
+mkdir -p ${LIB}-${DATE}/linux.x86_64/rel
+cp -rp linux.x86_64/rel/*.so ${LIB}-${DATE}/linux.x86_64/rel/
+mkdir -p ${LIB}-${DATE}/linux.x86_64/dbg
+cp -rp linux.x86_64/dbg/*.so ${LIB}-${DATE}/linux.x86_64/dbg/
 
 # MacOS binaries
 mkdir -p ${LIB}-${DATE}/darwin/rel
