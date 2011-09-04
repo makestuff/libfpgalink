@@ -38,6 +38,7 @@ int main(int argc, const char *argv[]) {
 	uint16 VID, PID, iVID, iPID;
 	uint32 fileLen;
 	uint8 *buffer = NULL;
+	uint32 numDevices, scanChain[16], i;
 
 	if ( argc != 4 && argc != 5 ) {
 		fprintf(stderr, "Synopsis: %s <xsvfFile> <dataFile> <VID:PID> [<iVID:iPID>]\n", argv[0]);
@@ -93,13 +94,23 @@ int main(int argc, const char *argv[]) {
 	
 	isNeroCapable = flIsNeroCapable(fpgaLink);
 	isCommCapable = flIsCommCapable(fpgaLink);
-	printf(
-		"Device %s NeroJTAG\nDevice %s CommFPGA\n",
-		isNeroCapable ? "supports" : "does not support",
-		isCommCapable ? "supports" : "does not support"
-	);
-	
+	if ( isNeroCapable ) {
+		status = flScanChain(fpgaLink, &numDevices, scanChain, 16, &error);
+		CHECK(2);
+		if ( numDevices ) {
+			printf("Device supports NeroJTAG - here's what's on the JTAG chain:\n");
+			for ( i = 0; i < numDevices; i++ ) {
+				printf("  0x%08X\n", scanChain[i]);
+			}
+		} else {
+			printf("Device supports NeroJTAG but I didn't find any attached devices\n");
+		}
+	} else {
+		printf("Device does not support NeroJTAG\n");
+	}
+
 	if ( isCommCapable ) {
+		printf("Device supports CommFPGA\n");
 		if ( isNeroCapable ) {
 			status = flIsFPGARunning(fpgaLink, &flag, &error);
 			CHECK(3);
@@ -147,14 +158,18 @@ int main(int argc, const char *argv[]) {
 		CHECK(8);
 		printf("Got 0x%02X\n", buf[0]);
 	} else {
-		printf("Programming FPGA...\n");
-		status = flPlayXSVF(fpgaLink, argv[1], &error);
-		CHECK(3);
+		printf("Device does not support CommFPGA\n");
+		if ( isNeroCapable ) {
+			printf("Programming FPGA...\n");
+			status = flPlayXSVF(fpgaLink, argv[1], &error);
+			CHECK(3);
+		}
 	}
+
 	exitCode = 0;
 
 cleanup:
-	flFreeFile(buffer);
+	//flFreeFile(buffer);
 	flClose(fpgaLink);
 	return exitCode;
 }

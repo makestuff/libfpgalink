@@ -11,9 +11,9 @@ class FLContext(Structure):
 class FLException(Exception):
     pass
 FLHandle = POINTER(FLContext)
-FLStatus = c_ulong
+FLStatus = c_uint
 FL_SUCCESS = 0
-uint32 = c_ulong
+uint32 = c_uint
 uint16 = c_ushort
 uint8 = c_ubyte
 ErrorString = c_char_p
@@ -40,6 +40,8 @@ fpgalink.flLoadFile.argtypes = [c_char_p, POINTER(uint32)]
 fpgalink.flLoadFile.restype = POINTER(uint8)
 fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
+fpgalink.flScanChain.argtypes = [FLHandle, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
+fpgalink.flScanChain.restype = FLStatus
 
 # Connection Lifecycle
 fpgalink.flOpen.argtypes = [uint16, uint16, POINTER(FLHandle), POINTER(ErrorString)]
@@ -127,6 +129,19 @@ def flIsCommCapable(handle):
         return True
     else:
         return False
+
+# Scan the JTAG chain
+def flScanChain(handle):
+    error = ErrorString()
+    ChainType = (uint32 * 1)
+    chain = ChainType()
+    length = uint32(0)
+    status = fpgalink.flScanChain(handle, byref(length), chain, 1, byref(error))
+    if ( length > 1 ):
+        ChainType = (uint32 * length.value)
+        chain = ChainType()
+        status = fpgalink.flScanChain(handle, None, chain, length, byref(error))
+    return chain
 
 # Return true if the FPGA is actually running
 def flIsFPGARunning(handle):
@@ -254,7 +269,13 @@ if __name__ == "__main__":
                 
             isNeroCapable = flIsNeroCapable(handle)
             if ( isNeroCapable ):
-                print "Device supports NeroJTAG"
+                chain = flScanChain(handle)
+                if ( len(chain) > 0 ):
+                    print "Device supports NeroJTAG - here's what's on the JTAG chain:"
+                    for i in chain:
+                        print "  " + hex(i)
+                else:
+                    print "Device supports NeroJTAG but I didn't find any attached devices"
             else:
                 print "Device does not support NeroJTAG"
             
