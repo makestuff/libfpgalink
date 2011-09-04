@@ -1,3 +1,9 @@
+# Helper script for building the binary distribution. It's unlikely you'll need this unless you're
+# forking the project.
+#
+# After calling blinx.sh and building the MacOSX and Windows distributions, call this script to
+# package up all the binaries and upload the datestamped distribution to the web.
+#
 #!/bin/bash
 export LIB=libfpgalink
 export DATE=$(date +%Y%m%d)
@@ -48,14 +54,22 @@ cat > ${LIB}-${DATE}/README <<EOF
 FPGALink Binary Distribution
 
 FPGALink is a library for JTAG-programming and subsequently interacting with an FPGA over USB using
-a microcontroller (primarily the Cypress FX2LP). It allows you to:
+a microcontroller (primarily the Cypress FX2LP, but with limited support for the USB AVR8s with
+suitable firmware: http://bit.ly/nero-avr).
 
+It allows you to:
    * Load and save Cypress FX2LP firmware
    * Communicate with the FPGA using HiSpeed USB (~25Mbyte/s)
    * Reprogram the FPGA using JTAG over USB
    * Bootstrap an FPGA design standalone using minimal components
 
-Overview here: http://www.makestuff.eu/wordpress/?page_id=1400
+Supported platforms:
+   * Linux x86_64
+   * Linux i686
+   * MacOSX x86_64/i386
+   * 32-bit Windows
+
+Overview here: http://bit.ly/fpgalnk-blog
 Source code here: https://github.com/makestuff/libfpgalink
 API docs here: http://bit.ly/fpgalnk-api
 Example code here: http://bit.ly/fpgalnk-ex

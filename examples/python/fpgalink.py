@@ -100,6 +100,7 @@ def flClose(handle):
 def flAwaitDevice(vid, pid, timeout):
     error = ErrorString()
     isAvailable = uint8()
+    fpgalink.flSleep(1000);
     while ( True ):
         fpgalink.flSleep(100);
         status = fpgalink.flIsDeviceAvailable(vid, pid, byref(isAvailable), byref(error))
