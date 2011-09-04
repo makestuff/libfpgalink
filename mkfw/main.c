@@ -27,7 +27,7 @@ void dumpCode(const char *name, const struct Buffer *buf) {
 		const uint8 *ptr;
 		const uint8 *end;
 		uint8 count;
-		printf("const unsigned int %sFirmwareSize = %lu;\nconst unsigned char %sFirmwareData[] = {\n", name, buf->length, name);
+		printf("const unsigned int %sFirmwareSize = %du;\nconst unsigned char %sFirmwareData[] = {\n", name, buf->length, name);
 		ptr = buf->data;
 		end = buf->data + buf->length;
 		count = 1;
