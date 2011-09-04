@@ -86,7 +86,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			break;
 
 		case XSIR:
-			nStatus = neroClockFSM(nero, 0x00000003, 4, error);
+			nStatus = neroClockFSM(nero, 0x00000003, 4, error);  // -> Shift-IR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			thisByte = getNextByte(&cp);
 			numBytes = bitsToBytes(thisByte);
@@ -94,9 +94,9 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			while ( numBytes-- ) {
 				*ptr++ = getNextByte(&cp);
 			}
-			nStatus = neroShift(nero, thisByte, tdiData, NULL, true, error);
+			nStatus = neroShift(nero, thisByte, tdiData, NULL, true, error);  // -> Exit1-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			nStatus = neroClockFSM(nero, 0x00000001, 2, error);
+			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			if ( xruntest ) {
 				nStatus = neroClocks(nero, xruntest, error);
@@ -109,7 +109,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			break;
 
 		case XSDRTDO:
-			nStatus = neroClockFSM(nero, 0x00000001, 3, error);
+			nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			ptr = tdoExpected;
@@ -121,7 +121,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			while ( numBytes-- ) {
 				*ptr++ = getNextByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, tdoData, true, error);
+			nStatus = neroShift(nero, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			for ( i = 0; i < numBytes; i++ ) {
@@ -139,7 +139,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 					FAIL(CPLAY_COMPARE_ERR);
 				}
 			}
-			nStatus = neroClockFSM(nero, 0x00000001, 2, error);
+			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			if ( xruntest ) {
 				nStatus = neroClocks(nero, xruntest, error);
@@ -150,14 +150,14 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 		// TODO: Rather than calling neroShift() for each and every XSDRB, XSDRC & XSDRE, buffer the
 		//       data up and send it all in one go.
 		case XSDRB:
-			nStatus = neroClockFSM(nero, 0x00000001, 3, error);
+			nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			ptr = tdiData;
 			while ( numBytes-- ) {
 				*ptr++ = getNextByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, false, error);
+			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, false, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			break;
 
@@ -167,7 +167,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			while ( numBytes-- ) {
 				*ptr++ = getNextByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, false, error);
+			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, false, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			break;
 
@@ -177,9 +177,9 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			while ( numBytes-- ) {
 				*ptr++ = getNextByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, true, error);
+			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, true, error);  // -> Exit1-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			nStatus = neroClockFSM(nero, 0x00000001, 2, error);
+			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			if ( xruntest ) {
 				nStatus = neroClocks(nero, xruntest, error);
@@ -188,19 +188,11 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			break;
 
 		case XSTATE:
-			thisByte = getNextByte(&cp);
-			if ( thisByte == TAPSTATE_TEST_LOGIC_RESET ) {
-				nStatus = neroClockFSM(nero, 0x0000001F, 5, error);
-				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			} else {
-				if ( (0xD3A5>>thisByte) & 0x0001 ) {
-					nStatus = neroClockFSM(nero, 0x00000001, 1, error);
-					CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-				} else {
-					nStatus = neroClockFSM(nero, 0x00000000, 1, error);
-					CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-				}
-			}
+			// The XSTATE commands appear to be pretty superfluous. For now we can get away with
+			// always switching to Run-Test/Idle when we get an XSTATE
+			getNextByte(&cp);
+			nStatus = neroClockFSM(nero, 0x0000001F, 6, error);  // -> Run-Test/Idle
+			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			break;
 
 		default:
