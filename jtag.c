@@ -74,7 +74,7 @@ static void swap(uint32 *array, uint32 numWritten) {
 
 // Scan the JTAG chain and return an array of IDCODEs
 //
-FLStatus flScanChain(
+DLLEXPORT(FLStatus) flScanChain(
 	struct FLContext *handle, uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
 	const char **error)
 {
