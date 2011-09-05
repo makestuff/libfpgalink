@@ -36,6 +36,7 @@ static uint16 readLength(Context *cp);
 static uint8 getNextByte(Context *cp);
 static void dumpSimple(const unsigned char *input, unsigned int length, char *p);
 static uint16 getWord(Context *cp);
+static uint32 getLong(Context *cp);
 
 // -------------------------------------------------------------------------------------------------
 // Public functions
@@ -47,16 +48,19 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 	int returnCode;
 	NeroStatus nStatus;
 	uint8 thisByte;
-	uint16 numBytes;
+	uint32 numBytes;
 	uint8 *ptr;
 	uint8 i;
-	uint16 xsdrSize = 0;  // These should be 32-bits each, but that seems a bit wasteful
+	uint32 xsdrSize = 0;
 	uint16 xruntest = 0;
 	uint8 tdoMask[128];
 	uint8 tdiData[128];
 	uint8 tdoData[128];
 	uint8 tdoExpected[128];
 	Context cp;
+
+	nStatus = neroClockFSM(nero, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
+	CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 
 	cp.data = csvfData;
 	thisByte = getRawByte(&cp);
@@ -105,7 +109,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			break;
 
 		case XSDRSIZE:
-			xsdrSize = getWord(&cp);
+			xsdrSize = getLong(&cp);
 			break;
 
 		case XSDRTDO:
@@ -284,6 +288,20 @@ static void dumpSimple(const unsigned char *input, unsigned int length, char *p)
 static uint16 getWord(Context *cp) {
 	uint16 value;
 	value = getNextByte(cp);
+	value <<= 8;
+	value |= getNextByte(cp);
+	return value;
+}
+
+// Get big-endian uint32 from the stream
+//
+static uint32 getLong(Context *cp) {
+	uint32 value;
+	value = getNextByte(cp);
+	value <<= 8;
+	value |= getNextByte(cp);
+	value <<= 8;
+	value |= getNextByte(cp);
 	value <<= 8;
 	value |= getNextByte(cp);
 	return value;

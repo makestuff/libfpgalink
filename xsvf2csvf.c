@@ -70,11 +70,33 @@ cleanup:
 	return returnCode;
 }
 
+static X2CStatus sendXSize(struct Buffer *outBuf, uint32 xSize, const char **error) {
+	X2CStatus returnCode = X2C_SUCCESS;
+	BufferStatus status;
+	union {
+		uint32 lword;
+		uint8 byte[4];
+	} u;
+	u.lword = xSize;
+	status = bufAppendByte(outBuf, XSDRSIZE, error);
+	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+	status = bufAppendByte(outBuf, u.byte[3], error);
+	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+	status = bufAppendByte(outBuf, u.byte[2], error);
+	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+	status = bufAppendByte(outBuf, u.byte[1], error);
+	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+	status = bufAppendByte(outBuf, u.byte[0], error);
+	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+cleanup:
+	return returnCode;
+}
+
 // Parse the XSVF, reversing the byte-ordering of all the bytestreams.
 //
 static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize, const char **error) {
 	X2CStatus returnCode = X2C_SUCCESS;
-	uint16 xsdrSize = 0;
+	uint32 newXSize = 0, curXSize = 0;
 	uint16 numBytes;
 	BufferStatus status;
 	uint8 thisByte;
@@ -85,7 +107,11 @@ static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize
 		switch ( thisByte ) {
 		case XTDOMASK:
 			// Swap the XTDOMASK bytes.
-			numBytes = bitsToBytes(xsdrSize);
+			if ( newXSize != curXSize ) {
+				curXSize = newXSize;
+				sendXSize(outBuf, curXSize, error);
+			}
+			numBytes = bitsToBytes(curXSize);
 			if ( numBytes > BUF_SIZE ) {
 				FAIL(X2C_UNSUPPORTED_SIZE_ERR);
 			}
@@ -100,7 +126,11 @@ static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize
 
 		case XSDRTDO:
 			// Swap the tdiValue and tdoExpected bytes.
-			numBytes = bitsToBytes(xsdrSize);
+			if ( newXSize != curXSize ) {
+				curXSize = newXSize;
+				sendXSize(outBuf, curXSize, error);
+			}
+			numBytes = bitsToBytes(curXSize);
 			if ( numBytes > BUF_SIZE ) {
 				FAIL(X2C_UNSUPPORTED_SIZE_ERR);
 			}
@@ -114,7 +144,7 @@ static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize
 			break;
 
 		case XREPEAT:
-			// Drop XREPEAT.
+			// Drop XREPEAT for now. Will probably be needed for CPLDs.
 			getNextByte(xc);
 			break;
 			
@@ -144,67 +174,57 @@ static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize
 			break;
 
 		case XSDRSIZE:
-			// The XSVF spec has the XSDRSIZE as a uint32. But since the bitstreams in XSVF files
-			// are big-endian, they have to be buffered first, thus requiring RAM. I'm going to
-			// stick my neck out and guess that Xilinx tools will never set XSDRSIZE to anything
-			// bigger than 0xFFFF, so we can trim the uint32 down to uint16, and apply a further
-			// size check in XSDRTDO and XTDOMASK to put a further limit on it.
-			status = bufAppendByte(outBuf, XSDRSIZE, error);
-			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-			if ( getNextByte(xc) ) {
-				FAIL(X2C_UNSUPPORTED_SIZE_ERR);  // Fail if either MSW bytes are nonzero
-			}
-			if ( getNextByte(xc) ) {
-				FAIL(X2C_UNSUPPORTED_SIZE_ERR);
-			}
-			thisByte = getNextByte(xc);  // Get MSB
-			xsdrSize = thisByte;
-			status = bufAppendByte(outBuf, thisByte, error);
-			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-			thisByte = getNextByte(xc);  // Get LSB
-			xsdrSize <<= 8;
-			xsdrSize |= thisByte;
-			status = bufAppendByte(outBuf, thisByte, error);
-			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+			// Just store it; if it differs from the old one it will be sent when required
+			newXSize = getNextByte(xc);  // Get MSB
+			newXSize <<= 8;
+			newXSize |= getNextByte(xc);
+			newXSize <<= 8;
+			newXSize |= getNextByte(xc);
+			newXSize <<= 8;
+			newXSize |= getNextByte(xc); // Get LSB
 			break;
 
 		case XSDRB:
 			// Swap the tdiValue bytes.
+			if ( newXSize != curXSize ) {
+				curXSize = newXSize;
+				sendXSize(outBuf, curXSize, error);
+			}
 			status = bufAppendByte(outBuf, XSDRB, error);
 			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-			returnCode = swapBytes(xc, bitsToBytes(xsdrSize), outBuf, error);
+			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
 			CHECK_RETURN();
 			break;
 
 		case XSDRC:
 			// Swap the tdiValue bytes.
+			if ( newXSize != curXSize ) {
+				curXSize = newXSize;
+				sendXSize(outBuf, curXSize, error);
+			}
 			status = bufAppendByte(outBuf, XSDRC, error);
 			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-			returnCode = swapBytes(xc, bitsToBytes(xsdrSize), outBuf, error);
+			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
 			CHECK_RETURN();
 			break;
 
 		case XSDRE:
 			// Swap the tdiValue bytes.
+			if ( newXSize != curXSize ) {
+				curXSize = newXSize;
+				sendXSize(outBuf, curXSize, error);
+			}
 			status = bufAppendByte(outBuf, XSDRE, error);
 			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-			returnCode = swapBytes(xc, bitsToBytes(xsdrSize), outBuf, error);
+			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
 			CHECK_RETURN();
 			break;
 
 		case XSTATE:
-			// Only switching to states TAPSTATE_TEST_LOGIC_RESET and TAPSTATE_RUN_TEST_IDLE are
-			// supported so fail quickly if there's an attempt to switch to a different state.
-			status = bufAppendByte(outBuf, XSTATE, error);
-			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-			thisByte = getNextByte(xc);
-			if ( thisByte != TAPSTATE_TEST_LOGIC_RESET && thisByte != TAPSTATE_RUN_TEST_IDLE &&
-			     thisByte != TAPSTATE_SELECT_DR && thisByte != TAPSTATE_SELECT_IR )
-			{
-				FAIL(X2C_UNSUPPORTED_DATA_ERR);
-			}
-			status = bufAppendByte(outBuf, thisByte, error);
-			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+			// There doesn't seem to be much point in these commands, since the other commands have
+			// implied state transitions anyway. Just make sure the TAP is initialised to be at
+			// Run-Test/Idle before playing the CSVF stream.
+			getNextByte(xc);
 			break;
 
 		case XENDIR:

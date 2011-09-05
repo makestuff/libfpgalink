@@ -609,12 +609,26 @@ static uint16 getWord(void) {
 	return value;
 }
 
+// Get big-endian uint32 from the stream
+//
+static uint32 getLong(void) {
+	xdata uint32 value;
+	value = getNextByte();
+	value <<= 8;
+	value |= getNextByte();
+	value <<= 8;
+	value |= getNextByte();
+	value <<= 8;
+	value |= getNextByte();
+	return value;
+}
+
 // Shift out "numBits" bits from the CSVF stream. If "isLast", exit Shift-DR on the final bit.
 //
-static void shiftOutCsvf(uint16 numBits, bool isLast) {
-	xdata uint16 bitsRemaining = (numBits-1) & 0xFFF8;        // Now an integer number of bytes
+static void shiftOutCsvf(uint32 numBits, bool isLast) {
+	xdata uint32 bitsRemaining = (numBits-1) & 0xFFFFFFF8;    // Now an integer number of bytes
 	xdata uint8 leftOver = (uint8)(numBits - bitsRemaining);  // How many bits in last byte (1-8)
-	xdata uint16 bytesRemaining = (bitsRemaining>>3);
+	xdata uint32 bytesRemaining = (bitsRemaining>>3);
 	xdata uint8 tdiByte, i;
 	while ( bytesRemaining-- ) {
 		shiftOut(getNextByte());
@@ -639,13 +653,14 @@ static void shiftOutCsvf(uint16 numBits, bool isLast) {
 uint8 jtagCsvfPlay(void) {
 	xdata uint8 returnCode = 0;
 	xdata uint8 thisByte;
-	xdata uint16 numBytes;
+	xdata uint32 numBytes;
 	xdata uint8 *ptr;
 	xdata uint8 i;
-	xdata uint16 xsdrSize = 0;  // These should be 32-bits each, but that seems a bit wasteful
+	xdata uint32 xsdrSize = 0;
 	xdata uint16 xruntest = 0;
 	xdata uint8 tdoExpected[CSVF_BUF_SIZE];
 	xdata uint8 tdoMask[CSVF_BUF_SIZE];
+	jtagClockFSM(0x0000001F, 6);  // Go to Run-Test/Idle
 	thisByte = getNextByte();
 	while ( thisByte != XCOMPLETE ) {
 		switch ( thisByte ) {
@@ -673,11 +688,11 @@ uint8 jtagCsvfPlay(void) {
 			break;
 
 		case XSDRSIZE:
-			xsdrSize = getWord();
+			xsdrSize = getLong();
 			break;
 
 		case XSDRTDO: {
-			xdata uint16 bitsRemaining = (xsdrSize-1) & 0xFFF8;        // Now an int number of bytes
+			xdata uint32 bitsRemaining = (xsdrSize-1) & 0xFFFFFFF8;    // Now an int number of bytes
 			xdata uint8 leftOver = (uint8)(xsdrSize - bitsRemaining);  // No bits in last byte (1-8)
 			xdata uint8 tdoByte, tdiByte, i, lastIndex;
 			jtagClockFSM(0x00000001, 3);
@@ -739,19 +754,6 @@ uint8 jtagCsvfPlay(void) {
 			jtagClockFSM(0x00000001, 2);
 			if ( xruntest ) {
 				jtagClocks(xruntest);
-			}
-			break;
-
-		case XSTATE:
-			thisByte = getNextByte();
-			if ( thisByte == TAPSTATE_TEST_LOGIC_RESET ) {
-				jtagClockFSM(0x0000001F, 5);
-			} else {
-				if ( (0xD3A5>>thisByte) & 0x0001 ) {
-					jtagClockFSM(0x00000001, 1);
-				} else {
-					jtagClockFSM(0x00000000, 1);
-				}
 			}
 			break;
 
