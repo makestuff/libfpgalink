@@ -35,10 +35,10 @@ int main(int argc, const char *argv[]) {
 	uint8 buf[256];
 	bool flag;
 	bool isNeroCapable, isCommCapable;
-	uint16 VID, PID, iVID, iPID;
 	uint32 fileLen;
 	uint8 *buffer = NULL;
 	uint32 numDevices, scanChain[16], i;
+	const char *vp, *ivp;
 
 	if ( argc != 4 && argc != 5 ) {
 		fprintf(stderr, "Synopsis: %s <xsvfFile> <dataFile> <VID:PID> [<iVID:iPID>]\n", argv[0]);
@@ -46,28 +46,20 @@ int main(int argc, const char *argv[]) {
 		goto cleanup;
 	}
 	
-	VID = (uint16)strtol(argv[3], NULL, 16);
-	PID = (uint16)strtol(argv[3] + 5, NULL, 16);
-	if ( argc == 5 ) {
-		iVID = (uint16)strtol(argv[4], NULL, 16);
-		iPID = (uint16)strtol(argv[4] + 5, NULL, 16);
-	} else {
-		iVID = VID;
-		iPID = PID;
-	}
+	vp = argv[3];
+	ivp = (argc == 5) ? argv[4] : vp;
 
 	printf("Initialising...\n");
 	flInitialise();
 	
 	printf("Attempting to open FPGALink connection...\n");
-	status = flOpen(VID, PID, &fpgaLink, &error);
+	status = flOpen(vp, &fpgaLink, &error);
 	if ( status ) {
 		int count = 60;
 		printf("Failed: %s\n", error);
 		flFreeError(error);
 		printf("Loading firmware...\n");
-		//status = flLoadStandardFirmware(0x04B4, 0x8613, VID, PID, &error);
-		status = flLoadStandardFirmware(iVID, iPID, VID, PID, &error);
+		status = flLoadStandardFirmware(ivp, vp, &error);
 		CHECK(1);
 		
 		printf("Awaiting renumeration");
@@ -76,19 +68,19 @@ int main(int argc, const char *argv[]) {
 			printf(".");
 			fflush(stdout);
 			flSleep(100);
-			status = flIsDeviceAvailable(VID, PID, &flag, &error);
+			status = flIsDeviceAvailable(vp, &flag, &error);
 			CHECK(1);
 			count--;
 		} while ( !flag && count );
 		printf("\n");
 		if ( !flag ) {
-			fprintf(stderr, "FPGALink device %04X:%04X did not renumerate properly\n", VID, PID);
+			fprintf(stderr, "FPGALink device %s did not renumerate properly\n", vp);
 			exitCode = 1;
 			goto cleanup;
 		}
 		
 		printf("Attempting to open FPGALink connection again...\n");
-		status = flOpen(VID, PID, &fpgaLink, &error);
+		status = flOpen(vp, &fpgaLink, &error);
 		CHECK(1);
 	}
 	
@@ -169,7 +161,7 @@ int main(int argc, const char *argv[]) {
 	exitCode = 0;
 
 cleanup:
-	//flFreeFile(buffer);
+	flFreeFile(buffer);
 	flClose(fpgaLink);
 	return exitCode;
 }

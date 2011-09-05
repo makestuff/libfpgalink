@@ -38,21 +38,36 @@ DLLEXPORT(void) flFreeError(const char *err) {
 }
 
 DLLEXPORT(FLStatus) flIsDeviceAvailable(
-	uint16 vid, uint16 pid, bool *isAvailable, const char **error)
+	const char *vp, bool *isAvailable, const char **error)
 {
 	FLStatus returnCode;
-	USBStatus uStatus = usbIsDeviceAvailable(vid, pid, isAvailable, error);
+	USBStatus uStatus;
+	uint16 vid, pid;
+	if ( !usbValidateVidPid(vp) ) {
+		errRender(error, "The supplied VID:PID \"%s\" is invalid; it should look like 04B4:8613", vp);
+		FAIL(FL_USB_ERR);
+	}
+	vid = (uint16)strtoul(vp, NULL, 16);
+	pid = (uint16)strtoul(vp+5, NULL, 16);
+	uStatus = usbIsDeviceAvailable(vid, pid, isAvailable, error);
 	CHECK_STATUS(uStatus, "flIsDeviceAvailable()", FL_USB_ERR);
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;
 }
 
-DLLEXPORT(FLStatus) flOpen(uint16 vid, uint16 pid, struct FLContext **handle, const char **error) {
+DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char **error) {
 	FLStatus returnCode, fStatus;
 	int uStatus;
 	uint8 statusBuffer[16];
 	struct FLContext *newCxt = (struct FLContext *)calloc(sizeof(struct FLContext), 1);
+	uint16 vid, pid;
+	if ( !usbValidateVidPid(vp) ) {
+		errRender(error, "The supplied VID:PID \"%s\" is invalid; it should look like 04B4:8613", vp);
+		FAIL(FL_USB_ERR);
+	}
+	vid = (uint16)strtoul(vp, NULL, 16);
+	pid = (uint16)strtoul(vp+5, NULL, 16);
 	CHECK_STATUS(!newCxt, "flOpen()", FL_ALLOC_ERR);
 	uStatus = usbOpenDevice(vid, pid, 1, 0, 0, &newCxt->device, error);
 	CHECK_STATUS(uStatus, "flOpen()", FL_USB_ERR);

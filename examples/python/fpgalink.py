@@ -14,7 +14,6 @@ FLHandle = POINTER(FLContext)
 FLStatus = c_uint
 FL_SUCCESS = 0
 uint32 = c_uint
-uint16 = c_ushort
 uint8 = c_ubyte
 ErrorString = c_char_p
 
@@ -44,13 +43,13 @@ fpgalink.flScanChain.argtypes = [FLHandle, POINTER(uint32), POINTER(uint32), uin
 fpgalink.flScanChain.restype = FLStatus
 
 # Connection Lifecycle
-fpgalink.flOpen.argtypes = [uint16, uint16, POINTER(FLHandle), POINTER(ErrorString)]
+fpgalink.flOpen.argtypes = [c_char_p, POINTER(FLHandle), POINTER(ErrorString)]
 fpgalink.flOpen.restype = FLStatus
 fpgalink.flClose.argtypes = [FLHandle]
 fpgalink.flClose.restype = None
 
 # Device Capabilities and Status
-fpgalink.flIsDeviceAvailable.argtypes = [uint16, uint16, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flIsDeviceAvailable.argtypes = [c_char_p, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flIsDeviceAvailable.restype = FLStatus
 fpgalink.flIsNeroCapable.argtypes = [FLHandle]
 fpgalink.flIsNeroCapable.restype = uint8
@@ -70,9 +69,9 @@ fpgalink.flPlayXSVF.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
 fpgalink.flPlayXSVF.restype = FLStatus
 
 # FX2 Firmware Operations
-fpgalink.flLoadStandardFirmware.argtypes = [uint16, uint16, uint16, uint16, POINTER(ErrorString)]
+fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
 fpgalink.flLoadStandardFirmware.restype = FLStatus
-fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, uint16, uint16, uint32, c_char_p, POINTER(ErrorString)]
+fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, uint32, c_char_p, POINTER(ErrorString)]
 fpgalink.flFlashStandardFirmware.restype = FLStatus
 fpgalink.flSaveFirmware.argtypes = [FLHandle, uint32, c_char_p, POINTER(ErrorString)]
 fpgalink.flSaveFirmware.restype = FLStatus
@@ -84,10 +83,10 @@ fpgalink.flAppendWriteRegisterCommand.argtypes = [FLHandle, uint8, uint32, POINT
 fpgalink.flAppendWriteRegisterCommand.restype = FLStatus
 
 # Open a connection to the FPGALink device
-def flOpen(vid, pid):
+def flOpen(vp):
     handle = FLHandle()
     error = ErrorString()
-    status = fpgalink.flOpen(vid, pid, byref(handle), byref(error))
+    status = fpgalink.flOpen(vp, byref(handle), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -99,13 +98,13 @@ def flClose(handle):
     fpgalink.flClose(handle)
 
 # Await renumeration - return true if found before timeout
-def flAwaitDevice(vid, pid, timeout):
+def flAwaitDevice(vp, timeout):
     error = ErrorString()
     isAvailable = uint8()
     fpgalink.flSleep(1000);
     while ( True ):
         fpgalink.flSleep(100);
-        status = fpgalink.flIsDeviceAvailable(vid, pid, byref(isAvailable), byref(error))
+        status = fpgalink.flIsDeviceAvailable(vp, byref(isAvailable), byref(error))
         if ( status != FL_SUCCESS ):
             s = str(error.value)
             fpgalink.flFreeError(error)
@@ -133,11 +132,12 @@ def flIsCommCapable(handle):
 # Scan the JTAG chain
 def flScanChain(handle):
     error = ErrorString()
-    ChainType = (uint32 * 1)
+    ChainType = (uint32 * 16)  # Guess there are fewer than 16 devices
     chain = ChainType()
     length = uint32(0)
-    status = fpgalink.flScanChain(handle, byref(length), chain, 1, byref(error))
-    if ( length > 1 ):
+    status = fpgalink.flScanChain(handle, byref(length), chain, 16, byref(error))
+    if ( length > 16 ):
+        # We know exactly how many devices there are, so try again
         ChainType = (uint32 * length.value)
         chain = ChainType()
         status = fpgalink.flScanChain(handle, None, chain, length, byref(error))
@@ -200,9 +200,9 @@ def flPlayXSVF(handle, xsvfFile):
         raise FLException(s)
 
 # Load standard firmware into the FX2 chip
-def flLoadStandardFirmware(currentVid, currentPid, newVid, newPid):
+def flLoadStandardFirmware(curVidPid, newVidPid):
     error = ErrorString()
-    status = fpgalink.flLoadStandardFirmware(currentVid, currentPid, newVid, newPid, byref(error))
+    status = fpgalink.flLoadStandardFirmware(curVidPid, newVidPid, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -229,9 +229,9 @@ def flAppendWriteRegisterCommand(handle, reg, values):
         raise FLException(s)
 
 # Flash standard firmware into the FX2's EEPROM
-def flFlashStandardFirmware(handle, newVid, newPid, eepromSize, xsvfFile = None):
+def flFlashStandardFirmware(handle, newVidPid, eepromSize, xsvfFile = None):
     error = ErrorString()
-    status = fpgalink.flFlashStandardFirmware(handle, newVid, newPid, eepromSize, xsvfFile, byref(error))
+    status = fpgalink.flFlashStandardFirmware(handle, newVidPid, eepromSize, xsvfFile, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -247,25 +247,19 @@ if __name__ == "__main__":
         try:
             xsvfFile = sys.argv[1]
             dataFile = sys.argv[2]
-            VID = int(sys.argv[3][:4], 16)
-            PID = int(sys.argv[3][5:], 16)
-            if ( len(sys.argv) == 5 ):
-                iVID = int(sys.argv[4][:4], 16)
-                iPID = int(sys.argv[4][5:], 16)
-            else:
-                iVID = VID
-                iPID = PID
-            print "Attempting to open FPGALink connection on %04X:%04X" % (VID, PID)
+            vp = sys.argv[3]
+            ivp = sys.argv[4] if (len(sys.argv) == 5) else vp
+            print "Attempting to open FPGALink connection on", vp
             try:
-                handle = flOpen(VID, PID)
+                handle = flOpen(vp)
             except FLException as ex:
                 print "Loading firmware..."
-                flLoadStandardFirmware(iVID, iPID, VID, PID);
+                flLoadStandardFirmware(ivp, vp);
                 print "Awaiting renumeration..."
-                if ( not flAwaitDevice(VID, PID, 600) ):
+                if ( not flAwaitDevice(vp, 600) ):
                     raise FLException("FPGALink device did not renumerate properly")
                 print "Attempting to open FPGALink connection again..."
-                handle = flOpen(VID, PID)
+                handle = flOpen(vp)
                 
             isNeroCapable = flIsNeroCapable(handle)
             if ( isNeroCapable ):

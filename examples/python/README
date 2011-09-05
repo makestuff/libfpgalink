@@ -14,7 +14,7 @@ MacOS:
 
 Windows (assuming you're running from http://bit.ly/k0ydbN):
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  PATH=../../win32/rel /c/Python27/python fpgalink.py ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  PATH=../../win32/rel:$PATH /c/Python27/python fpgalink.py ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
 
 This connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the onboard FX2 chip
 with a new firmware, loads the nexys2.xsvf design into the board's FPGA, and then does some register

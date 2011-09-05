@@ -43,14 +43,28 @@ static FLStatus appendCsvfFromXsvf(
 
 // Load the standard FPGALink firmware into the FX2 at currentVid/currentPid.
 DLLEXPORT(FLStatus) flLoadStandardFirmware(
-	uint16 currentVid, uint16 currentPid, uint16 newVid, uint16 newPid, const char **error)
+	const char *curVidPid, const char *newVidPid, const char **error)
 {
 	FLStatus flStatus, returnCode;
 	struct Buffer ramBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
 	struct usb_dev_handle *device;
-	int uStatus = usbOpenDevice(currentVid, currentPid, 1, 0, 0, &device, error);
+	int uStatus;
+	uint16 currentVid, currentPid, newVid, newPid;
+	if ( !usbValidateVidPid(curVidPid) ) {
+		errRender(error, "The supplied current VID:PID \"%s\" is invalid; it should look like 04B4:8613", curVidPid);
+		FAIL(FL_USB_ERR);
+	}
+	if ( !usbValidateVidPid(newVidPid) ) {
+		errRender(error, "The supplied new VID:PID \"%s\" is invalid; it should look like 04B4:8613", newVidPid);
+		FAIL(FL_USB_ERR);
+	}
+	currentVid = (uint16)strtoul(curVidPid, NULL, 16);
+	currentPid = (uint16)strtoul(curVidPid+5, NULL, 16);
+	newVid = (uint16)strtoul(newVidPid, NULL, 16);
+	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
+	uStatus = usbOpenDevice(currentVid, currentPid, 1, 0, 0, &device, error);
 	CHECK_STATUS(uStatus, "flLoadStandardFirmware()", FL_USB_ERR);
 	bStatus = bufInitialise(&ramBuf, 0x4000, 0x00, error);
 	CHECK_STATUS(bStatus, "flLoadStandardFirmware()", FL_ALLOC_ERR);
@@ -70,7 +84,7 @@ cleanup:
 }
 
 DLLEXPORT(FLStatus) flFlashStandardFirmware(
-	struct FLContext *handle, uint16 newVid, uint16 newPid, uint32 eepromSize,
+	struct FLContext *handle, const char *newVidPid, uint32 eepromSize,
 	const char *xsvfFile, const char **error)
 {
 	FLStatus flStatus, returnCode;
@@ -78,6 +92,13 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 	BufferStatus bStatus;
 	FX2Status fxStatus;
 	uint32 fwSize, xsvfSize, initSize;
+	uint16 newVid, newPid;
+	if ( !usbValidateVidPid(newVidPid) ) {
+		errRender(error, "The supplied new VID:PID \"%s\" is invalid; it should look like 04B4:8613", newVidPid);
+		FAIL(FL_USB_ERR);
+	}
+	newVid = (uint16)strtoul(newVidPid, NULL, 16);
+	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);	
 	bStatus = bufInitialise(&i2cBuf, 0x4000, 0x00, error);
 	CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 	if ( xsvfFile ) {
@@ -144,7 +165,7 @@ cleanup:
 
 // Load custom firmware (.hex) into the FX2's RAM
 DLLEXPORT(FLStatus) flLoadCustomFirmware(
-	uint16 vid, uint16 pid, const char *fwFile, const char **error)
+	const char *curVidPid, const char *fwFile, const char **error)
 {
 	FLStatus returnCode;
 	struct Buffer fwBuf = {0,};
@@ -153,6 +174,13 @@ DLLEXPORT(FLStatus) flLoadCustomFirmware(
 	struct usb_dev_handle *device = NULL;
 	int uStatus;
 	const char *const ext = fwFile + strlen(fwFile) - 4;
+	uint16 vid, pid;
+	if ( !usbValidateVidPid(curVidPid) ) {
+		errRender(error, "The supplied current VID:PID \"%s\" is invalid; it should look like 04B4:8613", curVidPid);
+		FAIL(FL_USB_ERR);
+	}
+	vid = (uint16)strtoul(curVidPid, NULL, 16);
+	pid = (uint16)strtoul(curVidPid+5, NULL, 16);	
 	if ( strcmp(".hex", ext) ) {
 		errRender(error, "flLoadCustomFirmware(): Filename should have .hex extension");
 		FAIL(FL_FILE_ERR);

@@ -93,8 +93,7 @@ extern "C" {
 	 * Connects to the device and verifies it is an \b FPGALink device, then queries its
 	 * capabilities and synchronises the USB bulk endpoints.
 	 *
-	 * @param vid The Vendor ID of the device.
-	 * @param pid The Product ID of the device.
+	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device.
 	 * @param handle A pointer to a <code>struct FLContext*</code> which will be set on exit to
 	 *            point at a newly-allocated context structure. Responsibility for this allocated
 	 *            memory (and its associated USB resources) passes to the caller and must be freed
@@ -106,13 +105,13 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (\c *handle is valid).
-	 *     - \c FL_USB_ERR if the device cannot be found or opened.
+	 *     - \c FL_USB_ERR if the VID/PID is invalid or the device cannot be found or opened.
 	 *     - \c FL_PROTOCOL_ERR if the device is not an \b FPGALink device.
 	 *     - \c FL_SYNC_ERR if the bulk endpoint pairs cannot be synchronised.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flOpen(
-		uint16 vid, uint16 pid, struct FLContext **handle, const char **error
+		const char *vp, struct FLContext **handle, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -144,8 +143,7 @@ extern "C" {
 	 * "current" VID/PID, so when you load new firmware, it's important to ensure that the "new"
 	 * VID/PID is different from the "current" VID/PID to avoid such false positives.
 	 *
-	 * @param vid The Vendor ID of the device.
-	 * @param pid The Product ID of the device.
+	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device.
 	 * @param isAvailable A pointer to an 8-bit integer which will be set on exit to 1 if available
 	 *            else 0.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -155,10 +153,11 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (\c *isAvailable is valid).
-	 *     - \c FL_USB_ERR if no USB buses were found; did you remember to call \c flInitialise()?
+	 *     - \c FL_USB_ERR if the VID/PID is invalid or if no USB buses were found (did you
+	 *            remember to call \c flInitialise()?).
 	 */
 	DLLEXPORT(FLStatus) flIsDeviceAvailable(
-		uint16 vid, uint16 pid, bool *isAvailable, const char **error
+		const char *vp, bool *isAvailable, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -428,10 +427,8 @@ extern "C" {
 	 * the renumeration to complete by calling \c flIsDeviceAvailable() repeatedly until the "new"
 	 * VID/PID becomes active.
 	 *
-	 * @param currentVid The Vendor ID of the FX2 device.
-	 * @param currentPid The Product ID of the FX2 device.
-	 * @param newVid The Vendor ID you want the FX2 to renumerate as.
-	 * @param newPid The Product ID you want the FX2 to renumerate as.
+	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
+	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) that you \b want the FX2 device to be.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -439,12 +436,12 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
-	 *     - \c FL_USB_ERR if the current VID/PID was not found.
+	 *     - \c FL_USB_ERR if one of the VID/PIDs was invalid or the current VID/PID was not found.
 	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flLoadStandardFirmware(
-		uint16 currentVid, uint16 currentPid, uint16 newVid, uint16 newPid, const char **error
+		const char *curVidPid, const char *newVidPid, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -461,8 +458,7 @@ extern "C" {
 	 * end of the XSVF data and played into the FPGA on power-on.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param newVid The Vendor ID you want the FX2 to enumerate as on power-on.
-	 * @param newPid The Product ID you want the FX2 to enumerate as on power-on.
+	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) you want the FX2 to be on power-on.
 	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
 	 * @param xsvfFile An XSVF file to play on power-up, or \c NULL.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -472,12 +468,12 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
-	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2, or if the EEPROM was too
-	 *            small.
+	 *     - \c FL_USB_ERR if the VID/PID was invalid.
+	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2, or the EEPROM was too small.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flFlashStandardFirmware(
-		struct FLContext *handle, uint16 newVid, uint16 newPid, uint32 eepromSize,
+		struct FLContext *handle, const char *newVidPid, uint32 eepromSize,
 		const char *xsvfFile, const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -487,8 +483,7 @@ extern "C" {
 	 * Load the FX2 chip at the given VID/PID with a <code>.hex</code> firmware file. The firmware
 	 * is loaded into RAM, so the change is not permanent.
 	 *
-	 * @param vid The Vendor ID of the FX2 device.
-	 * @param pid The Product ID of the FX2 device.
+	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
 	 * @param fwFile A <code>.hex</code> file containing new FX2 firmware to be loaded into the
                   FX2's RAM.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -498,12 +493,13 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
+	 *     - \c FL_USB_ERR if the VID/PID was invalid.
 	 *     - \c FL_FILE_ERR if the firmware file has a bad extension or could not be loaded.
 	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flLoadCustomFirmware(
-		uint16 vid, uint16 pid, const char *fwFile, const char **error
+		const char *curVidPid, const char *fwFile, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
