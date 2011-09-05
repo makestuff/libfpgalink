@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdlib.h>
 #include <makestuff.h>
 #include <liberror.h>
 #include <libnero.h>
@@ -57,6 +58,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 	uint8 tdiData[128];
 	uint8 tdoData[128];
 	uint8 tdoExpected[128];
+	uint8 *tdiAll;
 	Context cp;
 
 	nStatus = neroClockFSM(nero, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
@@ -151,27 +153,17 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			}
 			break;
 
-		// TODO: Rather than calling neroShift() for each and every XSDRB, XSDRC & XSDRE, buffer the
-		//       data up and send it all in one go.
 		case XSDRB:
 			nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
-			ptr = tdiData;
+			tdiAll = malloc(numBytes);
+			ptr = tdiAll;
 			while ( numBytes-- ) {
 				*ptr++ = getNextByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, false, error);  // -> Shift-DR
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			break;
-
-		case XSDRC:
-			numBytes = bitsToBytes(xsdrSize);
-			ptr = tdiData;
-			while ( numBytes-- ) {
-				*ptr++ = getNextByte(&cp);
-			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, false, error);  // -> Shift-DR
+			nStatus = neroShift(nero, xsdrSize, tdiAll, NULL, false, error);  // -> Shift-DR
+			free(tdiAll);
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			break;
 

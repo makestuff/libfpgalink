@@ -745,10 +745,6 @@ uint8 jtagCsvfPlay(void) {
 			shiftOutCsvf(xsdrSize, false);
 			break;
 
-		case XSDRC:
-			shiftOutCsvf(xsdrSize, false);
-			break;
-
 		case XSDRE:
 			shiftOutCsvf(xsdrSize, true);
 			jtagClockFSM(0x00000001, 2);

@@ -92,11 +92,23 @@ cleanup:
 	return returnCode;
 }
 
+void writeLong(struct Buffer *buf, uint32 offset, uint32 value) {
+	union {
+		uint32 lword;
+		uint8 byte[4];
+	} u;
+	u.lword = value;
+	buf->data[offset++] = u.byte[3];
+	buf->data[offset++] = u.byte[2];
+	buf->data[offset++] = u.byte[1];
+	buf->data[offset] = u.byte[0];
+}
+
 // Parse the XSVF, reversing the byte-ordering of all the bytestreams.
 //
 static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize, const char **error) {
 	X2CStatus returnCode = X2C_SUCCESS;
-	uint32 newXSize = 0, curXSize = 0;
+	uint32 newXSize = 0, curXSize = 0, totXSize, totOffset;
 	uint16 numBytes;
 	BufferStatus status;
 	uint8 thisByte;
@@ -186,10 +198,10 @@ static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize
 
 		case XSDRB:
 			// Swap the tdiValue bytes.
-			if ( newXSize != curXSize ) {
-				curXSize = newXSize;
-				sendXSize(outBuf, curXSize, error);
-			}
+			curXSize = newXSize;
+			sendXSize(outBuf, curXSize, error);
+			totXSize = curXSize;
+			totOffset = outBuf->length - 4;
 			status = bufAppendByte(outBuf, XSDRB, error);
 			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
 			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
@@ -197,23 +209,22 @@ static X2CStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint16 *maxBufSize
 			break;
 
 		case XSDRC:
-			// Swap the tdiValue bytes.
+			// Just add the XSDRC data to the end of the previous XSDRB
 			if ( newXSize != curXSize ) {
 				curXSize = newXSize;
-				sendXSize(outBuf, curXSize, error);
 			}
-			status = bufAppendByte(outBuf, XSDRC, error);
-			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+			totXSize += curXSize;
+			writeLong(outBuf, totOffset, totXSize);
 			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
 			CHECK_RETURN();
 			break;
 
 		case XSDRE:
 			// Swap the tdiValue bytes.
-			if ( newXSize != curXSize ) {
-				curXSize = newXSize;
-				sendXSize(outBuf, curXSize, error);
-			}
+			//status = bufWriteBinaryFile(outBuf, "before.bin", totOffset, totXSize);
+			//CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+			curXSize = newXSize;
+			sendXSize(outBuf, curXSize, error);
 			status = bufAppendByte(outBuf, XSDRE, error);
 			CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
 			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
