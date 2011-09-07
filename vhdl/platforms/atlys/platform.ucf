@@ -14,49 +14,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#NET "clk50"           LOC = "B8";  # Integral 50MHz clock
-NET "reset_in"        LOC = "T15";
+NET "reset_in"        LOC = "T15";  # BRST
 
 # PortB
-NET "fifodata_io<0>"  LOC = "A2";   # PB0
-NET "fifodata_io<1>"  LOC = "D6";   # PB1
-NET "fifodata_io<2>"  LOC = "C6";   # PB2
-NET "fifodata_io<3>"  LOC = "B3";   # PB3
-NET "fifodata_io<4>"  LOC = "A3";   # PB4
-NET "fifodata_io<5>"  LOC = "B4";   # PB5
-NET "fifodata_io<6>"  LOC = "A4";   # PB6
-NET "fifodata_io<7>"  LOC = "C5";   # PB7
+NET "fifoData_io<0>"  LOC = "A2";   # PB0
+NET "fifoData_io<1>"  LOC = "D6";   # PB1
+NET "fifoData_io<2>"  LOC = "C6";   # PB2
+NET "fifoData_io<3>"  LOC = "B3";   # PB3
+NET "fifoData_io<4>"  LOC = "A3";   # PB4
+NET "fifoData_io<5>"  LOC = "B4";   # PB5
+NET "fifoData_io<6>"  LOC = "A4";   # PB6
+NET "fifoData_io<7>"  LOC = "C5";   # PB7
 
-NET "flagA_in"        LOC = "B9";
 NET "ifclk_in"        LOC = "C10";
-NET "gotdata_in"      LOC = "C15";  # FLAGC
-NET "gotroom_in"      LOC = "A9";   # FLAGB
+NET "gotData_in"      LOC = "C15";  # FLAGC
+NET "gotRoom_in"      LOC = "A9";   # FLAGB
 
 # PortA
-NET "int0_in"         LOC = "A5";   # PA0
-#NET "int1_in"         LOC = "";   # PA1
 NET "sloe_out"        LOC = "A15";   # PA2
-#NET "pa3_in"          LOC = "";   # PA3
-NET "fifoaddr_out<0>" LOC = "A14";   # PA4
-NET "fifoaddr_out<1>" LOC = "B14";   # PA5
-NET "pktend_out"      LOC = "C4";   # PA6
-#NET "pa7_in"          LOC = "";   # PA7
-#NET "clkout_in"       LOC = "";
-
-# PortD
-#NET "pd_in<0>"        LOC = "";   # PD0
-#NET "pd_in<1>"        LOC = "";   # PD1
-#NET "pd_in<2>"        LOC = "";   # PD2
-#NET "pd_in<3>"        LOC = "";   # PD3
-#NET "pd_in<4>"        LOC = "";   # PD4
-#NET "pd_in<5>"        LOC = "";   # PD5
-#NET "pd_in<6>"        LOC = "";   # PD6
-#NET "pd_in<7>"        LOC = "";   # PD7
+NET "fifoAddr_out<0>" LOC = "A14";   # PA4
+NET "fifoAddr_out<1>" LOC = "B14";   # PA5
+NET "pktEnd_out"      LOC = "C4";    # PA6
 
 NET "slrd_out"        LOC = "F13";
 NET "slwr_out"        LOC = "E13";
-
-NET "dummy_out"       LOC = "T3";    # JA-D0_N
 
 # On-board peripheral signals
 NET "led_out<0>"      LOC = "U18";
@@ -95,6 +76,5 @@ NET "sw_in<7>"        LOC = "E4";    # SW7
 # Timing constraint of S3 50-MHz onboard oscillator
 # name of the clock signal is clk
 #========================================================
-NET "ifclk_in" CLOCK_DEDICATED_ROUTE = FALSE;
 NET "ifclk_in" TNM_NET = "ifclk_in";
 TIMESPEC "TS_clk" = PERIOD "ifclk_in" 20 ns HIGH 50 %;

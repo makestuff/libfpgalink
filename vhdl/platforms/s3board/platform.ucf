@@ -14,49 +14,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#NET "clk50"           LOC = "T9";  # Integral 50MHz clock
-NET "reset_in"        LOC = "L14";
+NET "reset_in"        LOC = "L14";   # BTN(3)
 
 # PortB
-NET "fifodata_io<0>"  LOC = "E6"  | IOSTANDARD=LVCMOS33;   # PB0
-NET "fifodata_io<1>"  LOC = "D5"  | IOSTANDARD=LVCMOS33;   # PB1
-NET "fifodata_io<2>"  LOC = "C5"  | IOSTANDARD=LVCMOS33;   # PB2
-NET "fifodata_io<3>"  LOC = "D6"  | IOSTANDARD=LVCMOS33;   # PB3
-NET "fifodata_io<4>"  LOC = "C6"  | IOSTANDARD=LVCMOS33;   # PB4
-NET "fifodata_io<5>"  LOC = "E7"  | IOSTANDARD=LVCMOS33;   # PB5
-NET "fifodata_io<6>"  LOC = "C7"  | IOSTANDARD=LVCMOS33;   # PB6
-NET "fifodata_io<7>"  LOC = "D7"  | IOSTANDARD=LVCMOS33;   # PB7
+NET "fifoData_io<0>"  LOC = "E6"  | IOSTANDARD=LVCMOS33;   # PB0
+NET "fifoData_io<1>"  LOC = "D5"  | IOSTANDARD=LVCMOS33;   # PB1
+NET "fifoData_io<2>"  LOC = "C5"  | IOSTANDARD=LVCMOS33;   # PB2
+NET "fifoData_io<3>"  LOC = "D6"  | IOSTANDARD=LVCMOS33;   # PB3
+NET "fifoData_io<4>"  LOC = "C6"  | IOSTANDARD=LVCMOS33;   # PB4
+NET "fifoData_io<5>"  LOC = "E7"  | IOSTANDARD=LVCMOS33;   # PB5
+NET "fifoData_io<6>"  LOC = "C7"  | IOSTANDARD=LVCMOS33;   # PB6
+NET "fifoData_io<7>"  LOC = "D7"  | IOSTANDARD=LVCMOS33;   # PB7
 
-NET "flagA_in"        LOC = "C8"  | IOSTANDARD=LVCMOS33;
 NET "ifclk_in"        LOC = "C9"  | IOSTANDARD=LVCMOS33;
-NET "gotdata_in"      LOC = "D10" | IOSTANDARD=LVCMOS33;   # FLAGC
-NET "gotroom_in"      LOC = "D8"  | IOSTANDARD=LVCMOS33;   # FLAGB
+NET "gotData_in"      LOC = "D10" | IOSTANDARD=LVCMOS33;   # FLAGC
+NET "gotRoom_in"      LOC = "D8"  | IOSTANDARD=LVCMOS33;   # FLAGB
 
 # PortA
-NET "int0_in"         LOC = "A3"  | IOSTANDARD=LVCMOS33;   # PA0
-NET "int1_in"         LOC = "B4"  | IOSTANDARD=LVCMOS33;   # PA1
 NET "sloe_out"        LOC = "A4"  | IOSTANDARD=LVCMOS33;   # PA2
-NET "pa3_in"          LOC = "B5"  | IOSTANDARD=LVCMOS33;   # PA3
-NET "fifoaddr_out<0>" LOC = "A5"  | IOSTANDARD=LVCMOS33;   # PA4
-NET "fifoaddr_out<1>" LOC = "B6"  | IOSTANDARD=LVCMOS33;   # PA5
-NET "pktend_out"      LOC = "B7"  | IOSTANDARD=LVCMOS33;   # PA6
-NET "pa7_in"          LOC = "A7"  | IOSTANDARD=LVCMOS33;   # PA7
-NET "clkout_in"       LOC = "B8"  | IOSTANDARD=LVCMOS33;
-
-# PortD
-NET "pd_in<0>"        LOC = "A8"  | IOSTANDARD=LVCMOS33;   # PD0
-NET "pd_in<1>"        LOC = "A9"  | IOSTANDARD=LVCMOS33;   # PD1
-NET "pd_in<2>"        LOC = "B10" | IOSTANDARD=LVCMOS33;   # PD2
-NET "pd_in<3>"        LOC = "A10" | IOSTANDARD=LVCMOS33;   # PD3
-NET "pd_in<4>"        LOC = "B11" | IOSTANDARD=LVCMOS33;   # PD4
-NET "pd_in<5>"        LOC = "B12" | IOSTANDARD=LVCMOS33;   # PD5
-NET "pd_in<6>"        LOC = "A12" | IOSTANDARD=LVCMOS33;   # PD6
-NET "pd_in<7>"        LOC = "B13" | IOSTANDARD=LVCMOS33;   # PD7
+NET "fifoAddr_out<0>" LOC = "A5"  | IOSTANDARD=LVCMOS33;   # PA4
+NET "fifoAddr_out<1>" LOC = "B6"  | IOSTANDARD=LVCMOS33;   # PA5
+NET "pktEnd_out"      LOC = "B7"  | IOSTANDARD=LVCMOS33;   # PA6
 
 NET "slrd_out"        LOC = "A13" | IOSTANDARD=LVCMOS33;
 NET "slwr_out"        LOC = "B14" | IOSTANDARD=LVCMOS33;
-
-NET "dummy_out"       LOC = "D9" | IOSTANDARD=LVCMOS33;    # Unconnected on board
 
 # On-board peripheral signals
 NET "led_out<0>"      LOC = "K12";

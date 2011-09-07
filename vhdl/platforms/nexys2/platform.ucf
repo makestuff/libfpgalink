@@ -14,49 +14,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#NET "clk50"           LOC = "B8";  # Integral 50MHz clock
-NET "reset_in"        LOC = "B18";
+NET "reset_in"        LOC = "B18";   # BTN(3)
 
 # PortB
-NET "fifodata_io<0>"  LOC = "R14";   # PB0
-NET "fifodata_io<1>"  LOC = "R13";   # PB1
-NET "fifodata_io<2>"  LOC = "P13";   # PB2
-NET "fifodata_io<3>"  LOC = "T12";   # PB3
-NET "fifodata_io<4>"  LOC = "N11";   # PB4
-NET "fifodata_io<5>"  LOC = "R11";   # PB5
-NET "fifodata_io<6>"  LOC = "P10";   # PB6
-NET "fifodata_io<7>"  LOC = "R10";   # PB7
+NET "fifoData_io<0>"  LOC = "R14";   # PB0
+NET "fifoData_io<1>"  LOC = "R13";   # PB1
+NET "fifoData_io<2>"  LOC = "P13";   # PB2
+NET "fifoData_io<3>"  LOC = "T12";   # PB3
+NET "fifoData_io<4>"  LOC = "N11";   # PB4
+NET "fifoData_io<5>"  LOC = "R11";   # PB5
+NET "fifoData_io<6>"  LOC = "P10";   # PB6
+NET "fifoData_io<7>"  LOC = "R10";   # PB7
 
-NET "flagA_in"        LOC = "V14";
 NET "ifclk_in"        LOC = "T15";
-NET "gotdata_in"      LOC = "V16";   # FLAGC
-NET "gotroom_in"      LOC = "U14";   # FLAGB
+NET "gotData_in"      LOC = "V16";   # FLAGC
+NET "gotRoom_in"      LOC = "U14";   # FLAGB
 
 # PortA
-NET "int0_in"         LOC = "U15";   # PA0
-#NET "int1_in"         LOC = "";   # PA1
 NET "sloe_out"        LOC = "V15";   # PA2
-#NET "pa3_in"          LOC = "";   # PA3
-NET "fifoaddr_out<0>" LOC = "T14";   # PA4
-NET "fifoaddr_out<1>" LOC = "V13";   # PA5
-NET "pktend_out"      LOC = "V12";   # PA6
-#NET "pa7_in"          LOC = "";   # PA7
-#NET "clkout_in"       LOC = "";
-
-# PortD
-#NET "pd_in<0>"        LOC = "";   # PD0
-#NET "pd_in<1>"        LOC = "";   # PD1
-#NET "pd_in<2>"        LOC = "";   # PD2
-#NET "pd_in<3>"        LOC = "";   # PD3
-#NET "pd_in<4>"        LOC = "";   # PD4
-#NET "pd_in<5>"        LOC = "";   # PD5
-#NET "pd_in<6>"        LOC = "";   # PD6
-#NET "pd_in<7>"        LOC = "";   # PD7
+NET "fifoAddr_out<0>" LOC = "T14";   # PA4
+NET "fifoAddr_out<1>" LOC = "V13";   # PA5
+NET "pktEnd_out"      LOC = "V12";   # PA6
 
 NET "slrd_out"        LOC = "N9";
 NET "slwr_out"        LOC = "V9";
-
-NET "dummy_out"       LOC = "J13";    # JD1
 
 # On-board peripheral signals
 NET "led_out<0>"      LOC = "J14";
