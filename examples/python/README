@@ -26,8 +26,8 @@ You can also use it in interactive mode (Linux x86_64):
   [GCC 4.4.5] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> from fpgalink import *
-  >>> flLoadStandardFirmware(0x1443, 0x0005, 0x1443, 0x0005)
-  >>> handle = flOpen(0x1443, 0x0005)
+  >>> flLoadStandardFirmware("1443:0005", "1443:0005")
+  >>> handle = flOpen("1443:0005")
   >>> flPlayXSVF(handle, "../../gen_xsvf/nexys2.xsvf")
   >>> flWriteRegister(handle, 1000, 0x00, 0x10)
   >>> flClose(handle)
