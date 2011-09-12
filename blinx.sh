@@ -11,10 +11,8 @@ make deps
 patch Makefile <<EOF
 --- x	2011-09-03 20:34:31.982767951 +0100
 +++ y	2011-09-03 20:34:40.732767956 +0100
-@@ -21,2 +21,2 @@
--PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
--POST_BUILD       := gen_xsvf
-+#PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-+#POST_BUILD       := gen_xsvf
+@@ -21,1 +21,1 @@
+-PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw gen_xsvf
++#PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw gen_xsvf
 EOF
 make MACHINE=i686 deps

@@ -101,7 +101,7 @@ uint32 csvfGetLong(struct Context *cp) {
 
 // Read the next raw byte from the input stream
 //
-inline static uint8 getRawByte(struct Context *cp) {
+static uint8 getRawByte(struct Context *cp) {
 	return *cp->data++;
 }
 
