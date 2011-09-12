@@ -33,7 +33,7 @@ DLLEXPORT(FLStatus) flPlayXSVF(struct FLContext *handle, const char *xsvfFile, c
 	X2CStatus xStatus;
 	NeroStatus nStatus;
 	int cStatus;
-	uint16 maxBufSize;
+	uint32 maxBufSize;
 	const char *const ext = xsvfFile + strlen(xsvfFile) - 5;
 	if ( strcmp(".xsvf", ext) ) {
 		errRender(error, "flPlayXSVF(): Filename should have .xsvf extension");
@@ -45,7 +45,7 @@ DLLEXPORT(FLStatus) flPlayXSVF(struct FLContext *handle, const char *xsvfFile, c
 	}
 	bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
 	CHECK_STATUS(bStatus, "flPlayXSVF()", FL_ALLOC_ERR);
-	xStatus = loadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
+	xStatus = loadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL, error);
 	CHECK_STATUS(xStatus, "flPlayXSVF()", FL_FILE_ERR);
 	nStatus = neroInitialise(handle->device, &nero, error);
 	CHECK_STATUS(nStatus, "flPlayXSVF()", FL_JTAG_ERR);

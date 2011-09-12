@@ -60,7 +60,7 @@ typedef enum {
 	XENDDR       = 0x14,
 	XSIR2        = 0x15,
 	XCOMMENT     = 0x16,
-	XWAIT        = 0x17,
+	XWAIT        = 0x17
 } Command;
 
 #endif

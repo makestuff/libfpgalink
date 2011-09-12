@@ -18,10 +18,8 @@
 #include <UnitTest++.h>
 #include "../libfpgalink.h"
 
-#define FX2_VID 0x04B4
-#define FX2_PID 0x8613
-#define AVR_VID 0x03EB
-#define AVR_PID 0x3002
+#define FX2_VIDPID "04B4:8613"
+#define AVR_VIDPID "03EB:3002"
 #define MAGIC32 0xDEADDEAD
 
 static struct FLContext *fx2Handle;
@@ -33,19 +31,19 @@ TEST(FL_isDeviceAvailable) {
 	const char *error = NULL;
 
 	// Verify error message allocation
-	fStatus = flIsDeviceAvailable(0x0000, 0x0000, &isAvailable, &error);
+	fStatus = flIsDeviceAvailable("0000:0000", &isAvailable, &error);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 	CHECK(error);
 	flFreeError(error);
 
 	// Verify that isAvailable remains unchanged on error
 	isAvailable = false;
-	fStatus = flIsDeviceAvailable(0x0000, 0x0000, &isAvailable, NULL);
+	fStatus = flIsDeviceAvailable("0000:0000", &isAvailable, NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 	CHECK_EQUAL(false, isAvailable);
 
 	isAvailable = true;
-	fStatus = flIsDeviceAvailable(0x0000, 0x0000, &isAvailable, NULL);
+	fStatus = flIsDeviceAvailable("0000:0000", &isAvailable, NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 	CHECK_EQUAL(true, isAvailable);
 
@@ -53,17 +51,17 @@ TEST(FL_isDeviceAvailable) {
 	flInitialise();
 
 	// Verify that a silly VID/PID is not found
-	fStatus = flIsDeviceAvailable(0x0000, 0x0000, &isAvailable, NULL);
+	fStatus = flIsDeviceAvailable("0000:0000", &isAvailable, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 	CHECK_EQUAL(false, isAvailable);
 
 	// Verify that a good VID/PID IS found
-	fStatus = flIsDeviceAvailable(FX2_VID, FX2_PID, &isAvailable, NULL);
+	fStatus = flIsDeviceAvailable(FX2_VIDPID, &isAvailable, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 	CHECK_EQUAL(true, isAvailable);
 
 	// Verify that a good VID/PID IS found
-	fStatus = flIsDeviceAvailable(AVR_VID, AVR_PID, &isAvailable, NULL);
+	fStatus = flIsDeviceAvailable(AVR_VIDPID, &isAvailable, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 	CHECK_EQUAL(true, isAvailable);
 }
@@ -73,13 +71,13 @@ TEST(FL_openFails) {
 
 	// Verify FL_USB_ERR on silly VID/PID:
 	fx2Handle = (struct FLContext *)MAGIC32;
-	fStatus = flOpen(0x0000, 0x0000, &fx2Handle, NULL);
+	fStatus = flOpen("0000:0000", &fx2Handle, NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 	CHECK_EQUAL((struct FLContext *)0UL, fx2Handle);
 
 	// The firmware has not been loaded yet so we should get FL_PROTOCOL_ERR
 	fx2Handle = (struct FLContext *)MAGIC32;
-	fStatus = flOpen(FX2_VID, FX2_PID, &fx2Handle, NULL);
+	fStatus = flOpen(FX2_VIDPID, &fx2Handle, NULL);
 	CHECK_EQUAL(FL_PROTOCOL_ERR, fStatus);
 	CHECK_EQUAL((struct FLContext *)0UL, fx2Handle);
 }
@@ -93,19 +91,19 @@ TEST(FL_loadCustomFirmware) {
 	FLStatus fStatus;
 
 	// Check bad file extension
-	fStatus = flLoadCustomFirmware(FX2_VID, FX2_PID, "bad.dat", NULL);
+	fStatus = flLoadCustomFirmware(FX2_VIDPID, "bad.dat", NULL);
 	CHECK_EQUAL(FL_FILE_ERR, fStatus);
 
 	// Check bad VID/PID
-	fStatus = flLoadCustomFirmware(0x0000, 0x0000, "nonExistentFile.hex", NULL);
+	fStatus = flLoadCustomFirmware("0000:0000", "nonExistentFile.hex", NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 
 	// Check bad hex file
-	fStatus = flLoadCustomFirmware(FX2_VID, FX2_PID, "bad.hex", NULL);
+	fStatus = flLoadCustomFirmware(FX2_VIDPID, "bad.hex", NULL);
 	CHECK_EQUAL(FL_FILE_ERR, fStatus);
 
 	// Check bad target device
-	fStatus = flLoadCustomFirmware(AVR_VID, AVR_PID, "../gen_fw/ramFirmware.hex", NULL);
+	fStatus = flLoadCustomFirmware(AVR_VIDPID, "../gen_fw/ramFirmware.hex", NULL);
 	CHECK_EQUAL(FL_FX2_ERR, fStatus);
 }
 
@@ -115,22 +113,22 @@ TEST(FL_loadStandardFirmware) {
 	int count;
 
 	// Verify that a silly current VID/PID gives an error
-	fStatus = flLoadStandardFirmware(0x0000, 0x0000, FX2_VID, FX2_PID, NULL);
+	fStatus = flLoadStandardFirmware("0000:0000", FX2_VIDPID, NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 
 	// Verify that trying to load an FX2 firmware into an AVR gives an error
-	fStatus = flLoadStandardFirmware(AVR_VID, AVR_PID, AVR_VID, AVR_PID, NULL);
+	fStatus = flLoadStandardFirmware(AVR_VIDPID, AVR_VIDPID, NULL);
 	CHECK_EQUAL(FL_FX2_ERR, fStatus);
 
 	// Verify that a good current VID/PID works
-	fStatus = flLoadStandardFirmware(FX2_VID, FX2_PID, FX2_VID, FX2_PID, NULL);
+	fStatus = flLoadStandardFirmware(FX2_VIDPID, FX2_VIDPID, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 
 	// We've got to go, cos if we don't go...
 	count = 100;
 	do {
 		flSleep(100);
-		fStatus = flIsDeviceAvailable(FX2_VID, FX2_PID, &isAvailable, NULL);
+		fStatus = flIsDeviceAvailable(FX2_VIDPID, &isAvailable, NULL);
 		CHECK_EQUAL(FL_SUCCESS, fStatus);
 		count--;
 	} while ( count && isAvailable );
@@ -140,7 +138,7 @@ TEST(FL_loadStandardFirmware) {
 	count = 100;
 	do {
 		flSleep(100);
-		fStatus = flIsDeviceAvailable(FX2_VID, FX2_PID, &isAvailable, NULL);
+		fStatus = flIsDeviceAvailable(FX2_VIDPID, &isAvailable, NULL);
 		CHECK_EQUAL(FL_SUCCESS, fStatus);
 		count--;
 	} while ( count && !isAvailable );
@@ -152,13 +150,13 @@ TEST(FL_openSucceeds) {
 
 	// Verify that the FX2 now opens correctly
 	fx2Handle = (struct FLContext *)0;
-	fStatus = flOpen(FX2_VID, FX2_PID, &fx2Handle, NULL);
+	fStatus = flOpen(FX2_VIDPID, &fx2Handle, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 	CHECK(fx2Handle);
 
 	// Verify that the AVR opens correctly
 	avrHandle = (struct FLContext *)0;
-	fStatus = flOpen(AVR_VID, AVR_PID, &avrHandle, NULL);
+	fStatus = flOpen(AVR_VIDPID, &avrHandle, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 	CHECK(avrHandle);
 }
@@ -167,11 +165,11 @@ TEST(FL_deviceInUse) {
 	FLStatus fStatus;
 
 	// Device already open, so this should give FL_USB_ERR
-	fStatus = flLoadStandardFirmware(FX2_VID, FX2_PID, FX2_VID, FX2_PID, NULL);
+	fStatus = flLoadStandardFirmware(FX2_VIDPID, FX2_VIDPID, NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 
 	// This too
-	fStatus = flLoadCustomFirmware(FX2_VID, FX2_PID, "../../temp/ramFirmware.hex", NULL);
+	fStatus = flLoadCustomFirmware(FX2_VIDPID, "../../temp/ramFirmware.hex", NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 }
 
@@ -204,8 +202,8 @@ TEST(FL_playXsvf) {
 	fStatus = flPlayXSVF(avrHandle, "../gen_xsvf/s3board.xsvf", NULL);
 	CHECK_EQUAL(FL_JTAG_ERR, fStatus);
 
-	// Verify that the FX2 (having an s3board on its JTAG lines) gives FL_JTAG_ERR because nexys2.xsvf's IDCODE check fails
-	fStatus = flPlayXSVF(fx2Handle, "../gen_xsvf/nexys2.xsvf", NULL);
+	// Verify that the FX2 (having an s3board on its JTAG lines) gives FL_JTAG_ERR because nexys2-1200.xsvf's IDCODE check fails
+	fStatus = flPlayXSVF(fx2Handle, "../gen_xsvf/nexys2-1200.xsvf", NULL);
 	CHECK_EQUAL(FL_JTAG_ERR, fStatus);
 }
 

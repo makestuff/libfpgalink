@@ -1,5 +1,5 @@
 TOP_LEVEL = TopLevel
-PLATFORM = nexys2
+PLATFORM = nexys2-1200
 VHDLS = \
 	$(TOP_LEVEL).vhdl \
 	SevenSeg.vhdl
@@ -8,7 +8,11 @@ ifeq ($(PLATFORM),s3board)
 	FPGA = xc3s200-ft256-4
 	MAPFLAGS = -cm area
 	PARFLAGS = -t 1
-else ifeq ($(PLATFORM),nexys2)
+else ifeq ($(PLATFORM),nexys2-500)
+	FPGA = xc3s500e-fg320-4
+	MAPFLAGS = -cm area
+	PARFLAGS = -t 1
+else ifeq ($(PLATFORM),nexys2-1200)
 	FPGA = xc3s1200e-fg320-4
 	MAPFLAGS = -cm area
 	PARFLAGS = -t 1

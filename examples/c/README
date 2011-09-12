@@ -3,45 +3,46 @@ Calling FPGALink from C
 Linux x86_64 (Release):
   gcc -m64 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/rel -o ../../linux.x86_64/rel/fpgalink main.c -L../../linux.x86_64/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.x86_64/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.x86_64/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 Linux x86_64 (Debug):
   gcc -m64 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/dbg -o ../../linux.x86_64/dbg/fpgalink main.c -L../../linux.x86_64/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.x86_64/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.x86_64/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 Linux i686 (Release):
   gcc -m32 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/rel -o ../../linux.i686/rel/fpgalink main.c -L../../linux.i686/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.i686/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.i686/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 Linux i686 (Debug):
   gcc -m32 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/dbg -o ../../linux.i686/dbg/fpgalink main.c -L../../linux.i686/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.i686/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.i686/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 MacOSX (Release):
   gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/rel/fpgalink main.c -L../../darwin/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../darwin/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  ../../darwin/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 MacOSX (Debug):
   gcc -gstabs+ -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/dbg/fpgalink main.c -L../../darwin/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../darwin/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  ../../darwin/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 Windows (Release):
   (assuming running from http://bit.ly/k0ydbN)
   cl -O2 -Oi -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -DNDEBUG -D_CONSOLE -FD -MD -Gy -GL -Zi -Fe../../win32/rel/fpgalink.exe main.c ../../win32/rel/libfpgalink.lib kernel32.lib user32.lib
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../win32/rel/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  ../../win32/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 Windows (Debug):
   (assuming running from http://bit.ly/k0ydbN)
   cl -Od -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -D_DEBUG -D_CONSOLE -Gm -RTC1 -MDd -ZI  -Fe../../win32/dbg/fpgalink.exe main.c ../../win32/dbg/libfpgalink.lib kernel32.lib user32.lib
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../win32/dbg/fpgalink ../../gen_xsvf/nexys2.xsvf /var/tmp/foo.dat 1443:0005
+  ../../win32/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
 
 This connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the onboard FX2 chip
-with a new firmware, loads the nexys2.xsvf design into the board's FPGA, and then does some register
-reads and writes. The changes to the board are lost on the next power cycle, so it's safe to try.
+with a new firmware, loads the nexys2-1200.xsvf design into the board's FPGA, and then does some
+register reads and writes. The changes to the board are lost on the next power cycle, so it's safe
+to try.

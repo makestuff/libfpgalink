@@ -537,17 +537,31 @@ typedef enum {
 
 // "Member" variables to store the state of the compression algorithm.
 static bool m_isReadingChunk;
-static xdata uint16 m_count;
+static xdata uint32 m_count;
 
 // Read the length (of the chunk or the zero run). A short block (<256 bytes) length is encoded in a
-// single byte. If that single byte is zero, we know it's a long block (256-65535 bytes), so read in
-// the next two bytes as a big-endian uint16.
+// single byte. If that single byte is zero, we know it's a medium block (256-65535 bytes), so read
+// in the next two bytes as a big-endian uint16. If that is zero, we know it's a long block (65536-
+// 4294967295 bytes), so read in the next four bytes as a big-endian uint32.
 //
-static uint16 readLength(void) {
-	xdata uint16 len = promPeekByte();
+static uint32 readLength(void) {
+	xdata uint32 len = promPeekByte();
 	promNextByte();
 	if ( !len ) {
 		len = promPeekByte();
+		promNextByte();
+		len <<= 8;
+		len |= promPeekByte();
+		promNextByte();
+	}
+	if ( !len ) {
+		len = promPeekByte();
+		promNextByte();
+		len <<= 8;
+		len |= promPeekByte();
+		promNextByte();
+		len <<= 8;
+		len |= promPeekByte();
 		promNextByte();
 		len <<= 8;
 		len |= promPeekByte();

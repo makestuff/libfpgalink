@@ -20,6 +20,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity TopLevel is
+	generic(
+		RESET_POLARITY: std_logic := '1'
+	);
 	port(
 		reset_in     : in std_logic;
 		ifclk_in     : in std_logic;
@@ -74,7 +77,7 @@ architecture Behavioural of TopLevel is
 begin
 	process(ifclk_in, reset_in)
 	begin
-		if ( reset_in = '1' ) then
+		if ( reset_in = RESET_POLARITY ) then
 			state     <= STATE_IDLE;
 			count     <= (others => '0');
 			addr      <= (others => '0');
@@ -241,9 +244,9 @@ begin
 	slrd_out <= fifoOp(1);
 	slwr_out <= fifoOp(2);
 	
+	-- LEDs and 7-seg display
 	led_out     <= r0;
 	sseg_out(7) <= '1';  -- Decimal point off
-
 	sevenSeg : entity work.SevenSeg
 		port map(
 			clk    => ifclk_in,

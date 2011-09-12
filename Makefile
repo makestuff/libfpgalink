@@ -17,9 +17,8 @@
 ROOT             := $(realpath ../..)
 DEPS             := error usbwrap fx2loader nero sync buffer
 TYPE             := dll
-SUBDIRS          := 
-PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-POST_BUILD       := gen_xsvf
+SUBDIRS          := tests
+PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw gen_xsvf
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
 EXTRA_CLEAN      := gen_xsvf gen_fw
 EXTRA_CLEAN_DIRS := vhdl mkfw firmware
@@ -48,8 +47,11 @@ gen_fw: $(MKFW)
 gen_xsvf:
 	mkdir -p gen_xsvf
 	make -C vhdl clean
-	make -C vhdl PLATFORM=nexys2 TopLevel.xsvf
-	cp -rp vhdl/TopLevel.xsvf gen_xsvf/nexys2.xsvf
+	make -C vhdl PLATFORM=nexys2-500 TopLevel.xsvf
+	cp -rp vhdl/TopLevel.xsvf gen_xsvf/nexys2-500.xsvf
+	make -C vhdl clean
+	make -C vhdl PLATFORM=nexys2-1200 TopLevel.xsvf
+	cp -rp vhdl/TopLevel.xsvf gen_xsvf/nexys2-1200.xsvf
 	make -C vhdl clean
 	make -C vhdl PLATFORM=s3board TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/s3board.xsvf

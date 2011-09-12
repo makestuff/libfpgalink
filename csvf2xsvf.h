@@ -14,8 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef XSVF2CSVF_H
-#define XSVF2CSVF_H
+#ifndef CSVF2XSVF_H
+#define CSVF2XSVF_H
 
 #include <makestuff.h>
 
@@ -23,26 +23,16 @@
 extern "C" {
 #endif
 
-	typedef enum {
-		X2C_SUCCESS = 0,
-		X2C_BUF_INIT_ERR,
-		X2C_BUF_APPEND_ERR,
-		X2C_BUF_LOAD_ERR,
-		X2C_UNSUPPORTED_CMD_ERR,
-		X2C_UNSUPPORTED_DATA_ERR,
-		X2C_UNSUPPORTED_SIZE_ERR
-	} X2CStatus;
+	struct Context {
+		const uint8 *data;
+		uint32 count;
+		bool isReadingChunk;
+	};
 
-	// Forward declaration of Buffer struct
-	struct Buffer;
-
-	// Input: XSVF file
-	// Output: CSVF buffer, max buffer size, an error string if necessary.
-	//
-	X2CStatus loadXsvfAndConvertToCsvf(
-		const char *xsvfFile, struct Buffer *csvfBuf, uint32 *maxBufSize,
-		struct Buffer *uncompressedBuf, const char **error
-	) WARN_UNUSED_RESULT;
+	uint8 csvfInitReader(struct Context *cp, const uint8 *data);
+	uint8 csvfGetByte(struct Context *cp);
+	uint16 csvfGetWord(struct Context *cp);
+	uint32 csvfGetLong(struct Context *cp);
 
 #ifdef __cplusplus
 }
