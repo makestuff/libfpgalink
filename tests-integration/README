@@ -1,0 +1,2 @@
+To run the tests you need a Digilent S3BOARD with an attached Cypress FX2LP board, and a Nanduino
+with the NeroJTAG firmware loaded.
