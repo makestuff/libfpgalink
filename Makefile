@@ -17,7 +17,7 @@
 ROOT             := $(realpath ../..)
 DEPS             := error usbwrap fx2loader nero sync buffer
 TYPE             := dll
-SUBDIRS          := tests
+SUBDIRS          := tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw gen_xsvf
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
 EXTRA_CLEAN      := gen_xsvf gen_fw
