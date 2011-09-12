@@ -49,7 +49,7 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	struct Buffer ramBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
-	struct usb_dev_handle *device;
+	struct usb_dev_handle *device = NULL;
 	int uStatus;
 	uint16 currentVid, currentPid, newVid, newPid;
 	if ( !usbValidateVidPid(curVidPid) ) {

@@ -7,12 +7,14 @@
 # and Windows. Once all the builds have completed you can run release.sh.
 #
 #!/bin/bash -x
-make deps
+#make deps
 patch Makefile <<EOF
---- x	2011-09-03 20:34:31.982767951 +0100
-+++ y	2011-09-03 20:34:40.732767956 +0100
-@@ -21,1 +21,1 @@
+--- Makefile.old	2011-09-12 19:34:32.153318241 +0100
++++ Makefile.new	2011-09-12 19:35:02.563318261 +0100
+@@ -20,2 +20,2 @@
+-SUBDIRS          := tests-unit
 -PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw gen_xsvf
++#SUBDIRS          := tests-unit
 +#PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw gen_xsvf
 EOF
-make MACHINE=i686 deps
+#make MACHINE=i686 deps

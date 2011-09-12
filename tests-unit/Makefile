@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ROOT    := $(realpath ../../..)
-DEPS    := buffer
+DEPS    := error usbwrap fx2loader nero sync buffer
 TYPE    := exe
 SUBDIRS :=
 
