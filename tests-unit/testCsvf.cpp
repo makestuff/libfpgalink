@@ -64,4 +64,5 @@ TEST(FPGALink_testRoundTrip) {
 	testRoundTrip("../gen_xsvf/nexys2-500.xsvf", 12U);
 	testRoundTrip("../gen_xsvf/nexys2-1200.xsvf", 12U);
 	testRoundTrip("../gen_xsvf/atlys.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/nexys3.xsvf", 4U);
 }

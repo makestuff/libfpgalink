@@ -59,6 +59,9 @@ gen_xsvf:
 	make -C vhdl PLATFORM=atlys TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/atlys.xsvf
 	make -C vhdl clean
+	make -C vhdl PLATFORM=nexys3 TopLevel.xsvf
+	cp -rp vhdl/TopLevel.xsvf gen_xsvf/nexys3.xsvf
+	make -C vhdl clean
 
 $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
 	make -C $<
