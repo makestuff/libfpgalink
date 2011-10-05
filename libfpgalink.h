@@ -595,6 +595,33 @@ extern "C" {
 	DLLEXPORT(void) flFreeFile(
 		uint8 *buffer
 	);
+
+	/**
+	 * @brief Access port lines on the microcontroller
+	 *
+	 * With this function you can set a 16-bit data direction register and write a 16-bit number to
+	 * the corresponding port lines. You can also optionally query the state of the port lines. The
+	 * actual physical ports used will differ from micro to micro.
+	 *
+	 * On the FX2LP, the low order bytes access port D (which is also used for JTAG, so only four
+	 * bits are actually available) and the high order bytes access port C (which is only available
+	 * on the larger FX2LP chips).
+	 *
+	 * On the AVR, the low order bytes access port B (which is also used for JTAG, so only four bits
+	 * are actually available) and the high order bytes access port D.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param portWrite Value to write to the port lines.
+	 * @param ddr Value to write to the DDR registers.
+	 * @param portRead Pointer to a \c uint16 to be populated with the value read back from the port
+	 *            lines. May be \c NULL if you're not interested.
+	 * @returns
+	 *     - \c FL_SUCCESS if the port access command completed successfully.
+	 *     - \c FL_USB_ERR if the micro failed to respond to the port access command.
+	 */
+	DLLEXPORT(FLStatus) flPortAccess(
+		struct FLContext *handle, uint16 portWrite, uint16 ddr, uint16 *portRead, const char **error
+	) WARN_UNUSED_RESULT;
 	//@}
 
 

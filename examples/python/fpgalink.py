@@ -14,6 +14,7 @@ FLHandle = POINTER(FLContext)
 FLStatus = c_uint
 FL_SUCCESS = 0
 uint32 = c_uint
+uint16 = c_ushort
 uint8 = c_ubyte
 ErrorString = c_char_p
 
@@ -41,6 +42,8 @@ fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
 fpgalink.flScanChain.argtypes = [FLHandle, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
 fpgalink.flScanChain.restype = FLStatus
+fpgalink.flPortAccess.argtypes = [FLHandle, uint16, uint16, POINTER(uint16), POINTER(ErrorString)]
+fpgalink.flPortAccess.restype = FLStatus
 
 # Connection Lifecycle
 fpgalink.flOpen.argtypes = [c_char_p, POINTER(FLHandle), POINTER(ErrorString)]
@@ -142,6 +145,17 @@ def flScanChain(handle):
         chain = ChainType()
         status = fpgalink.flScanChain(handle, None, chain, length, byref(error))
     return chain
+
+# Access the I/O ports on the micro
+def flPortAccess(handle, portWrite, ddr):
+    error = ErrorString()
+    portRead = uint16()
+    status = fpgalink.flPortAccess(handle, portWrite, ddr, byref(portRead), byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+    return portRead.value
 
 # Return true if the FPGA is actually running
 def flIsFPGARunning(handle):

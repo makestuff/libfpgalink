@@ -20,7 +20,7 @@
 #include <libsync.h>
 #include <liberror.h>
 #include <libbuffer.h>
-#include <vendorCommands.h>
+#include "vendorCommands.h"
 #include "libfpgalink.h"
 #include "private.h"
 
@@ -269,6 +269,38 @@ DLLEXPORT(FLStatus) flReadRegister(
 	CHECK_STATUS(fStatus, "flReadRegister()", fStatus);
 	fStatus = flRead(handle, buf, count, timeout, error);
 	CHECK_STATUS(fStatus, "flReadRegister()", fStatus);
+	return FL_SUCCESS;
+cleanup:
+	return returnCode;
+}
+
+DLLEXPORT(FLStatus) flPortAccess(
+	struct FLContext *handle, uint16 portWrite, uint16 ddr, uint16 *portRead, const char **error)
+{
+	FLStatus returnCode;
+	int uStatus;
+	union {
+		uint16 word;
+		uint8 bytes[2];
+	} u;
+	uStatus = usb_control_msg(
+		handle->device,
+		USB_ENDPOINT_IN | USB_TYPE_VENDOR | USB_RECIP_DEVICE,
+		CMD_PORT_IO,              // bRequest
+		portWrite,                // wValue
+		ddr,                      // wIndex
+		(char*)u.bytes,
+		2,                        // wLength
+		100                       // timeout (ms)
+	);
+	if ( uStatus < 0 ) {
+		errRender(
+			error, "flPortAccess(): Unable to access microcontroller ports: %s", usb_strerror());
+		FAIL(FL_USB_ERR);
+	}
+	if ( portRead ) {
+		*portRead = u.word;
+	}
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;

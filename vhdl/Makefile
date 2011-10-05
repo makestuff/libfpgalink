@@ -20,6 +20,10 @@ else ifeq ($(PLATFORM),atlys)
 	FPGA = xc6slx45-csg324-3
 	MAPFLAGS =
 	PARFLAGS =
+else ifeq ($(PLATFORM),nexys3)
+	FPGA = xc6slx16-csg324-3
+	MAPFLAGS =
+	PARFLAGS =
 endif
 
 all: $(TOP_LEVEL).xsvf

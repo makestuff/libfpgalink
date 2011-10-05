@@ -31,6 +31,7 @@ sbit at 0xB4      TCK; // Port D4
 #define bmTDI     bmBIT2
 #define bmTMS     bmBIT3
 #define bmTCK     bmBIT4
+#define bmJTAG    (bmBIT0|bmBIT2|bmBIT3|bmBIT4)
 
 // Macros for NeroJTAG implementation
 #define ENDPOINT_SIZE 512

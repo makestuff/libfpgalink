@@ -1,0 +1,80 @@
+#
+# Copyright (C) 2009-2011 Chris McClelland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+NET "reset_in"        LOC = "B8"  | IOSTANDARD = LVCMOS33; #Bank = 0, pin name = IO_L33P, Sch name = BTNS
+
+# PortB
+NET "fifoData_io<0>"  LOC = "E1"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L50N_M3BA2, Sch name = U-FD0
+NET "fifoData_io<1>"  LOC = "F4"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L51P_M3A10, Sch name = U-FD1
+NET "fifoData_io<2>"  LOC = "F3"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L51N_M3A4, Sch name = U-FD2
+NET "fifoData_io<3>"  LOC = "D2"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L52P_M3A8, Sch name = U-FD3
+NET "fifoData_io<4>"  LOC = "D1"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L52N_M3A9, Sch name = U-FD4
+NET "fifoData_io<5>"  LOC = "H7"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L53P_M3CKE, Sch name = U-FD5
+NET "fifoData_io<6>"  LOC = "G6"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L53N_M3A12, Sch name = U-FD6
+NET "fifoData_io<7>"  LOC = "E4"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L54P_M3RESET, Sch name = U-FD7
+
+NET "ifclk_in"        LOC = "H2"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L41P_GCLK27_M3DQ4, Sch name = U-IFCLK
+NET "gotData_in"      LOC = "F5"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L55N_M3A14, Sch name = U-FLAGC
+NET "gotRoom_in"      LOC = "K4"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L42P_GCLK25_TRDY2_M3UDM, Sch name = U-FLAGB
+
+# PortA
+NET "sloe_out"        LOC = "H6"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L49P_M3A7, Sch name = U-SLOE
+NET "fifoAddr_out<0>" LOC = "H5"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L49N_M3A2, Sch name = U-FIFOAD0
+NET "fifoAddr_out<1>" LOC = "E3"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L50P_M3WE, Sch name = U-FIFOAD1
+NET "pktEnd_out"      LOC = "D3"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L54N_M3A11, Sch name = U-PKTEND
+
+NET "slrd_out"        LOC = "C2"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L83P, Sch name = U-SLRD
+NET "slwr_out"        LOC = "C1"  | IOSTANDARD = LVCMOS33; #Bank = 3, pin name = IO_L83N_VREF, Sch name = U-SLWR
+
+# On-board peripheral signals
+NET "led_out<0>"      LOC = "U16" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L2P_CMPCLK, Sch name = LD0
+NET "led_out<1>"      LOC = "V16" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L2N_CMPMOSI, Sch name = LD1
+NET "led_out<2>"      LOC = "U15" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L5P, Sch name = LD2
+NET "led_out<3>"      LOC = "V15" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L5N, Sch name = LD3
+NET "led_out<4>"      LOC = "M11" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L15P, Sch name = LD4
+NET "led_out<5>"      LOC = "N11" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L15N, Sch name = LD5
+NET "led_out<6>"      LOC = "R11" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L16P, Sch name = LD6
+NET "led_out<7>"      LOC = "T11" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L16N_VREF, Sch name = LD7
+
+NET "sseg_out<6>"     LOC = "L14" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L61P, Sch name = CG
+NET "sseg_out<5>"     LOC = "N14" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L53N_VREF, Sch name = CF
+NET "sseg_out<4>"     LOC = "M14" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L53P, Sch name = CE
+NET "sseg_out<3>"     LOC = "U18" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L52N_M1DQ15, Sch name = CD
+NET "sseg_out<2>"     LOC = "U17" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L52P_M1DQ14, Sch name = CC
+NET "sseg_out<1>"     LOC = "T18" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L51N_M1DQ13, Sch name = CB
+NET "sseg_out<0>"     LOC = "T17" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L51P_M1DQ12, Sch name = CA
+NET "sseg_out<7>"     LOC = "M13" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L61N, Sch name = DP
+
+NET "anode_out<0>"    LOC = "N16" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L50N_M1UDQSN, Sch name = AN0
+NET "anode_out<1>"    LOC = "N15" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L50P_M1UDQS, Sch name = AN1
+NET "anode_out<2>"    LOC = "P18" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L49N_M1DQ11, Sch name = AN2
+NET "anode_out<3>"    LOC = "P17" | IOSTANDARD = LVCMOS33; #Bank = 1, pin name = IO_L49P_M1DQ10, Sch name = AN3
+
+NET "sw_in<0>"        LOC = "T10" | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L29N_GCLK2, Sch name = SW0
+NET "sw_in<1>"        LOC = "T9"  | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L32P_GCLK29, Sch name = SW1
+NET "sw_in<2>"        LOC = "V9"  | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L32N_GCLK28, Sch name = SW2
+NET "sw_in<3>"        LOC = "M8"  | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L40P, Sch name = SW3
+NET "sw_in<4>"        LOC = "N8"  | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L40N, Sch name = SW4
+NET "sw_in<5>"        LOC = "U8"  | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L41P, Sch name = SW5
+NET "sw_in<6>"        LOC = "V8"  | IOSTANDARD = LVCMOS33; #Bank = 2, pin name = IO_L41N_VREF, Sch name = SW6
+NET "sw_in<7>"        LOC = "T5"  | IOSTANDARD = LVCMOS33; #Bank = MISC, pin name = IO_L48N_RDWR_B_VREF_2, Sch name = SW7
+
+#========================================================
+# Timing constraint of S3 50-MHz onboard oscillator
+# name of the clock signal is clk
+#========================================================
+NET "ifclk_in" TNM_NET = "ifclk_in";
+TIMESPEC "TS_clk" = PERIOD "ifclk_in" 20 ns HIGH 50 %;

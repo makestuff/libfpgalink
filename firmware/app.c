@@ -18,8 +18,8 @@
 #include <fx2macros.h>
 #include <delay.h>
 #include <setupdat.h>
-#include <vendorCommands.h>
 #include <makestuff.h>
+#include "../vendorCommands.h"
 #include "prom.h"
 #include "jtag.h"
 #include "sync.h"
@@ -96,12 +96,15 @@ void mainInit(void) {
 	// Turbo I2C
 	I2CTL |= bm400KHZ;
 
-	// Port lines zero'd before setting direction
+	// Port lines...
 	IOD = 0x00;
+	OED = 0x00;
+	IOC = 0x00;
+	OEC = 0x00;
 
 	// Drive the Nexys2 FET to power up the FPGA
-	OED |= bmN2FET;
-	N2FET = 1;
+	//OED |= bmN2FET;
+	//N2FET = 1;
 
 	// Disable JTAG mode by default (i.e don't drive JTAG pins)
 	jtagSetEnabled(false);
@@ -238,6 +241,38 @@ uint8 handleVendorCommand(uint8 cmd) {
 	case CMD_JTAG_CLOCK:
 		if ( SETUP_TYPE == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			jtagClocks(*((uint32 *)(SETUPDAT+2)));
+			return true;
+		}
+		break;
+
+	// Set various mode bits, or fetch status information
+	//
+	case CMD_PORT_IO:
+		if ( SETUP_TYPE == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
+			xdata uint8 pdPins = SETUPDAT[2];  // wValue low byte
+			xdata uint8 pcPins = SETUPDAT[3];  // wValue high byte
+			xdata uint8 pdDDR = SETUPDAT[4];   // wIndex low byte
+			xdata uint8 pcDDR = SETUPDAT[5];   // wIndex high byte
+
+			// Update the DDR bits for port D & B:
+			pdDDR &= ~bmJTAG;         // cannot alter JTAG lines
+			pdDDR |= (OED & bmJTAG);  // current state
+			OED = pdDDR;
+			OEC = pcDDR;
+
+			// Update the port bits for port D & B:
+			pdPins &= ~bmJTAG;         // cannot alter JTAG lines
+			pdPins |= (IOD & bmJTAG);  // current state
+			IOD = pdPins;
+			IOC = pcPins;
+
+			// Get the state of the port D & B lines:
+			while ( EP0CS & bmEPBUSY );
+			EP0BUF[0] = IOD;
+			EP0BUF[1] = IOC;
+			EP0BCH = 0;
+			SYNCDELAY;
+			EP0BCL = 2;
 			return true;
 		}
 		break;
