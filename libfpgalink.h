@@ -615,6 +615,11 @@ extern "C" {
 	 * @param ddr Value to write to the DDR registers.
 	 * @param portRead Pointer to a \c uint16 to be populated with the value read back from the port
 	 *            lines. May be \c NULL if you're not interested.
+	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the port access command completed successfully.
 	 *     - \c FL_USB_ERR if the micro failed to respond to the port access command.
