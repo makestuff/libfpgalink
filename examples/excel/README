@@ -1,11 +1,14 @@
-Calling FPGALink from Excel/VBA
+CALLING FPGALINK FROM EXCEL/VBA
 
-This example sheet connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the
-onboard FX2 chip with a new firmware, loads the nexys2-1200.xsvf design into the board's FPGA, and
-then does some register reads and writes. The changes to the board are lost on the next power cycle,
-so it's safe to try.
+This example sheet connects to the device at 1443:0005 (hopefully a 1200K Digilent Nexys2), loads
+the onboard FX2 chip with a new firmware, loads the nexys2-1200.xsvf design into the board's FPGA,
+and then does some register reads and writes. The changes to the board are lost on the next power
+cycle, so it's safe to try.
 
 You may need to install the Visual C++ 2010 redistributable package:
     http://www.microsoft.com/download/en/details.aspx?id=5555
 
 The C functions in the FPGALink DLL are wrapped in VBA functions in the FPGALink module.
+
+For Atlys and Nexys3, uncheck "Power on PD7" and enter "1443:0007" instead of "1443:0005" for
+"Initial VID/PID" and "Renum VID/PID", and choose the appropriate XSVF file for your board.
