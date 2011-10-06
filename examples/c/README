@@ -1,48 +1,66 @@
-Calling FPGALink from C
+CALLING FPGALINK FROM "C"
+
+The examples below assume your device is a 1200K Digilent Nexys2. For Atlys & Nexys3, remove the
+"-p" option, replace "1443:0005" with "1443:0007" and choose the appropriate XSVF file for your
+board.
+
+    FPGALink "C" Example Copyright (C) 2011 Chris McClelland
+
+    Usage: fpgalink [-hps] -v <VID:PID> [-i <VID:PID>] [-x <xsvfFile>] [-f <dataFile>]
+
+    Load FX2 firmware, load the FPGA, interact with the FPGA.
+
+      -h             print this help and exit
+      -p             FPGA is powered from USB (Nexys2 only!)
+      -s             scan the JTAG chain
+      -v <VID:PID>   renumerated vendor and product ID of the FPGALink device
+      -i <VID:PID>   initial vendor and product ID of the FPGALink device
+      -x <xsvfFile>  XSVF file to play into the JTAG chain
+      -f <dataFile>  binary data to write to register 0
 
 Linux x86_64 (Release):
-  gcc -m64 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/rel -o ../../linux.x86_64/rel/fpgalink main.c -L../../linux.x86_64/rel -lfpgalink
+  gcc -m64 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/rel -o ../../linux.x86_64/rel/fpgalink *.c -L../../linux.x86_64/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.x86_64/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.x86_64/rel/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
 Linux x86_64 (Debug):
-  gcc -m64 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/dbg -o ../../linux.x86_64/dbg/fpgalink main.c -L../../linux.x86_64/dbg -lfpgalink
+  gcc -m64 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.x86_64/dbg -o ../../linux.x86_64/dbg/fpgalink *.c -L../../linux.x86_64/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.x86_64/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.x86_64/dbg/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
 Linux i686 (Release):
-  gcc -m32 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/rel -o ../../linux.i686/rel/fpgalink main.c -L../../linux.i686/rel -lfpgalink
+  gcc -m32 -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/rel -o ../../linux.i686/rel/fpgalink *.c -L../../linux.i686/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.i686/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.i686/rel/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
 Linux i686 (Debug):
-  gcc -m32 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/dbg -o ../../linux.i686/dbg/fpgalink main.c -L../../linux.i686/dbg -lfpgalink
+  gcc -m32 -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.i686/dbg -o ../../linux.i686/dbg/fpgalink *.c -L../../linux.i686/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo ../../linux.i686/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  sudo ../../linux.i686/dbg/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
 MacOSX (Release):
-  gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/rel/fpgalink main.c -L../../darwin/rel -lfpgalink
+  gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/rel/fpgalink *.c -L../../darwin/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../darwin/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  ../../darwin/rel/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
 MacOSX (Debug):
-  gcc -gstabs+ -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/dbg/fpgalink main.c -L../../darwin/dbg -lfpgalink
+  gcc -gstabs+ -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,-rpath,@loader_path/ -o ../../darwin/dbg/fpgalink *.c -L../../darwin/dbg -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../darwin/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  ../../darwin/dbg/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
 Windows (Release):
   (assuming running from http://bit.ly/k0ydbN)
-  cl -O2 -Oi -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -DNDEBUG -D_CONSOLE -FD -MD -Gy -GL -Zi -Fe../../win32/rel/fpgalink.exe main.c ../../win32/rel/libfpgalink.lib kernel32.lib user32.lib
+  cl -O2 -Oi -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -DNDEBUG -D_CONSOLE -FD -MD -Gy -GL -Zi -Fe../../win32/rel/fpgalink.exe *.c ../../win32/rel/libfpgalink.lib kernel32.lib user32.lib
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../win32/rel/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  ../../win32/rel/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
 Windows (Debug):
   (assuming running from http://bit.ly/k0ydbN)
-  cl -Od -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -D_DEBUG -D_CONSOLE -Gm -RTC1 -MDd -ZI  -Fe../../win32/dbg/fpgalink.exe main.c ../../win32/dbg/libfpgalink.lib kernel32.lib user32.lib
+  cl -Od -DWIN32 -D_CRT_SECURE_NO_WARNINGS -EHsc -W4 -nologo -errorReport:prompt -I../.. -I../../../../common -D_DEBUG -D_CONSOLE -Gm -RTC1 -MDd -ZI  -Fe../../win32/dbg/fpgalink.exe *.c ../../win32/dbg/libfpgalink.lib kernel32.lib user32.lib
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  ../../win32/dbg/fpgalink ../../gen_xsvf/nexys2-1200.xsvf /var/tmp/foo.dat 1443:0005
+  ../../win32/dbg/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
-This connects to the device at 1443:0005 (hopefully a Digilent Nexys2), loads the onboard FX2 chip
-with a new firmware, loads the nexys2-1200.xsvf design into the board's FPGA, and then does some
-register reads and writes. The changes to the board are lost on the next power cycle, so it's safe
-to try.
+This connects to the device at 1443:0005 (hopefully a 1200K Digilent Nexys2), loads the onboard FX2
+chip with a new firmware, loads the nexys2-1200.xsvf design into the board's FPGA, and then does
+some register reads and writes. The changes to the board are lost on the next power cycle, so it's
+safe to try.

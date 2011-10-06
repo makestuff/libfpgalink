@@ -3,6 +3,7 @@
 import array
 import time
 import sys
+import argparse
 from ctypes import *
 
 # Defin types
@@ -256,62 +257,83 @@ fpgalink.flInitialise()
 
 # Main function if we're not loaded as a module
 if __name__ == "__main__":
-    if ( len(sys.argv) == 5 or len(sys.argv) == 4 ):
-        handle = FLHandle()
+    print "FPGALink Python Example Copyright (C) 2011 Chris McClelland\n"
+    parser = argparse.ArgumentParser(description='Load FX2 firmware, load the FPGA, interact with the FPGA.')
+    parser.add_argument('-p', action="store_true", default=False, help="FPGA is powered from USB (Nexys2 only!)")
+    parser.add_argument('-s', action="store_true", default=False, help="scan the JTAG chain")
+    parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="renumerated vendor and product ID of the FPGALink device")
+    parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="initial vendor and product ID of the FPGALink device")
+    parser.add_argument('-x', action="store", nargs=1, metavar="<xsvfFile>", help="XSVF file to play into the JTAG chain")
+    parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to register 0")
+    argList = parser.parse_args()
+    handle = FLHandle()
+    try:
+        vp = argList.v[0]
+        print "Attempting to open connection to FPGALink device %s..." % vp
         try:
-            xsvfFile = sys.argv[1]
-            dataFile = sys.argv[2]
-            vp = sys.argv[3]
-            ivp = sys.argv[4] if (len(sys.argv) == 5) else vp
-            print "Attempting to open FPGALink connection on", vp
-            try:
-                handle = flOpen(vp)
-            except FLException as ex:
-                print "Loading firmware..."
+            handle = flOpen(vp)
+        except FLException as ex:
+            if ( argList.i ):
+                ivp = argList.i[0]
+                print "Loading firmware into %s..." % ivp
                 flLoadStandardFirmware(ivp, vp);
+
                 print "Awaiting renumeration..."
                 if ( not flAwaitDevice(vp, 600) ):
-                    raise FLException("FPGALink device did not renumerate properly")
-                print "Attempting to open FPGALink connection again..."
+                    raise FLException("FPGALink device did not renumerate properly as %s" % vp)
+
+                print "Attempting to open connection to FPGALink device %s again..." % vp
                 handle = flOpen(vp)
-                
-            isNeroCapable = flIsNeroCapable(handle)
+            else:
+                raise FLException("Could not open FPGALink device at %s and no initial VID:PID was supplied" % vp)
+        
+        if ( argList.p ):
+            print "Connecting USB power to FPGA..."
+            flPortAccess(handle, 0x0080, 0x0080);
+            fpgalink.flSleep(100)
+
+        isNeroCapable = flIsNeroCapable(handle)
+        isCommCapable = flIsCommCapable(handle)
+        if ( argList.s ):
             if ( isNeroCapable ):
                 chain = flScanChain(handle)
                 if ( len(chain) > 0 ):
-                    print "Device supports NeroJTAG - here's what's on the JTAG chain:"
+                    print "The FPGALink device at %s scanned its JTAG chain, yielding:" % vp
                     for i in chain:
-                        print "  " + hex(i)
+                        print "  0x%08X" % i
                 else:
-                    print "Device supports NeroJTAG but I didn't find any attached devices"
+                    print "The FPGALink device at %s scanned its JTAG chain but did not find any attached devices" % vp
             else:
-                print "Device does not support NeroJTAG"
-            
-            isCommCapable = flIsCommCapable(handle)
-            if ( isCommCapable ):
-                print "Device supports CommFPGA"
-                if ( isNeroCapable ):
-                    if ( not flIsFPGARunning(handle) ):
-                        print "FPGA is not running - programming it now..."
-                        flPlayXSVF(handle, xsvfFile)
-                    else:
-                        print "FPGA is already running..."
-                        
-                print "Writing register..."
-                flWriteRegister(handle, 1000, 0x01, 0x01)
-                #flWriteRegister(handle, 1000, 0x00, (0x10, 0x20))
+                raise FLException("JTAG chain scan requested but FPGALink device at %s does not support NeroJTAG" % vp)
+        
+        if ( argList.x ):
+            xsvfFile = argList.x[0]
+            print "Playing \"%s\" into the JTAG chain on FPGALink device %s..." % (xsvfFile, vp)
+            if ( isNeroCapable ):
+                flPlayXSVF(handle, xsvfFile)
+            else:
+                raise FLException("XSVF play requested but device at %s does not support NeroJTAG" % vp)
+        
+        if ( argList.f and not(isCommCapable) ):
+            raise FLException("Data file load requested but device at %s does not support CommFPGA" % vp)
+
+        if ( isCommCapable ):
+            print "Writing register 0x01 to zero count..."
+            flWriteRegister(handle, 1000, 0x01, 0x01)
+
+            if ( argList.f ):
+                dataFile = argList.f[0]
+                print "Writing %s to FPGALink device %s..." % (dataFile, vp)
                 flWriteRegister(handle, 32760, 0x00, dataFile)
-                
-                print "Reading register..."
-                print "peek(0x00) == 0x%02X" % flReadRegister(handle, 1000, 0x00)
-            else:
-                print "Device does not support CommFPGA"
-                if ( isNeroCapable ):
-                    print "Programming FPGA..."
-                    flPlayXSVF(handle, xsvfFile)
-        except FLException as ex:
-            print ex
-        finally:
-            flClose(handle)
-    else:
-            print "Synopsis: fpgalink.py <xsvfFile> <dataFile> <VID:PID> [<iVID:iPID>]"
+            
+            print "Reading register..."
+            print "Got 0x%02X" % flReadRegister(handle, 1000, 0x00)
+            print "Reading register..."
+            print "Got 0x%02X" % flReadRegister(handle, 1000, 0x00)
+            print "Reading register..."
+            print "Got 0x%02X" % flReadRegister(handle, 1000, 0x00)
+
+    except FLException as ex:
+        print ex
+    finally:
+        flClose(handle)
