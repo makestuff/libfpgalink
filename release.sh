@@ -42,6 +42,9 @@ cp -rp win32/dbg/*.pdb ${LIB}-${DATE}/win32/dbg/
 cp -rp ../../common/makestuff.h ${LIB}-${DATE}/
 cp -rp ${LIB}.h ${LIB}-${DATE}/
 
+# VHDL files
+cp -rp vhdl ${LIB}-${DATE}/
+
 # XSVF files
 cp -rp gen_xsvf ${LIB}-${DATE}/
 

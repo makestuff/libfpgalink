@@ -28,9 +28,14 @@ Linux i686:
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   sudo LD_LIBRARY_PATH=../../linux.i686/rel ./fpgalink.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
-MacOS:
+MacOSX:
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   DYLD_LIBRARY_PATH=../../darwin/rel ./fpgalink.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
+
+  NOTE: On Snow Leopard you will need to install the argparse module (not required for Lion), thus:
+    curl -sL 'http://argparse.googlecode.com/files/argparse-1.2.1.tar.gz' | tar zxf -
+    cd argparse-1.2.1/
+    sudo python setup.py install
 
 Windows (assuming you're running from http://bit.ly/k0ydbN):
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
@@ -43,14 +48,14 @@ safe to try.
 
 You can also use it in interactive mode (Linux x86_64):
   chris@wotan$ sudo LD_LIBRARY_PATH=../../linux.x86_64/rel python
-  Python 2.6.6 (r266:84292, Sep 15 2010, 15:52:39) 
-  [GCC 4.4.5] on linux2
+  Python 2.7.1+ (r271:86832, Apr 11 2011, 18:13:53)
+  [GCC 4.5.2] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> from fpgalink import *
-  >>> flLoadStandardFirmware("1443:0005", "1443:0005")
+  >>> flLoadStandardFirmware("1443:0005", "1443:0005")       # 1443:0007 for Nexys3 & Atlys
   >>> handle = flOpen("1443:0005")
-  >>> flPortAccess(handle, 0x0080, 0x0080)
-  >>> flPlayXSVF(handle, "../../gen_xsvf/nexys2-1200.xsvf")
+  >>> flPortAccess(handle, 0x0080, 0x0080)                   # Skip this for Nexys3 & Atlys
+  >>> flPlayXSVF(handle, "../../gen_xsvf/nexys2-1200.xsvf")  # Or atlys.xsvf/nexys3.xsvf
   >>> flWriteRegister(handle, 1000, 0x00, 0x10)
   >>> flClose(handle)
   >>> 
