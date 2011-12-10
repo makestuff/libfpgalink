@@ -97,7 +97,7 @@ DLLEXPORT(FLStatus) flScanChain(
 			break;
 		}
 		if ( deviceArray && i < arraySize ) {
-			deviceArray[i] = u.idCode;
+			deviceArray[i] = littleEndian32(u.idCode);
 		}
 		i++;
 	}
