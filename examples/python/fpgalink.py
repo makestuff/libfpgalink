@@ -272,7 +272,7 @@ if __name__ == "__main__":
         print "Attempting to open connection to FPGALink device %s..." % vp
         try:
             handle = flOpen(vp)
-        except FLException as ex:
+        except FLException, ex:
             if ( argList.i ):
                 ivp = argList.i[0]
                 print "Loading firmware into %s..." % ivp
@@ -333,7 +333,7 @@ if __name__ == "__main__":
             print "Reading register..."
             print "Got 0x%02X" % flReadRegister(handle, 1000, 0x00)
 
-    except FLException as ex:
+    except FLException, ex:
         print ex
     finally:
         flClose(handle)

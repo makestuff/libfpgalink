@@ -10,19 +10,25 @@ export DATE=$(date +%Y%m%d)
 rm -rf ${LIB}-${DATE}
 mkdir ${LIB}-${DATE}
 
-# Linux i686 binaries
-mkdir -p ${LIB}-${DATE}/linux.i686/rel
-cp -rp linux.i686/rel/*.so ${LIB}-${DATE}/linux.i686/rel/
-mkdir -p ${LIB}-${DATE}/linux.i686/dbg
-cp -rp linux.i686/dbg/*.so ${LIB}-${DATE}/linux.i686/dbg/
-
 # Linux x86_64 binaries
 mkdir -p ${LIB}-${DATE}/linux.x86_64/rel
 cp -rp linux.x86_64/rel/*.so ${LIB}-${DATE}/linux.x86_64/rel/
 mkdir -p ${LIB}-${DATE}/linux.x86_64/dbg
 cp -rp linux.x86_64/dbg/*.so ${LIB}-${DATE}/linux.x86_64/dbg/
 
-# MacOS binaries
+# Linux i686 binaries
+mkdir -p ${LIB}-${DATE}/linux.i686/rel
+cp -rp linux.i686/rel/*.so ${LIB}-${DATE}/linux.i686/rel/
+mkdir -p ${LIB}-${DATE}/linux.i686/dbg
+cp -rp linux.i686/dbg/*.so ${LIB}-${DATE}/linux.i686/dbg/
+
+# Linux ppc binaries
+mkdir -p ${LIB}-${DATE}/linux.ppc/rel
+cp -rp linux.ppc/rel/*.so ${LIB}-${DATE}/linux.ppc/rel/
+mkdir -p ${LIB}-${DATE}/linux.ppc/dbg
+cp -rp linux.ppc/dbg/*.so ${LIB}-${DATE}/linux.ppc/dbg/
+
+# MacOSX binaries
 mkdir -p ${LIB}-${DATE}/darwin/rel
 cp -rp darwin/rel/*.dylib ${LIB}-${DATE}/darwin/rel/
 mkdir -p ${LIB}-${DATE}/darwin/dbg
@@ -69,6 +75,7 @@ It allows you to:
 Supported platforms:
    * Linux x86_64
    * Linux i686
+   * Linux ppc
    * MacOSX x86_64/i386
    * 32-bit Windows
 

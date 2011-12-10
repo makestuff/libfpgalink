@@ -80,14 +80,27 @@ static X2CStatus sendXSize(struct Buffer *outBuf, uint32 xSize, const char **err
 	u.lword = xSize;
 	status = bufAppendByte(outBuf, XSDRSIZE, error);
 	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-	status = bufAppendByte(outBuf, u.byte[3], error);
-	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-	status = bufAppendByte(outBuf, u.byte[2], error);
-	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-	status = bufAppendByte(outBuf, u.byte[1], error);
-	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
-	status = bufAppendByte(outBuf, u.byte[0], error);
-	CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+	#if BYTE_ORDER == 1234
+		status = bufAppendByte(outBuf, u.byte[3], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+		status = bufAppendByte(outBuf, u.byte[2], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+		status = bufAppendByte(outBuf, u.byte[1], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+		status = bufAppendByte(outBuf, u.byte[0], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+	#elif BYTE_ORDER == 4321
+		status = bufAppendByte(outBuf, u.byte[0], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+		status = bufAppendByte(outBuf, u.byte[1], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+		status = bufAppendByte(outBuf, u.byte[2], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+		status = bufAppendByte(outBuf, u.byte[3], error);
+		CHECK_BUF_STATUS(X2C_BUF_APPEND_ERR);
+	#else
+		#error Unsupported BYTE_ORDER
+	#endif
 cleanup:
 	return returnCode;
 }
@@ -98,10 +111,19 @@ void writeLong(struct Buffer *buf, uint32 offset, uint32 value) {
 		uint8 byte[4];
 	} u;
 	u.lword = value;
-	buf->data[offset++] = u.byte[3];
-	buf->data[offset++] = u.byte[2];
-	buf->data[offset++] = u.byte[1];
-	buf->data[offset] = u.byte[0];
+	#if BYTE_ORDER == 1234
+		buf->data[offset++] = u.byte[3];
+		buf->data[offset++] = u.byte[2];
+		buf->data[offset++] = u.byte[1];
+		buf->data[offset] = u.byte[0];
+	#elif BYTE_ORDER == 4321
+		buf->data[offset++] = u.byte[0];
+		buf->data[offset++] = u.byte[1];
+		buf->data[offset++] = u.byte[2];
+		buf->data[offset] = u.byte[3];
+	#else
+		#error Unsupported BYTE_ORDER
+	#endif
 }
 
 // Parse the XSVF, reversing the byte-ordering of all the bytestreams.
