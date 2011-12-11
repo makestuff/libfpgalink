@@ -38,6 +38,16 @@ Linux i686 (Debug):
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   sudo ../../linux.i686/dbg/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
 
+Linux armel (Release):
+  gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.armel/rel -o ../../linux.armel/rel/fpgalink *.c -L../../linux.armel/rel -lfpgalink
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
+  sudo ../../linux.armel/rel/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
+
+Linux armel (Debug):
+  gcc -g -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.armel/dbg -o ../../linux.armel/dbg/fpgalink *.c -L../../linux.armel/dbg -lfpgalink
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
+  sudo ../../linux.armel/dbg/fpgalink -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_xsvf/nexys2-1200.xsvf -f /var/tmp/foo.dat
+
 Linux ppc (Release):
   gcc -O3 -Wall -Wextra -Wundef -pedantic-errors -std=c99 -Wstrict-prototypes -Wno-missing-field-initializers -I../.. -I../../../../common -Wl,--relax,--gc-sections,-rpath,\$ORIGIN,-rpath-link,../../linux.ppc/rel -o ../../linux.ppc/rel/fpgalink *.c -L../../linux.ppc/rel -lfpgalink
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160

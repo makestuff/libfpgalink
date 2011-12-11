@@ -22,6 +22,12 @@ cp -rp linux.i686/rel/*.so ${LIB}-${DATE}/linux.i686/rel/
 mkdir -p ${LIB}-${DATE}/linux.i686/dbg
 cp -rp linux.i686/dbg/*.so ${LIB}-${DATE}/linux.i686/dbg/
 
+# Linux armel binaries
+mkdir -p ${LIB}-${DATE}/linux.armel/rel
+cp -rp linux.armel/rel/*.so ${LIB}-${DATE}/linux.armel/rel/
+mkdir -p ${LIB}-${DATE}/linux.armel/dbg
+cp -rp linux.armel/dbg/*.so ${LIB}-${DATE}/linux.armel/dbg/
+
 # Linux ppc binaries
 mkdir -p ${LIB}-${DATE}/linux.ppc/rel
 cp -rp linux.ppc/rel/*.so ${LIB}-${DATE}/linux.ppc/rel/
@@ -73,11 +79,9 @@ It allows you to:
    * Bootstrap an FPGA design standalone using minimal components
 
 Supported platforms:
-   * Linux x86_64
-   * Linux i686
-   * Linux ppc
-   * MacOSX x86_64/i386
-   * 32-bit Windows
+   * Linux x86_64, i686, arm, ppc
+   * MacOSX x86_64, i386
+   * Windows i386
 
 Overview here: http://bit.ly/fpgalnk-blog
 Source code here: https://github.com/makestuff/libfpgalink
