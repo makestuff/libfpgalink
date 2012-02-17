@@ -26,9 +26,14 @@ else ifeq ($(PLATFORM),nexys3)
 	PARFLAGS =
 endif
 
-all: $(TOP_LEVEL).xsvf
+X2C = xsvf2csvf
+
+all: $(TOP_LEVEL).csvf
 
 report: $(TOP_LEVEL).twr
+
+$(TOP_LEVEL).csvf: $(TOP_LEVEL).xsvf
+	X2C $(TOP_LEVEL).xsvf $(TOP_LEVEL).csvf
 
 # This assumes that the "XILINX" environment variable is set 
 $(TOP_LEVEL).xsvf: platforms/$(PLATFORM)/platform.batch $(TOP_LEVEL).bit

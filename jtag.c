@@ -20,33 +20,35 @@
 #include <liberror.h>
 #include "libfpgalink.h"
 #include "private.h"
-#include "xsvf2csvf.h"
 #include "csvfplay.h"
 
 // Play an XSVF file into the JTAG chain.
 //
 DLLEXPORT(FLStatus) flPlayXSVF(struct FLContext *handle, const char *xsvfFile, const char **error) {
-	FLStatus returnCode;
+	FLStatus returnCode, fStatus;
 	struct NeroHandle nero = {0,};
 	struct Buffer csvfBuf = {0,};
 	BufferStatus bStatus;
-	X2CStatus xStatus;
 	NeroStatus nStatus;
 	int cStatus;
 	uint32 maxBufSize;
 	const char *const ext = xsvfFile + strlen(xsvfFile) - 5;
-	if ( strcmp(".xsvf", ext) ) {
-		errRender(error, "flPlayXSVF(): Filename should have .xsvf extension");
-		FAIL(FL_FILE_ERR);
-	}
 	if ( !handle->isNeroCapable ) {
 		errRender(error, "flPlayXSVF(): This device does not support NeroJTAG");
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
 	CHECK_STATUS(bStatus, "flPlayXSVF()", FL_ALLOC_ERR);
-	xStatus = loadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL, error);
-	CHECK_STATUS(xStatus, "flPlayXSVF()", FL_FILE_ERR);
+	if ( strcmp(".xsvf", ext) == 0 ) {
+		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL, error);
+		CHECK_STATUS(fStatus, "flPlayXSVF()", fStatus);
+	} else if ( strcmp(".csvf", ext) == 0 ) {
+		bStatus = bufAppendFromBinaryFile(&csvfBuf, xsvfFile, error);
+		CHECK_STATUS(bStatus, "flPlayXSVF()", FL_FILE_ERR);
+	} else {
+		errRender(error, "flPlayXSVF(): Filename should have .xsvf or .csvf extension");
+		FAIL(FL_FILE_ERR);
+	}
 	nStatus = neroInitialise(handle->device, &nero, error);
 	CHECK_STATUS(nStatus, "flPlayXSVF()", FL_JTAG_ERR);
 	cStatus = csvfPlay(csvfBuf.data, &nero, error);

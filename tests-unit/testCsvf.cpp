@@ -17,21 +17,21 @@
 #include <UnitTest++.h>
 #include <makestuff.h>
 #include <libbuffer.h>
-#include "../xsvf2csvf.h"
-#include "../csvf2xsvf.h"
+#include "../libfpgalink.h"
 #include "../xsvf.h"
+#include "../csvfreader.h"
 
 static void testRoundTrip(const char *xsvfFile, uint32 expectedMaxBufSize) {
 	Buffer csvfBuf, uncompressedBuf;
 	BufferStatus bStatus;
 	uint32 maxBufSize;
-	X2CStatus xStatus;
+	FLStatus fStatus;
 	bStatus = bufInitialise(&csvfBuf, 1024, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
 	bStatus = bufInitialise(&uncompressedBuf, 1024, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
-	xStatus = loadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, &uncompressedBuf, NULL);
-	CHECK(xStatus == X2C_SUCCESS);
+	fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, &uncompressedBuf, NULL);
+	CHECK(fStatus == FL_SUCCESS);
 	CHECK_EQUAL(expectedMaxBufSize, maxBufSize);
 
 	Context cp;

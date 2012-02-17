@@ -219,6 +219,6 @@ void usage(const char *prog) {
 	printf("  -s             scan the JTAG chain\n");
 	printf("  -v <VID:PID>   renumerated vendor and product ID of the FPGALink device\n");
 	printf("  -i <VID:PID>   initial vendor and product ID of the FPGALink device\n");
-	printf("  -x <xsvfFile>  XSVF file to play into the JTAG chain\n");
+	printf("  -x <xsvfFile>  XSVF or CSVF file to play into the JTAG chain\n");
 	printf("  -f <dataFile>  binary data to write to register 0\n");
 }

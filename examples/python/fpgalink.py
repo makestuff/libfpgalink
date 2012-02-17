@@ -263,7 +263,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', action="store_true", default=False, help="scan the JTAG chain")
     parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="renumerated vendor and product ID of the FPGALink device")
     parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="initial vendor and product ID of the FPGALink device")
-    parser.add_argument('-x', action="store", nargs=1, metavar="<xsvfFile>", help="XSVF file to play into the JTAG chain")
+    parser.add_argument('-x', action="store", nargs=1, metavar="<xsvfFile>", help="XSVF or CSVF file to play into the JTAG chain")
     parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to register 0")
     argList = parser.parse_args()
     handle = FLHandle()

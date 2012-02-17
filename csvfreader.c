@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <makestuff.h>
-#include "csvf2xsvf.h"
+#include "csvfreader.h"
 
 // -------------------------------------------------------------------------------------------------
 // Declaration of private types & functions

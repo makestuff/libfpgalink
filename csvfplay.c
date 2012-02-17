@@ -21,7 +21,7 @@
 #include "firmware/defs.h"
 #include "xsvf.h"
 #include "csvfplay.h"
-#include "csvf2xsvf.h"
+#include "csvfreader.h"
 
 // -------------------------------------------------------------------------------------------------
 // Declaration of private types & functions

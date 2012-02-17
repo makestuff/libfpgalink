@@ -18,17 +18,23 @@ ROOT             := $(realpath ../..)
 DEPS             := error usbwrap fx2loader nero sync buffer
 TYPE             := dll
 SUBDIRS          := tests-unit
-PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw gen_xsvf
+PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
+POST_BUILD       := x2c gen_csvf
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
-EXTRA_CLEAN      := gen_xsvf gen_fw
+EXTRA_CLEAN      := gen_xsvf gen_csvf gen_fw
 EXTRA_CLEAN_DIRS := vhdl mkfw firmware
 
 -include $(ROOT)/common/top.mk
 
 MKFW := mkfw/$(PLATFORM)/rel/mkfw$(EXE)
+X2C := $(PLATFORM)/rel/xsvf2csvf$(EXE)
 
 $(MKFW):
 	make -C mkfw rel
+
+x2c:
+	make -C xsvf2csvf
+	cp -p xsvf2csvf/$(X2C) $(X2C)
 
 gen_fw: $(MKFW)
 	mkdir -p gen_fw
@@ -44,23 +50,29 @@ gen_fw: $(MKFW)
 	LD_LIBRARY_PATH=$(dir $(MKFW)) $(MKFW) firmware/firmware.hex eepromNoBoot iic gen_fw/eepromNoBootFirmware.iic > gen_fw/eepromNoBootFirmware.c
 	make -C firmware clean
 
-gen_xsvf:
+gen_csvf:
 	mkdir -p gen_xsvf
+	mkdir -p gen_csvf
 	make -C vhdl clean
-	make -C vhdl PLATFORM=nexys2-500 TopLevel.xsvf
+	make -C vhdl PLATFORM=nexys2-500 X2C=$(X2C) TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/nexys2-500.xsvf
+	$(X2C) vhdl/TopLevel.xsvf gen_csvf/nexys2-500.csvf
 	make -C vhdl clean
-	make -C vhdl PLATFORM=nexys2-1200 TopLevel.xsvf
+	make -C vhdl PLATFORM=nexys2-1200 X2C=$(X2C) TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/nexys2-1200.xsvf
+	$(X2C) vhdl/TopLevel.xsvf gen_csvf/nexys2-1200.csvf
 	make -C vhdl clean
-	make -C vhdl PLATFORM=s3board TopLevel.xsvf
+	make -C vhdl PLATFORM=s3board X2C=$(X2C) TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/s3board.xsvf
+	$(X2C) vhdl/TopLevel.xsvf gen_csvf/s3board.csvf
 	make -C vhdl clean
-	make -C vhdl PLATFORM=atlys TopLevel.xsvf
+	make -C vhdl PLATFORM=atlys X2C=$(X2C) TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/atlys.xsvf
+	$(X2C) vhdl/TopLevel.xsvf gen_csvf/atlys.csvf
 	make -C vhdl clean
-	make -C vhdl PLATFORM=nexys3 TopLevel.xsvf
+	make -C vhdl PLATFORM=nexys3 X2C=$(X2C) TopLevel.xsvf
 	cp -rp vhdl/TopLevel.xsvf gen_xsvf/nexys3.xsvf
+	$(X2C) vhdl/TopLevel.xsvf gen_csvf/nexys3.csvf
 	make -C vhdl clean
 
 $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib

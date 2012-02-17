@@ -1,7 +1,6 @@
 -w
 -g DebugBitstream:No
 -g Binary:no
--g Compress
 -g CRC:Enable
 -g ConfigRate:1
 -g ProgPin:PullUp

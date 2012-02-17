@@ -23,7 +23,6 @@
 #include <usb.h>
 #include "firmware/defs.h"
 #include "libfpgalink.h"
-#include "xsvf2csvf.h"
 #include "private.h"
 
 extern const uint8 eepromNoBootFirmwareData[];
@@ -322,21 +321,29 @@ cleanup:
 }
 
 static FLStatus appendCsvfFromXsvf(struct Buffer *dest, const char *xsvfFile, const char **error) {
-	FLStatus returnCode;
+	FLStatus returnCode, fStatus;
 	struct Buffer csvfBuf = {0,};
 	BufferStatus bStatus;
-	X2CStatus xStatus;
 	uint32 maxBufSize;
-	bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
-	CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
-	xStatus = loadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL, error);
-	CHECK_STATUS(xStatus, "appendCsvfFromXsvf()", FL_JTAG_ERR);
-	if ( maxBufSize > CSVF_BUF_SIZE ) {
-		errRender(error, "appendCsvfFromXsvf(): This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
-		FAIL(FL_JTAG_ERR);
+	const char *const ext = xsvfFile + strlen(xsvfFile) - 5;
+	if ( strcmp(".xsvf", ext) == 0 ) {
+		bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
+		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
+		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL, error);
+		CHECK_STATUS(fStatus, "appendCsvfFromXsvf()", fStatus);
+		if ( maxBufSize > CSVF_BUF_SIZE ) {
+			errRender(error, "appendCsvfFromXsvf(): This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
+			FAIL(FL_JTAG_ERR);
+		}
+		bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);
+		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
+	} else if ( strcmp(".csvf", ext) == 0 ) {
+		bStatus = bufAppendFromBinaryFile(dest, xsvfFile, error);
+		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_FILE_ERR);
+	} else {
+		errRender(error, "appendCsvfFromXsvf(): Filename should have .xsvf or .csvf extension");
+		FAIL(FL_FILE_ERR);
 	}
-	bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);
-	CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
 	returnCode = FL_SUCCESS;
 cleanup:
 	bufDestroy(&csvfBuf);
