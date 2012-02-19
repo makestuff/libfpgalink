@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 Chris McClelland
+# Copyright (C) 2011-2012 Chris McClelland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ROOT             := $(realpath ../..)
-DEPS             := error usbwrap fx2loader nero sync buffer
+DEPS             := error usbwrap fx2loader nero sync buffer argtable2 readline dump
 TYPE             := dll
 SUBDIRS          := flcli tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw

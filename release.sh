@@ -12,37 +12,37 @@ mkdir ${LIB}-${DATE}
 
 # Linux x86_64 binaries
 mkdir -p ${LIB}-${DATE}/linux.x86_64/rel
-cp -rp linux.x86_64/rel/*.so xsvf2csvf/linux.x86_64/rel/xsvf2csvf flcli/linux.x86_64/rel/*.so flcli/linux.x86_64/rel/flcli ${LIB}-${DATE}/linux.x86_64/rel/
+cp -rp linux.x86_64/rel/*.so xsvf2csvf/linux.x86_64/rel/xsvf2csvf flcli/linux.x86_64/rel/flcli ${LIB}-${DATE}/linux.x86_64/rel/
 mkdir -p ${LIB}-${DATE}/linux.x86_64/dbg
 cp -rp linux.x86_64/dbg/*.so ${LIB}-${DATE}/linux.x86_64/dbg/
 
 # Linux i686 binaries
 mkdir -p ${LIB}-${DATE}/linux.i686/rel
-cp -rp linux.i686/rel/*.so xsvf2csvf/linux.i686/rel/xsvf2csvf flcli/linux.i686/rel/*.so flcli/linux.i686/rel/flcli ${LIB}-${DATE}/linux.i686/rel/
+cp -rp linux.i686/rel/*.so xsvf2csvf/linux.i686/rel/xsvf2csvf flcli/linux.i686/rel/flcli ${LIB}-${DATE}/linux.i686/rel/
 mkdir -p ${LIB}-${DATE}/linux.i686/dbg
 cp -rp linux.i686/dbg/*.so ${LIB}-${DATE}/linux.i686/dbg/
 
 # Linux armel binaries
 mkdir -p ${LIB}-${DATE}/linux.armel/rel
-cp -rp linux.armel/rel/*.so xsvf2csvf/linux.armel/rel/xsvf2csvf flcli/linux.armel/rel/*.so flcli/linux.armel/rel/flcli ${LIB}-${DATE}/linux.armel/rel/
+cp -rp linux.armel/rel/*.so xsvf2csvf/linux.armel/rel/xsvf2csvf flcli/linux.armel/rel/flcli ${LIB}-${DATE}/linux.armel/rel/
 mkdir -p ${LIB}-${DATE}/linux.armel/dbg
 cp -rp linux.armel/dbg/*.so ${LIB}-${DATE}/linux.armel/dbg/
 
 # Linux ppc binaries
 mkdir -p ${LIB}-${DATE}/linux.ppc/rel
-cp -rp linux.ppc/rel/*.so xsvf2csvf/linux.ppc/rel/xsvf2csvf flcli/linux.ppc/rel/*.so flcli/linux.ppc/rel/flcli ${LIB}-${DATE}/linux.ppc/rel/
+cp -rp linux.ppc/rel/*.so xsvf2csvf/linux.ppc/rel/xsvf2csvf flcli/linux.ppc/rel/flcli ${LIB}-${DATE}/linux.ppc/rel/
 mkdir -p ${LIB}-${DATE}/linux.ppc/dbg
 cp -rp linux.ppc/dbg/*.so ${LIB}-${DATE}/linux.ppc/dbg/
 
 # MacOSX binaries
 mkdir -p ${LIB}-${DATE}/darwin/rel
-cp -rp darwin/rel/*.dylib xsvf2csvf/darwin/rel/xsvf2csvf flcli/darwin/rel/*.dylib flcli/darwin/rel/flcli ${LIB}-${DATE}/darwin/rel/
+cp -rp darwin/rel/*.dylib xsvf2csvf/darwin/rel/xsvf2csvf flcli/darwin/rel/flcli ${LIB}-${DATE}/darwin/rel/
 mkdir -p ${LIB}-${DATE}/darwin/dbg
 cp -rp darwin/dbg/*.dylib ${LIB}-${DATE}/darwin/dbg/
 
 # Windows binaries
 mkdir -p ${LIB}-${DATE}/win32/rel
-cp -rp win32/rel/*.dll win32/rel/*.lib win32/rel/*.pdb xsvf2csvf/win32/rel/xsvf2csvf.exe flcli/win32/rel/*.dll flcli/win32/rel/flcli ${LIB}-${DATE}/win32/rel/
+cp -rp win32/rel/*.dll win32/rel/*.lib win32/rel/*.pdb xsvf2csvf/win32/rel/xsvf2csvf.exe flcli/win32/rel/flcli.exe ${LIB}-${DATE}/win32/rel/
 mkdir -p ${LIB}-${DATE}/win32/dbg
 cp -rp win32/dbg/*.dll win32/dbg/*.lib win32/dbg/*.pdb ${LIB}-${DATE}/win32/dbg/
 
