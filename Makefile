@@ -17,7 +17,7 @@
 ROOT             := $(realpath ../..)
 DEPS             := error usbwrap fx2loader nero sync buffer
 TYPE             := dll
-SUBDIRS          := tests-unit
+SUBDIRS          := flcli tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 POST_BUILD       := x2c gen_csvf
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
@@ -27,14 +27,13 @@ EXTRA_CLEAN_DIRS := vhdl mkfw firmware
 -include $(ROOT)/common/top.mk
 
 MKFW := mkfw/$(PLATFORM)/rel/mkfw$(EXE)
-X2C := $(PLATFORM)/rel/xsvf2csvf$(EXE)
+X2C := xsvf2csvf/$(PLATFORM)/rel/xsvf2csvf$(EXE)
 
 $(MKFW):
 	make -C mkfw rel
 
 x2c:
-	make -C xsvf2csvf
-	cp -p xsvf2csvf/$(X2C) $(X2C)
+	make -C xsvf2csvf rel
 
 gen_fw: $(MKFW)
 	mkdir -p gen_fw
