@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ROOT             := $(realpath ../..)
-DEPS             := error usbwrap fx2loader nero sync buffer argtable2 readline dump
+DEPS             := error usbwrap fx2loader nero sync buffer
 TYPE             := dll
-SUBDIRS          := flcli tests-unit
+SUBDIRS          := tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 POST_BUILD       := x2c gen_csvf
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c

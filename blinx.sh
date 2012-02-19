@@ -12,10 +12,10 @@ patch Makefile <<EOF
 --- Makefile.old	2012-02-19 15:38:16.241498564 +0000
 +++ Makefile.new	2012-02-19 15:38:41.913503081 +0000
 @@ -20,3 +20,3 @@
--SUBDIRS          := flcli tests-unit
+-SUBDIRS          := tests-unit
 -PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 -POST_BUILD       := x2c gen_csvf
-+SUBDIRS          := flcli #tests-unit
++#SUBDIRS          := tests-unit
 +#PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 +POST_BUILD       := x2c #gen_csvf
 EOF
