@@ -46,6 +46,21 @@ cp -rp win32/rel/*.dll win32/rel/*.lib win32/rel/*.pdb xsvf2csvf/win32/rel/xsvf2
 mkdir -p ${LIB}-${DATE}/win32/dbg
 cp -rp win32/dbg/*.dll win32/dbg/*.lib win32/dbg/*.pdb ${LIB}-${DATE}/win32/dbg/
 
+# FLCLI binaries
+export FLCLI=../../apps/flcli
+cp -rp ${FLCLI}/linux.x86_64/rel/flcli ${FLCLI}/linux.x86_64/rel/libargtable2.so ${LIB}-${DATE}/linux.x86_64/rel/
+cp -rp ${FLCLI}/linux.x86_64/dbg/flcli ${FLCLI}/linux.x86_64/dbg/libargtable2.so ${LIB}-${DATE}/linux.x86_64/dbg/
+cp -rp ${FLCLI}/linux.i686/rel/flcli ${FLCLI}/linux.i686/rel/libargtable2.so ${LIB}-${DATE}/linux.i686/rel/
+cp -rp ${FLCLI}/linux.i686/dbg/flcli ${FLCLI}/linux.i686/dbg/libargtable2.so ${LIB}-${DATE}/linux.i686/dbg/
+cp -rp ${FLCLI}/linux.armel/rel/flcli ${FLCLI}/linux.armel/rel/libargtable2.so ${LIB}-${DATE}/linux.armel/rel/
+cp -rp ${FLCLI}/linux.armel/dbg/flcli ${FLCLI}/linux.armel/dbg/libargtable2.so ${LIB}-${DATE}/linux.armel/dbg/
+cp -rp ${FLCLI}/linux.ppc/rel/flcli ${FLCLI}/linux.ppc/rel/libargtable2.so ${LIB}-${DATE}/linux.ppc/rel/
+cp -rp ${FLCLI}/linux.ppc/dbg/flcli ${FLCLI}/linux.ppc/dbg/libargtable2.so ${LIB}-${DATE}/linux.ppc/dbg/
+cp -rp ${FLCLI}/darwin/rel/flcli ${FLCLI}/darwin/rel/libargtable2.dylib ${LIB}-${DATE}/darwin/rel/
+cp -rp ${FLCLI}/darwin/dbg/flcli ${FLCLI}/darwin/dbg/libargtable2.dylib ${LIB}-${DATE}/darwin/dbg/
+cp -rp ${FLCLI}/win32/rel/flcli.exe ${FLCLI}/win32/rel/argtable2.dll ${FLCLI}/win32/rel/readline.dll ${LIB}-${DATE}/win32/rel/
+cp -rp ${FLCLI}/win32/dbg/flcli.exe ${FLCLI}/win32/dbg/argtable2.dll ${FLCLI}/win32/dbg/readline.dll ${LIB}-${DATE}/win32/dbg/
+
 # Headers
 cp -rp ../../common/makestuff.h ${LIB}-${DATE}/
 cp -rp ${LIB}.h ${LIB}-${DATE}/
