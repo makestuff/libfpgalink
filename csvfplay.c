@@ -139,7 +139,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			}
 			break;
 
-		case XSDRB:
+		case XSDR:
 			nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
@@ -148,18 +148,8 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 			while ( numBytes-- ) {
 				*ptr++ = csvfGetByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiAll, NULL, false, error);  // -> Shift-DR
+			nStatus = neroShift(nero, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
 			free(tdiAll);
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			break;
-
-		case XSDRE:
-			numBytes = bitsToBytes(xsdrSize);
-			ptr = tdiData;
-			while ( numBytes-- ) {
-				*ptr++ = csvfGetByte(&cp);
-			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, NULL, true, error);  // -> Exit1-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);

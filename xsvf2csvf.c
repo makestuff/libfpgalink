@@ -46,24 +46,22 @@ static uint8 getNextByte(XC *xc) {
 //
 static FLStatus swapBytes(XC *xc, uint32 numBytes, struct Buffer *outBuf, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
-	uint8 swapBuffer[2*BUF_SIZE];  // XSDRTDO accepts 2x XSDRSIZE bytes; all must be swapped
-	uint8 *ptr = swapBuffer + numBytes - 1;
-	uint32 n = numBytes;
+	uint8 *ptr;
 	BufferStatus status;
-	while ( n-- ) {
-		*ptr-- = getNextByte(xc);
-	}
 	#ifdef ENABLE_SWAP
-		ptr = swapBuffer;
+		status = bufAppendZeros(outBuf, numBytes, NULL, error);
+		CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+		ptr = outBuf->data + outBuf->length - 1;
 		while ( numBytes-- ) {
-			status = bufAppendByte(outBuf, *ptr++, error);
-			CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+			*ptr-- = getNextByte(xc);
 		}
 	#else
-		ptr = swapBuffer + numBytes - 1;
+		uint32 initLength = outBuf->length;
+		status = bufAppendZeros(outBuf, numBytes, NULL, error);
+		CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+		ptr = outBuf->data + initLength - 1;
 		while ( numBytes-- ) {
-			status = bufAppendByte(outBuf, *ptr--, error);
-			CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+			*ptr++ = getNextByte(xc);
 		}
 	#endif
 cleanup:
@@ -135,6 +133,7 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 	BufferStatus status;
 	uint8 thisByte;
 	uint32 dummy;
+	bool zeroMask = false;
 
 	if ( !maxBufSize ) {
 		maxBufSize = &dummy;
@@ -143,24 +142,37 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 	thisByte = getNextByte(xc);
 	while ( thisByte != XCOMPLETE ) {
 		switch ( thisByte ) {
-		case XTDOMASK:
+		case XTDOMASK:{
 			// Swap the XTDOMASK bytes.
+			uint32 initLength;
+			const uint8 *p;
+			const uint8 *end;
 			if ( newXSize != curXSize ) {
 				curXSize = newXSize;
 				sendXSize(outBuf, curXSize, error);
 			}
+			initLength = outBuf->length;
 			numBytes = bitsToBytes(curXSize);
-			if ( numBytes > BUF_SIZE ) {
-				FAIL(FL_UNSUPPORTED_SIZE_ERR);
-			}
-			if ( numBytes > *maxBufSize ) {
-				*maxBufSize = numBytes;
-			}
 			status = bufAppendByte(outBuf, XTDOMASK, error);
 			CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
 			returnCode = swapBytes(xc, numBytes, outBuf, error);
 			CHECK_RETURN();
+			p = outBuf->data + initLength + 1;
+			end = outBuf->data + outBuf->length;
+			while ( *p == 0 && p < end ) p++;
+			if ( p == end ) {
+				// All zeros so delete the command
+				outBuf->length = initLength;
+				zeroMask = true;
+			} else {
+				// Keep the command
+				if ( numBytes > *maxBufSize ) {
+					*maxBufSize = numBytes;
+				}
+				zeroMask = false;
+			}
 			break;
+		}
 
 		case XSDRTDO:
 			// Swap the tdiValue and tdoExpected bytes.
@@ -169,16 +181,29 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 				sendXSize(outBuf, curXSize, error);
 			}
 			numBytes = bitsToBytes(curXSize);
-			if ( numBytes > BUF_SIZE ) {
-				FAIL(FL_UNSUPPORTED_SIZE_ERR);
+			if ( zeroMask ) {
+				// The last mask was all zeros, so replace this XSDRTDO with an XSDR and throw away
+				// the tdoExpected bytes.
+				status = bufAppendByte(outBuf, XSDR, error);
+				CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+				returnCode = swapBytes(xc, numBytes, outBuf, error);
+				CHECK_RETURN();
+				while ( numBytes-- ) {
+					getNextByte(xc);
+				}
+			} else {
+				// The last mask was not all zeros, so we must honour the XSDRTDO's tdoExpected bytes.
+				if ( numBytes > BUF_SIZE ) {
+					FAIL(FL_UNSUPPORTED_SIZE_ERR);
+				}
+				if ( numBytes > *maxBufSize ) {
+					*maxBufSize = numBytes;
+				}
+				status = bufAppendByte(outBuf, XSDRTDO, error);
+				CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+				returnCode = swapBytes(xc, 2*numBytes, outBuf, error);
+				CHECK_RETURN();
 			}
-			if ( numBytes > *maxBufSize ) {
-				*maxBufSize = numBytes;
-			}
-			status = bufAppendByte(outBuf, XSDRTDO, error);
-			CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
-			returnCode = swapBytes(xc, 2*numBytes, outBuf, error);
-			CHECK_RETURN();
 			break;
 
 		case XREPEAT:
@@ -223,22 +248,20 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			break;
 
 		case XSDRB:
-			// Swap the tdiValue bytes.
+			// Roll XSDRB, XSDRC*, XSDRE into one XSDR
 			curXSize = newXSize;
 			sendXSize(outBuf, curXSize, error);
 			totXSize = curXSize;
 			totOffset = outBuf->length - 4;
-			status = bufAppendByte(outBuf, XSDRB, error);
+			status = bufAppendByte(outBuf, XSDR, error);
 			CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
 			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
 			CHECK_RETURN();
 			break;
 
 		case XSDRC:
-			// Just add the XSDRC data to the end of the previous XSDRB
-			if ( newXSize != curXSize ) {
-				curXSize = newXSize;
-			}
+			// Just add the XSDRC data to the end of the previous XSDR
+			curXSize = newXSize;
 			totXSize += curXSize;
 			writeLong(outBuf, totOffset, totXSize);
 			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
@@ -246,13 +269,10 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			break;
 
 		case XSDRE:
-			// Swap the tdiValue bytes.
-			//status = bufWriteBinaryFile(outBuf, "before.bin", totOffset, totXSize);
-			//CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+			// Just add the XSDRE data to the end of the previous XSDR
 			curXSize = newXSize;
-			sendXSize(outBuf, curXSize, error);
-			status = bufAppendByte(outBuf, XSDRE, error);
-			CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+			totXSize += curXSize;
+			writeLong(outBuf, totOffset, totXSize);
 			returnCode = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
 			CHECK_RETURN();
 			break;
@@ -292,6 +312,11 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 	// Add the XCOMPLETE command
 	status = bufAppendByte(outBuf, XCOMPLETE, error);
 	CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+
+	// Uncomment this to dump the result out for debugging purposes...
+	//status = bufWriteBinaryFile(outBuf, "foo.xsvf", 0, outBuf->length, error);
+	//CHECK_BUF_STATUS(FL_BUF_APPEND_ERR);
+
 	
 cleanup:
 	return returnCode;
