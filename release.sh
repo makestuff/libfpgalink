@@ -58,8 +58,8 @@ cp -rp ${FLCLI}/linux.ppc/rel/flcli ${FLCLI}/linux.ppc/rel/libargtable2.so ${LIB
 cp -rp ${FLCLI}/linux.ppc/dbg/flcli ${FLCLI}/linux.ppc/dbg/libargtable2.so ${LIB}-${DATE}/linux.ppc/dbg/
 cp -rp ${FLCLI}/darwin/rel/flcli ${FLCLI}/darwin/rel/libargtable2.dylib ${LIB}-${DATE}/darwin/rel/
 cp -rp ${FLCLI}/darwin/dbg/flcli ${FLCLI}/darwin/dbg/libargtable2.dylib ${LIB}-${DATE}/darwin/dbg/
-cp -rp ${FLCLI}/win32/rel/flcli.exe ${FLCLI}/win32/rel/argtable2.dll ${FLCLI}/win32/rel/readline.dll ${LIB}-${DATE}/win32/rel/
-cp -rp ${FLCLI}/win32/dbg/flcli.exe ${FLCLI}/win32/dbg/argtable2.dll ${FLCLI}/win32/dbg/readline.dll ${LIB}-${DATE}/win32/dbg/
+cp -rp ${FLCLI}/win32/rel/flcli.exe ${FLCLI}/win32/rel/libargtable2.dll ${FLCLI}/win32/rel/libreadline.dll ${LIB}-${DATE}/win32/rel/
+cp -rp ${FLCLI}/win32/dbg/flcli.exe ${FLCLI}/win32/dbg/libargtable2.dll ${FLCLI}/win32/dbg/libreadline.dll ${LIB}-${DATE}/win32/dbg/
 
 # Headers
 cp -rp ../../common/makestuff.h ${LIB}-${DATE}/
@@ -76,6 +76,7 @@ cp -rp examples ${LIB}-${DATE}/
 rm -f ${LIB}-${DATE}/examples/c/Makefile
 
 cp -p LICENSE.txt ${LIB}-${DATE}/
+cp -p COPYING.LESSER ${LIB}-${DATE}/
 cat > ${LIB}-${DATE}/README <<EOF
 FPGALink Binary Distribution
 
@@ -98,6 +99,102 @@ Overview here: http://bit.ly/fpgalnk-blog
 Source code here: https://github.com/makestuff/libfpgalink
 API docs here: http://bit.ly/fpgalnk-api
 Example code here: http://bit.ly/fpgalnk-ex
+
+There is a command-line utility called "flcli", which offers many of the library's features, which
+is useful for testing, etc.
+
+chris@armel$ flcli --help
+FPGALink Command-Line Interface Copyright (C) 2012 Chris McClelland
+
+Usage: flcli [-psch] [-i <VID:PID>] -v <VID:PID> [-x <fileName>] [-a <actionString>]
+
+Interact with an FPGALink device.
+
+  -i, --ivp=<VID:PID>          vendor ID and product ID (e.g 04B4:8613)
+  -v, --vp=<VID:PID>           vendor ID and product ID (e.g 04B4:8613)
+  -x, --xsvf=<fileName>        XSVF or CSVF file to load
+  -p, --power                  FPGA is powered from USB (Nexys2 only!)
+  -s, --scan                   scan the JTAG chain
+  -a, --action=<actionString>  a series of CommFPGA actions
+  -c, --cli                    start up an interactive CommFPGA session
+  -h, --help                   print this help and exit
+
+So assuming you're using a Digilent Nexys2 connected to an ARM Linux machine:
+
+chris@armel$ sudo linux.armel/rel/flcli -i 1443:0005 -v 1443:0005 -x gen_csvf/nexys2-1200.csvf -p -s
+Attempting to open connection to FPGALink device 1443:0005...
+Loading firmware into 1443:0005...
+Awaiting renumeration............
+Attempting to open connection to FPGLink device 1443:0005 again...
+Connecting USB power to FPGA...
+The FPGALink device at 1443:0005 scanned its JTAG chain, yielding:
+  0x21C2E093
+  0xF5046093
+Playing "gen_csvf/nexys2-1200.csvf" into the JTAG chain on FPGALink device 1443:0005...
+chris@armel$
+
+You can then connect to the device with a simple command-line interface:
+
+chris@armel$ dd if=/dev/urandom of=input.dat bs=1024 count=64
+64+0 records in
+64+0 records out
+65536 bytes (66 kB) copied, 0.056143 s, 1.2 MB/s
+chris@armel$ sudo ./linux.armel/rel/flcli -v 1443:0005 -c
+Attempting to open connection to FPGALink device 1443:0005...
+
+Entering CommFPGA command-line mode:
+> w1 12;w2 34;w3 56
+> r1;r2;r3
+         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+00000000 12 34 56                                        .4V
+> r1 4;r2 4;r3 4
+         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+00000000 12 12 12 12 34 34 34 34 56 56 56 56             ....4444VVVV
+> r0 10
+         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+00000000 B7 B7 B7 B7 B7 B7 B7 B7 B7 B7 B7 B7 B7 B7 B7 B7 ................
+> r0 10 "output.dat"
+> w0 123456
+> w0 "input.dat"
+> q
+chris@armel$ od -t x1 output.dat 
+0000000 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7
+0000020
+chris@armel$
+
+The syntax of the read ("r") command is as follows:
+
+  r<register> [<count> [<fileName>]]
+
+Where:
+
+  register: The FPGA register address, 0-7f.
+  count:    How many times to read the register, default 1.
+  fileName: A binary file (in "quotes") to write the FPGA's data to.
+
+If you don't specify a fileName, the FPGA's data is printed to stdout as a hex dump.
+
+The syntax of the write ("w") command is as follows:
+
+  w<register> <byteSeq | fileName>
+
+Where:
+
+  register: The FPGA register address, 0-7f.
+  byteSeq:  A sequence of bytes to be written to the FPGA, e.g 0123456789abcdef
+  fileName: An existing binary file (in "quotes") to dump into the FPGA.
+
+All numbers are in hexadecimal. Since a byte is two hex digits, the byteSeq must have an even number
+of digits. Filenames must be quoted using double-quotes (""). You may put several read and/or write
+commands on one line, separated by semicolons (";"). If you don't want an interactive session, you
+can specify a command sequence on the command-line:
+
+chris@armel$ sudo ./linux.armel/rel/flcli -v 1443:0005 -a 'w0 "input.dat";r1;r2 4'
+Attempting to open connection to FPGALink device 1443:0005...
+Executing CommFPGA actions on FPGALink device 1443:0005...
+         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+00000000 12 34 34 34 34                                  .4444
+chris@armel$
 EOF
 
 # Package it up
