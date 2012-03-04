@@ -1,8 +1,25 @@
-# Helper script for building the binary distribution. It's unlikely you'll need this unless you're
-# forking the project.
 #
-# After calling blinx.sh and building the MacOSX and Windows distributions, call this script to
-# package up all the binaries and upload the datestamped distribution to the web.
+# Copyright (C) 2009-2012 Chris McClelland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Helper script for building the binary distribution. It's unlikely you'll need
+# this unless you're forking the project.
+#
+# After calling blinx.sh and building the MacOSX and Windows distributions, call
+# this script to package up all the binaries and upload the datestamped
+# distribution to the web.
 #
 #!/bin/bash
 export LIB=libfpgalink
@@ -101,13 +118,15 @@ Supported platforms:
    * MacOSX x86_64, i386
    * Windows i386
 
+FPGALink (except flcli described below) is licensed under the LGPLv3.
+
 Overview here: http://bit.ly/fpgalnk-blog
 Source code here: https://github.com/makestuff/libfpgalink
 API docs here: http://bit.ly/fpgalnk-api
 Example code here: http://bit.ly/fpgalnk-ex
 
 There is a command-line utility called "flcli", which offers many of the library's features, which
-is useful for testing, etc.
+is useful for testing, etc. Unlike the rest of FPGALink, flcli is GPLv3-licensed.
 
 chris@armel$ flcli --help
 FPGALink Command-Line Interface Copyright (C) 2012 Chris McClelland
