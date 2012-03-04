@@ -1,12 +1,27 @@
 #!/usr/bin/python
-
+#
+# Copyright (C) 2011-2012 Chris McClelland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 import array
 import time
 import sys
 import argparse
 from ctypes import *
 
-# Defin types
+# Define types
 class FLContext(Structure):
     pass
 class FLException(Exception):
@@ -90,7 +105,7 @@ fpgalink.flAppendWriteRegisterCommand.restype = FLStatus
 def flOpen(vp):
     handle = FLHandle()
     error = ErrorString()
-    status = fpgalink.flOpen(vp, byref(handle), byref(error))
+    status = fpgalink.flOpen(vp.encode('ascii'), byref(handle), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -108,7 +123,7 @@ def flAwaitDevice(vp, timeout):
     fpgalink.flSleep(1000);
     while ( True ):
         fpgalink.flSleep(100);
-        status = fpgalink.flIsDeviceAvailable(vp, byref(isAvailable), byref(error))
+        status = fpgalink.flIsDeviceAvailable(vp.encode('ascii'), byref(isAvailable), byref(error))
         if ( status != FL_SUCCESS ):
             s = str(error.value)
             fpgalink.flFreeError(error)
@@ -182,7 +197,7 @@ def flWriteRegister(handle, timeout, reg, values):
         status = fpgalink.flWriteRegister(handle, timeout, reg, 1, (uint8*1)(values), byref(error))
     else:
         fileLen = uint32()
-        fileData = fpgalink.flLoadFile(values, byref(fileLen))
+        fileData = fpgalink.flLoadFile(values.encode('ascii'), byref(fileLen))
         if ( fileData == None ):
             raise FLException("Cannot load file!")
         status = fpgalink.flWriteRegister(handle, timeout, reg, fileLen, fileData, byref(error))
@@ -208,7 +223,7 @@ def flReadRegister(handle, timeout, reg, count = 1):
 # Play an XSVF file into the JTAG chain
 def flPlayXSVF(handle, xsvfFile):
     error = ErrorString()
-    status = fpgalink.flPlayXSVF(handle, xsvfFile, byref(error))
+    status = fpgalink.flPlayXSVF(handle, xsvfFile.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -217,7 +232,7 @@ def flPlayXSVF(handle, xsvfFile):
 # Load standard firmware into the FX2 chip
 def flLoadStandardFirmware(curVidPid, newVidPid):
     error = ErrorString()
-    status = fpgalink.flLoadStandardFirmware(curVidPid, newVidPid, byref(error))
+    status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -246,7 +261,7 @@ def flAppendWriteRegisterCommand(handle, reg, values):
 # Flash standard firmware into the FX2's EEPROM
 def flFlashStandardFirmware(handle, newVidPid, eepromSize, xsvfFile = None):
     error = ErrorString()
-    status = fpgalink.flFlashStandardFirmware(handle, newVidPid, eepromSize, xsvfFile, byref(error))
+    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), eepromSize, xsvfFile.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -257,7 +272,7 @@ fpgalink.flInitialise()
 
 # Main function if we're not loaded as a module
 if __name__ == "__main__":
-    print "FPGALink Python Example Copyright (C) 2011 Chris McClelland\n"
+    print "FPGALink Python Example Copyright (C) 2011-2012 Chris McClelland\n"
     parser = argparse.ArgumentParser(description='Load FX2 firmware, load the FPGA, interact with the FPGA.')
     parser.add_argument('-p', action="store_true", default=False, help="FPGA is powered from USB (Nexys2 only!)")
     parser.add_argument('-s', action="store_true", default=False, help="scan the JTAG chain")

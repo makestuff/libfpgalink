@@ -72,6 +72,12 @@ cp -rp vhdl ${LIB}-${DATE}/
 cp -rp gen_csvf ${LIB}-${DATE}/
 
 # Examples
+rm -rf 2to3
+wget -O - http://www.swaton.ukfsn.org/bin/2to3.tar.gz | tar zxf -
+cd examples/python
+cp fpgalink2.py fpgalink3.py
+../../2to3/2to3 fpgalink3.py | patch fpgalink3.py
+cd ../..
 cp -rp examples ${LIB}-${DATE}/
 rm -f ${LIB}-${DATE}/examples/c/Makefile
 
