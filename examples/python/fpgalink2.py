@@ -190,12 +190,17 @@ def flIsFPGARunning(handle):
 # Write one or more bytes to the specified register
 def flWriteRegister(handle, timeout, reg, values):
     error = ErrorString()
-    if ( isinstance(values, (list, tuple, array.array)) ):
+    if ( isinstance(values, bytearray) ):
+        # Write the contents of the byte array:
         numValues = len(values)
-        status = fpgalink.flWriteRegister(handle, timeout, reg, numValues, (uint8*numValues)(*values), byref(error))
+        BufType = uint8*numValues
+        buf = BufType.from_buffer(values)
+        status = fpgalink.flWriteRegister(handle, timeout, reg, numValues, buf, byref(error))
     elif ( isinstance(values, int) ):
+        # Write a single integer
         status = fpgalink.flWriteRegister(handle, timeout, reg, 1, (uint8*1)(values), byref(error))
     else:
+        # Write the contents of a file
         fileLen = uint32()
         fileData = fpgalink.flLoadFile(values.encode('ascii'), byref(fileLen))
         if ( fileData == None ):
@@ -210,15 +215,23 @@ def flWriteRegister(handle, timeout, reg, values):
 # Read one or more values from the specified register
 def flReadRegister(handle, timeout, reg, count = 1):
     error = ErrorString()
-    value = uint8()
-    if ( count != 1 ):
-        raise FLException('count > 1 not implemented in Python yet!')
-    status = fpgalink.flReadRegister(handle, timeout, reg, 1, byref(value), byref(error))
+    if ( count == 1 ):
+        # Read a single byte
+        buf = uint8()
+        status = fpgalink.flReadRegister(handle, timeout, reg, 1, byref(buf), byref(error))
+        returnValue = buf.value
+    else:
+        # Read multiple bytes
+        byteArray = bytearray(count)
+        BufType = uint8*count
+        buf = BufType.from_buffer(byteArray)
+        status = fpgalink.flReadRegister(handle, timeout, reg, count, buf, byref(error))
+        returnValue = byteArray
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
-    return value.value
+    return returnValue
 
 # Play an XSVF file into the JTAG chain
 def flPlayXSVF(handle, xsvfFile):
