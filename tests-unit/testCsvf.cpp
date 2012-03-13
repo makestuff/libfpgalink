@@ -60,9 +60,9 @@ static void testRoundTrip(const char *xsvfFile, uint32 expectedMaxBufSize) {
 }
 
 TEST(FPGALink_testRoundTrip) {
-	testRoundTrip("../gen_xsvf/s3board.xsvf", 12U);
-	testRoundTrip("../gen_xsvf/nexys2-500.xsvf", 12U);
-	testRoundTrip("../gen_xsvf/nexys2-1200.xsvf", 12U);
+	testRoundTrip("../gen_xsvf/s3board.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/nexys2-500.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/nexys2-1200.xsvf", 5U);
 	testRoundTrip("../gen_xsvf/atlys.xsvf", 4U);
 	testRoundTrip("../gen_xsvf/nexys3.xsvf", 4U);
 }
