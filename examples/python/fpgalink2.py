@@ -198,6 +198,8 @@ def flWriteRegister(handle, timeout, reg, values):
         status = fpgalink.flWriteRegister(handle, timeout, reg, numValues, buf, byref(error))
     elif ( isinstance(values, int) ):
         # Write a single integer
+        if ( values > 0xFF ):
+            raise FLException("Supplied value won't fit in a byte!")
         status = fpgalink.flWriteRegister(handle, timeout, reg, 1, (uint8*1)(values), byref(error))
     else:
         # Write the contents of a file
