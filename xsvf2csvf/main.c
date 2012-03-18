@@ -16,6 +16,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <makestuff.h>
 #include <libbuffer.h>
 #include <liberror.h>
@@ -35,6 +36,7 @@ int main(int argc, const char *argv[]) {
 	uint32 csvfBufSize;
 	const char *srcFile, *dstFile;
 	bool doCompress;
+	const char *ext;
 	if ( argc == 3 ) {
 		srcFile = argv[1];
 		dstFile = argv[2];
@@ -44,20 +46,28 @@ int main(int argc, const char *argv[]) {
 		dstFile = argv[3];
 		doCompress = false;
 	} else {
-		fprintf(stderr, "Synopsis: %s [-u] <src.xsvf> <dst.csvf>\n", argv[0]);
+		fprintf(stderr, "Synopsis: %s [-u] <src.xsvf|src.svf> <dst.csvf>\n", argv[0]);
 		FAIL(1);
 	}
+	ext = srcFile + strlen(srcFile) - 5;
 	bStatus = bufInitialise(&csvfBuf, 10240, 0x00, &error);
 	CHECK(bStatus, 2);
-	fStatus = flLoadXsvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
-	CHECK(fStatus, 3);
+	if ( strcmp(".svf", ext+1) == 0 ) {
+		fStatus = flLoadSvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
+	} else if ( strcmp(".xsvf", ext) == 0 ) {
+		fStatus = flLoadXsvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
+	} else {
+		fprintf(stderr, "Source file should have .svf or .xsvf extension\n");
+		FAIL(3);
+	}
+	CHECK(fStatus, 4);
 	printf("CSVF_BUF_SIZE = %d\n", csvfBufSize);
 	if ( doCompress ) {
 		fStatus = flCompressCsvf(&csvfBuf, &error);
-		CHECK(fStatus, 4);
+		CHECK(fStatus, 5);
 	}
 	bStatus = bufWriteBinaryFile(&csvfBuf, dstFile, 0, csvfBuf.length, &error);
-	CHECK(bStatus, 5);
+	CHECK(bStatus, 6);
 
 cleanup:
 	bufDestroy(&csvfBuf);

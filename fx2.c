@@ -36,7 +36,7 @@ static FLStatus copyFirmwareAndRewriteIDs(
 	const uint8 *src, uint32 length, uint16 vid, uint16 pid, struct Buffer *dest, const char **error
 ) WARN_UNUSED_RESULT;
 
-static FLStatus appendCsvfFromXsvf(
+static FLStatus convertJtagFileToCsvf(
 	struct Buffer *dest, const char *xsvfFile, const char **error
 ) WARN_UNUSED_RESULT;
 
@@ -105,7 +105,7 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 			eepromWithBootFirmwareData, eepromWithBootFirmwareSize, newVid, newPid, &i2cBuf, error);
 		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
 		fwSize = i2cBuf.length;
-		flStatus = appendCsvfFromXsvf(&i2cBuf, xsvfFile, error);
+		flStatus = convertJtagFileToCsvf(&i2cBuf, xsvfFile, error);
 		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
 		xsvfSize = i2cBuf.length - fwSize;
 		if ( handle->writeBuffer.length ) {
@@ -320,30 +320,43 @@ cleanup:
 	return returnCode;
 }
 
-static FLStatus appendCsvfFromXsvf(struct Buffer *dest, const char *xsvfFile, const char **error) {
+static FLStatus convertJtagFileToCsvf(struct Buffer *dest, const char *xsvfFile, const char **error) {
 	FLStatus returnCode, fStatus;
 	struct Buffer csvfBuf = {0,};
 	BufferStatus bStatus;
 	uint32 maxBufSize;
 	const char *const ext = xsvfFile + strlen(xsvfFile) - 5;
-	if ( strcmp(".xsvf", ext) == 0 ) {
+	if ( strcmp(".svf", ext+1) == 0 ) {
 		bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
-		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
-		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
-		CHECK_STATUS(fStatus, "appendCsvfFromXsvf()", fStatus);
+		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
+		fStatus = flLoadSvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
+		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
 		if ( maxBufSize > CSVF_BUF_SIZE ) {
-			errRender(error, "appendCsvfFromXsvf(): This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
+			errRender(error, "convertJtagFileToCsvf(): This SVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
 			FAIL(FL_JTAG_ERR);
 		}
 		fStatus = flCompressCsvf(&csvfBuf, error);
-		CHECK_STATUS(fStatus, "appendCsvfFromXsvf()", fStatus);
+		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
 		bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);
-		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
+		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
+	} else if ( strcmp(".xsvf", ext) == 0 ) {
+		bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
+		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
+		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
+		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
+		if ( maxBufSize > CSVF_BUF_SIZE ) {
+			errRender(error, "convertJtagFileToCsvf(): This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
+			FAIL(FL_JTAG_ERR);
+		}
+		fStatus = flCompressCsvf(&csvfBuf, error);
+		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
+		bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);
+		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
 	} else if ( strcmp(".csvf", ext) == 0 ) {
 		bStatus = bufAppendFromBinaryFile(dest, xsvfFile, error);
-		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_FILE_ERR);
+		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_FILE_ERR);
 	} else {
-		errRender(error, "appendCsvfFromXsvf(): Filename should have .xsvf or .csvf extension");
+		errRender(error, "convertJtagFileToCsvf(): Filename should have .svf, .xsvf or .csvf extension");
 		FAIL(FL_FILE_ERR);
 	}
 	returnCode = FL_SUCCESS;

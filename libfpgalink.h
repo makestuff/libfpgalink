@@ -60,6 +60,7 @@ extern "C" {
 		FL_UNSUPPORTED_CMD_ERR,  ///< The XSVF file contains an unsupported command.
 		FL_UNSUPPORTED_DATA_ERR, ///< The XSVF file contains an unsupported XENDIR or XENDDR.
 		FL_UNSUPPORTED_SIZE_ERR, ///< The XSVF file requires more buffer space than is available.
+		FL_SVF_PARSE_ERR,        ///< The SVF file was not parseable.
 		FL_INTERNAL_ERR          ///< An internal error occurred. Please report it!
 	} FLStatus;
 	//@}

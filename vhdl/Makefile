@@ -42,18 +42,19 @@ else ifeq ($(PLATFORM),nexys3)
 	PARFLAGS =
 endif
 
-X2C = xsvf2csvf
+X2C := xsvf2csvf
 
 all: $(TOP_LEVEL).csvf
 
 report: $(TOP_LEVEL).twr
 
 $(TOP_LEVEL).csvf: $(TOP_LEVEL).xsvf
-	X2C $(TOP_LEVEL).xsvf $(TOP_LEVEL).csvf
+	$(X2C) $(TOP_LEVEL).xsvf $(TOP_LEVEL).csvf
 
 # This assumes that the "XILINX" environment variable is set 
 $(TOP_LEVEL).xsvf: platforms/$(PLATFORM)/platform.batch $(TOP_LEVEL).bit
-	cat $< | sed s#\$${XILINX}#$(subst \,/,$(XILINX))#g > temp.batch
+	echo "setPreference -pref KeepSVF:True" > temp.batch
+	cat $< | sed s#\$${XILINX}#$(subst \,/,$(XILINX))#g >> temp.batch
 	impact -batch temp.batch
 	rm -f temp.batch
 
@@ -80,6 +81,6 @@ $(TOP_LEVEL).prj: $(VHDLS)
 	for i in $+; do echo "vhdl work \"$$i\""; done > $@
 
 clean: FORCE
-	rm -rf *.xsvf *.csvf _ngo *.bgn *.drc *.ncd *.ntrc_log *.prj *.twr *.csv *.html fx2fpga_xdb _xmsgs *.bit *.gise *.ngc *.pad *.ptwx *.twx *.ngm *.txt *.xml *.xrpt *.bld *.ise *.ngd *.par *.stx *.map *.twr auto_project_xdb *.cmd_log *.lso *.ngr *.pcf *.syr *.unroutes *.xpi *.mrp xst *.log *.cmd *.xwbt iseconfig xlnx_auto_0_xdb
+	rm -rf *.svf *.xsvf *.csvf _ngo *.bgn *.drc *.ncd *.ntrc_log *.prj *.twr *.csv *.html fx2fpga_xdb _xmsgs *.bit *.gise *.ngc *.pad *.ptwx *.twx *.ngm *.txt *.xml *.xrpt *.bld *.ise *.ngd *.par *.stx *.map *.twr auto_project_xdb *.cmd_log *.lso *.ngr *.pcf *.syr *.unroutes *.xpi *.mrp xst *.log *.cmd *.xwbt iseconfig xlnx_auto_0_xdb
 
 FORCE:

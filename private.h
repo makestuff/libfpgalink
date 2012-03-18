@@ -123,6 +123,10 @@ extern "C" {
 		struct Buffer *csvfBuf, const char **error
 	) WARN_UNUSED_RESULT;
 
+	DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
+		const char *svfFile, struct Buffer *csvfBuf, uint32 *maxBufSize, const char **error
+	) WARN_UNUSED_RESULT;
+
 #ifdef __cplusplus
 }
 #endif
