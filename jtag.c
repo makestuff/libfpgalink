@@ -32,6 +32,7 @@ DLLEXPORT(FLStatus) flPlayXSVF(struct FLContext *handle, const char *xsvfFile, c
 	NeroStatus nStatus;
 	int cStatus;
 	uint32 maxBufSize;
+	bool isCompressed;
 	const char *const ext = xsvfFile + strlen(xsvfFile) - 5;
 	if ( !handle->isNeroCapable ) {
 		errRender(error, "flPlayXSVF(): This device does not support NeroJTAG");
@@ -40,18 +41,20 @@ DLLEXPORT(FLStatus) flPlayXSVF(struct FLContext *handle, const char *xsvfFile, c
 	bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
 	CHECK_STATUS(bStatus, "flPlayXSVF()", FL_ALLOC_ERR);
 	if ( strcmp(".xsvf", ext) == 0 ) {
-		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL, error);
+		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
 		CHECK_STATUS(fStatus, "flPlayXSVF()", fStatus);
+		isCompressed = false;
 	} else if ( strcmp(".csvf", ext) == 0 ) {
 		bStatus = bufAppendFromBinaryFile(&csvfBuf, xsvfFile, error);
 		CHECK_STATUS(bStatus, "flPlayXSVF()", FL_FILE_ERR);
+		isCompressed = true;
 	} else {
 		errRender(error, "flPlayXSVF(): Filename should have .xsvf or .csvf extension");
 		FAIL(FL_FILE_ERR);
 	}
 	nStatus = neroInitialise(handle->device, &nero, error);
 	CHECK_STATUS(nStatus, "flPlayXSVF()", FL_JTAG_ERR);
-	cStatus = csvfPlay(csvfBuf.data, &nero, error);
+	cStatus = csvfPlay(csvfBuf.data, isCompressed, &nero, error);
 	CHECK_STATUS(cStatus, "flPlayXSVF()", FL_JTAG_ERR);
 	returnCode = FL_SUCCESS;
 cleanup:

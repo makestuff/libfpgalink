@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #!/bin/bash
+export PYTHON_VERSION=2
 echo
 echo "WARNING: this will erase any firmware currently in your FX2FPGA EEPROM!!!"
 echo
@@ -25,14 +26,14 @@ read -n 1 -s
 echo
 echo "Writing firmware to EEPROM now..."
 sudo LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
-from fpgalink import *
+from fpgalink${PYTHON_VERSION} import *
 flLoadStandardFirmware("04B4:8613", "04B4:8613")
 flAwaitDevice("04B4:8613", 600)
 handle = flOpen("04B4:8613")
 flAppendWriteRegisterCommand(handle, 0x00, 0x10)
 flAppendWriteRegisterCommand(handle, 0x00, 0x10)
 flAppendWriteRegisterCommand(handle, 0x00, 0x10)
-flFlashStandardFirmware(handle, "04B4:8613", 512, "../../gen_xsvf/s3board.xsvf")
+flFlashStandardFirmware(handle, "04B4:8613", 512, "../../gen_csvf/s3board.csvf")
 flClose(handle)
 quit()
 EOF
@@ -45,7 +46,7 @@ echo "6) Press any key"
 read -n 1 -s
 
 sudo LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
-from fpgalink import *
+from fpgalink${PYTHON_VERSION} import *
 handle = flOpen("04B4:8613")
 flWriteRegister(handle, 1000, 0x00, 0x10)
 flWriteRegister(handle, 1000, 0x00, 0x10)

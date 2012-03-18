@@ -150,7 +150,7 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 	}
 
 	//bStatus = bufWriteBinaryFile(&i2cBuf, "out.bin", 0UL, i2cBuf.length, error);
-	//CHECK_STATUS(bStatus, "flFlashStandardFirmware()");
+	//CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 	
 	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, i2cBuf.length, error);
 	CHECK_STATUS(fxStatus, "flFlashStandardFirmware()", FL_FX2_ERR);
@@ -329,12 +329,14 @@ static FLStatus appendCsvfFromXsvf(struct Buffer *dest, const char *xsvfFile, co
 	if ( strcmp(".xsvf", ext) == 0 ) {
 		bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
 		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
-		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL, error);
+		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
 		CHECK_STATUS(fStatus, "appendCsvfFromXsvf()", fStatus);
 		if ( maxBufSize > CSVF_BUF_SIZE ) {
 			errRender(error, "appendCsvfFromXsvf(): This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
 			FAIL(FL_JTAG_ERR);
 		}
+		fStatus = flCompressCsvf(&csvfBuf, error);
+		CHECK_STATUS(fStatus, "appendCsvfFromXsvf()", fStatus);
 		bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);
 		CHECK_STATUS(bStatus, "appendCsvfFromXsvf()", FL_ALLOC_ERR);
 	} else if ( strcmp(".csvf", ext) == 0 ) {

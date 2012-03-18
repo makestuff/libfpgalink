@@ -30,11 +30,18 @@ static uint32 readLength(struct Context *cp);
 
 // Init the reader, return the header byte
 //
-uint8 csvfInitReader(struct Context *cp, const uint8 *csvfData) {
+uint8 csvfInitReader(struct Context *cp, const uint8 *csvfData, bool isCompressed) {
 	uint8 thisByte;
 	cp->data = csvfData;
-	thisByte = getRawByte(cp);
-	cp->count = readLength(cp);
+	if ( isCompressed ) {
+		cp->isCompressed = true;
+		thisByte = getRawByte(cp);
+		cp->count = readLength(cp);
+	} else {
+		cp->isCompressed = false;
+		thisByte = 0x00;
+		cp->count = 0;
+	}
 	cp->isReadingChunk = true;
 	return thisByte;
 }
@@ -42,6 +49,9 @@ uint8 csvfInitReader(struct Context *cp, const uint8 *csvfData) {
 // Get the next byte from the uncompressed stream. Uses m_count & m_isReadingChunk to keep state.
 //
 uint8 csvfGetByte(struct Context *cp) {
+	if ( !cp->isCompressed ) {
+		return getRawByte(cp);
+	}
 	if ( cp->isReadingChunk ) {
 		// We're in the middle of reading a chunk.
 		if ( cp->count ) {

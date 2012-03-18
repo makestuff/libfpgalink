@@ -35,7 +35,7 @@ static void dumpSimple(const unsigned char *input, unsigned int length, char *p)
 
 // Play the uncompressed CSVF stream into the JTAG port.
 //
-int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error) {
+int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, const char **error) {
 	int returnCode;
 	NeroStatus nStatus;
 	uint8 thisByte;
@@ -54,7 +54,7 @@ int csvfPlay(const uint8 *csvfData, struct NeroHandle *nero, const char **error)
 	nStatus = neroClockFSM(nero, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
 	CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 
-	if ( csvfInitReader(&cp, csvfData) ) {
+	if ( csvfInitReader(&cp, csvfData, isCompressed) ) {
 		// Header byte may be used for something later. For now, ensure it's zero.
 		errRender(error, "csvfPlay(): Bad CSVF header!");
 		FAIL(CPLAY_HEADER_ERR);

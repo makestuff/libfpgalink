@@ -33,7 +33,7 @@ extern "C" {
 
 	// Play the uncompressed CSVF stream into the JTAG port.
 	int csvfPlay(
-		const uint8 *csvfData, struct NeroHandle *nero, const char **error
+		const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, const char **error
 	) WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus

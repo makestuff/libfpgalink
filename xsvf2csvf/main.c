@@ -18,8 +18,8 @@
 #include <stdlib.h>
 #include <makestuff.h>
 #include <libbuffer.h>
-#include <libfpgalink.h>
 #include <liberror.h>
+#include "../private.h"
 
 #define CHECK(condition, retCode) \
 	if ( condition ) { \
@@ -33,21 +33,37 @@ int main(int argc, const char *argv[]) {
 	FLStatus fStatus;
 	const char *error = NULL;
 	uint32 csvfBufSize;
-	if ( argc != 3 ) {
-		fprintf(stderr, "Synopsis: %s <src.xsvf> <dst.csvf>\n", argv[0]);
-		exit(1);
+	const char *srcFile, *dstFile;
+	bool doCompress;
+	if ( argc == 3 ) {
+		srcFile = argv[1];
+		dstFile = argv[2];
+		doCompress = true;
+	} else if ( argc == 4 && argv[1][0] == '-' && argv[1][1] == 'u' && argv[1][2] == '\0' ) {
+		srcFile = argv[2];
+		dstFile = argv[3];
+		doCompress = false;
+	} else {
+		fprintf(stderr, "Synopsis: %s [-u] <src.xsvf> <dst.csvf>\n", argv[0]);
+		FAIL(1);
 	}
 	bStatus = bufInitialise(&csvfBuf, 10240, 0x00, &error);
-	CHECK(bStatus, 1000+bStatus);
-	fStatus = flLoadXsvfAndConvertToCsvf(argv[1], &csvfBuf, &csvfBufSize, NULL, &error);
-	CHECK(fStatus, 2000+fStatus);
+	CHECK(bStatus, 2);
+	fStatus = flLoadXsvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
+	CHECK(fStatus, 3);
 	printf("CSVF_BUF_SIZE = %d\n", csvfBufSize);
-	bStatus = bufWriteBinaryFile(&csvfBuf, argv[2], 0, csvfBuf.length, &error);
-	CHECK(bStatus, 3000+bStatus);
-	return returnCode;
+	if ( doCompress ) {
+		fStatus = flCompressCsvf(&csvfBuf, &error);
+		CHECK(fStatus, 4);
+	}
+	bStatus = bufWriteBinaryFile(&csvfBuf, dstFile, 0, csvfBuf.length, &error);
+	CHECK(bStatus, 5);
+
 cleanup:
 	bufDestroy(&csvfBuf);
-	fprintf(stderr, "%s\n", error);
-	bufFreeError(error);
+	if ( error ) {
+		fprintf(stderr, "%s\n", error);
+		bufFreeError(error);
+	}
 	return returnCode;
 }

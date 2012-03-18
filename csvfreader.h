@@ -27,9 +27,10 @@ extern "C" {
 		const uint8 *data;
 		uint32 count;
 		bool isReadingChunk;
+		bool isCompressed;
 	};
 
-	uint8 csvfInitReader(struct Context *cp, const uint8 *data);
+	uint8 csvfInitReader(struct Context *cp, const uint8 *data, bool isCompressed);
 	uint8 csvfGetByte(struct Context *cp);
 	uint16 csvfGetWord(struct Context *cp);
 	uint32 csvfGetLong(struct Context *cp);

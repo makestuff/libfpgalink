@@ -17,7 +17,7 @@
 #include <UnitTest++.h>
 #include <makestuff.h>
 #include <libbuffer.h>
-#include "../libfpgalink.h"
+#include "../private.h"
 #include "../xsvf.h"
 #include "../csvfreader.h"
 
@@ -30,15 +30,27 @@ static void testRoundTrip(const char *xsvfFile, uint32 expectedMaxBufSize) {
 	CHECK(bStatus == BUF_SUCCESS);
 	bStatus = bufInitialise(&uncompressedBuf, 1024, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
-	fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, &uncompressedBuf, NULL);
+
+	// Load XSVF, convert to uncompressed CSVF
+	fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, NULL);
 	CHECK(fStatus == FL_SUCCESS);
 	CHECK_EQUAL(expectedMaxBufSize, maxBufSize);
 
+	// Make a copy of the uncompressed buffer
+	bStatus = bufDeepCopy(&uncompressedBuf, &csvfBuf, NULL);
+	CHECK(bStatus == BUF_SUCCESS);
+
+	// Compress the CSVF buffer
+	fStatus = flCompressCsvf(&csvfBuf, NULL);
+	CHECK(fStatus == FL_SUCCESS);
+
+	// Make a reader to iterate over the compressed data
 	Context cp;
 	uint8 thisByte;
-	thisByte = csvfInitReader(&cp, csvfBuf.data);
+	thisByte = csvfInitReader(&cp, csvfBuf.data, true);
 	CHECK(thisByte == 0x00);
 
+	// Uncompress the compressed data into the reconstituteBuf
 	Buffer reconstituteBuf;
 	bStatus = bufInitialise(&reconstituteBuf, uncompressedBuf.length, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
@@ -46,6 +58,8 @@ static void testRoundTrip(const char *xsvfFile, uint32 expectedMaxBufSize) {
 		bStatus = bufAppendByte(&reconstituteBuf, csvfGetByte(&cp), NULL);
 		CHECK(bStatus == BUF_SUCCESS);
 	}
+
+	// Make sure the result of the compress-uncompress operation is the same as the original data
 	CHECK_EQUAL(uncompressedBuf.length, reconstituteBuf.length);
 	CHECK_ARRAY_EQUAL(uncompressedBuf.data, reconstituteBuf.data, uncompressedBuf.length);
 

@@ -190,13 +190,13 @@ TEST(FL_playXsvf) {
 	fStatus = flPlayXSVF(fx2Handle, "bad.dat", NULL);
 	CHECK_EQUAL(FL_FILE_ERR, fStatus);
 
-	// Verify that a non-existent XSVF file gives FL_FILE_ERR
+	// Verify that a non-existent XSVF file gives FL_BUF_LOAD_ERR
 	fStatus = flPlayXSVF(fx2Handle, "nonExistentFile.xsvf", NULL);
-	CHECK_EQUAL(FL_FILE_ERR, fStatus);
+	CHECK_EQUAL(FL_BUF_LOAD_ERR, fStatus);
 
-	// Verify that a badly-formed XSVF file gives FL_FILE_ERR
+	// Verify that a badly-formed XSVF file gives FL_UNSUPPORTED_CMD_ERR
 	fStatus = flPlayXSVF(fx2Handle, "bad.xsvf", NULL);
-	CHECK_EQUAL(FL_FILE_ERR, fStatus);
+	CHECK_EQUAL(FL_UNSUPPORTED_CMD_ERR, fStatus);
 
 	// Verify that the AVR (having nothing on its JTAG lines) gives FL_JTAG_ERR because the XSVF's IDCODE check fails
 	fStatus = flPlayXSVF(avrHandle, "../gen_xsvf/s3board.xsvf", NULL);
