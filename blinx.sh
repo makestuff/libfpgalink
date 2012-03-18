@@ -30,9 +30,9 @@ patch Makefile <<EOF
 @@ -20,3 +20,3 @@
 -SUBDIRS          := tests-unit
 -PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
--POST_BUILD       := x2c gen_csvf
+-POST_BUILD       := tools gen_csvf
 +#SUBDIRS          := tests-unit
 +#PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-+POST_BUILD       := x2c #gen_csvf
++POST_BUILD       := tools #gen_csvf
 EOF
 make MACHINE=i686 deps
