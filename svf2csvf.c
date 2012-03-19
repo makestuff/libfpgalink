@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <makestuff.h>
@@ -57,23 +56,13 @@ static int getHexByte(const char *p, uint8 *byte) {
 
 static uint32 readLongBE(const uint8 *p) {
 	uint32 result;
-	#if BYTE_ORDER == 1234
-		result = p[0];
-		result <<= 8;
-		result |= p[1];
-		result <<= 8;
-		result |= p[2];
-		result <<= 8;
-		result |= p[3];
-	#else
-		result = p[3];
-		result <<= 8;
-		result |= p[2];
-		result <<= 8;
-		result |= p[1];
-		result <<= 8;
-		result |= p[0];
-	#endif
+	result = p[0];
+	result <<= 8;
+	result |= p[1];
+	result <<= 8;
+	result |= p[2];
+	result <<= 8;
+	result |= p[3];
 	return result;
 }
 
