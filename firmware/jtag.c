@@ -20,6 +20,7 @@
 #include "jtag.h"
 #include "prom.h"
 #include "defs.h"
+#include "debug.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // NeroJTAG Stuff
@@ -89,7 +90,6 @@ static void shiftOut(uint8 c) {
 		setb _TCK
 		nop
 		clr  _TCK
-		ret
 	_endasm;
 }
 
@@ -100,81 +100,83 @@ static void blockShiftOut(void) {
 		mov    r0, #0
 		mov    dpl, #_EP2FIFOBUF
 		mov    dph, #(_EP2FIFOBUF >> 8)
-	loop:
 		movx   a, @dptr
+	bsoLoop:
+		rrc    a
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
 		inc    dptr
-		rrc    a
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		nop
+		movx   a, @dptr
 		clr    _TCK
 
-		movx   a, @dptr
-		inc    dptr
-		rrc    a
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
-		rrc    a
-		clr    _TCK
-		mov    _TDI, c
-		setb   _TCK
 		nop
+		nop
+		nop
+
+		rrc    a
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		rrc    a
+		clr    _TCK
+		mov    _TDI, c
+		setb   _TCK
+		inc    dptr
+		movx   a, @dptr
 		clr    _TCK
 
-		djnz   r0, loop
-		ret
+		djnz   r0, bsoLoop
 	_endasm;
 }
 
@@ -294,6 +296,9 @@ void jtagShiftExecute(void) {
 				bytesRead = MAKEWORD(EP2BCH, EP2BCL);
 				if ( bytesRead != bitsToBytes(bitsRead) ) {
 					// Protocol violation - give up
+					#ifdef DEBUG
+						usartSendString("Protocol violation - giving up!\r");
+					#endif
 					m_numBits = 0UL;
 					break;
 				}
@@ -348,6 +353,9 @@ void jtagShiftExecute(void) {
 				bytesRead = MAKEWORD(EP2BCH, EP2BCL);
 				if ( bytesRead != bitsToBytes(bitsRead) ) {
 					// Protocol violation - give up
+					#ifdef DEBUG
+						usartSendString("Protocol violation - giving up!\r");
+					#endif
 					m_numBits = 0UL;
 					break;
 				}
@@ -469,20 +477,57 @@ void jtagShiftExecute(void) {
 //
 void jtagClockFSM(uint32 bitPattern, uint8 transitionCount) {
 	while ( transitionCount-- ) {
-		TMS = bitPattern & 1;
-		TCK = 1;
 		TCK = 0;
+		TMS = bitPattern & 1;
 		bitPattern >>= 1;
+		TCK = 1;
 	}
+	TCK = 0;
 }
 
 // Keep TMS and TDI as they are, and clock the JTAG state machine "numClocks" times.
+// This is tuned to be as close to 2us per clock as possible (500kHz).
 //
 void jtagClocks(uint32 numClocks) {
-	while ( numClocks-- ) {
-		TCK = 1;
-		TCK = 0;
-	}
+	_asm
+		mov r2, dpl
+		mov r3, dph
+		mov r4, b
+		mov r5, a
+	jcLoop:
+		; TCK is high for 12 cycles (1us):
+		setb _TCK              ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+
+		; TCK is low for 12 cycles (1us):
+		clr _TCK               ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		nop                    ; 1 cycle
+		dec r2                 ; 1 cycle
+		cjne r2, #255, jcLoop  ; 4 cycles
+
+		; The high-order bytes introduce some jitter:
+		dec r3
+		cjne r3, #255, jcLoop
+		dec r4
+		cjne r4, #255, jcLoop
+		dec r5
+		cjne r5, #255, jcLoop
+	_endasm;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -24,6 +24,7 @@
 #include "jtag.h"
 #include "sync.h"
 #include "defs.h"
+#include "debug.h"
 
 // Function declarations
 void fifoSendPromData(uint32 bytesToSend);
@@ -156,6 +157,11 @@ void mainInit(void) {
 		fifoSendPromData(blockSize);
 	}
 	promStopRead();
+#endif
+
+#ifdef DEBUG
+	usartInit();
+	usartSendString("MakeStuff FPGALink/FX2 v1.0\r");
 #endif
 }
 
