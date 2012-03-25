@@ -20,6 +20,7 @@
 #include <makestuff.h>
 #include <libbuffer.h>
 #include "../svf2csvf.h"
+#include "../xsvf.h"
 
 using namespace std;
 
@@ -542,7 +543,7 @@ void parseString(ParseContext *cxt, const char *str, struct Buffer *csvfBuf) {
 	CHECK_EQUAL(BUF_SUCCESS, bStatus);
 	bStatus = bufAppendBlock(&line, (const uint8 *)str, lineLen, NULL);
 	CHECK_EQUAL(BUF_SUCCESS, bStatus);
-	fStatus = parseLine(cxt, &line, csvfBuf, NULL);
+	fStatus = parseLine(cxt, &line, csvfBuf, NULL, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 	bufDestroy(&line);
 }
@@ -637,4 +638,21 @@ TEST(FPGALink_testParse) {
 
 	cxtDestroy(&cxt);
 	bufDestroy(&csvfBuf);
+}
+
+TEST(FPGALink_testInsertRunTest) {
+	FLStatus fStatus;
+	struct Buffer buf;
+	BufferStatus bStatus;
+	const uint8 initArray[] = {0xFF, 0xFE, 0xFD, 0xFC, 0xFB,                                   0xFA, 0xF9, 0xF8                                  };
+	const uint8 expected[]  = {0xFF, 0xFE, 0xFD, 0xFC, 0xFB, XRUNTEST, 0xCA, 0xFE, 0xBA, 0xBE, 0xFA, 0xF9, 0xF8, XRUNTEST, 0x00, 0x00, 0x00, 0x00};
+	uint32 lastRunTestOffset = 0xFFFFFFFF, lastRunTestValue = 0;
+	bStatus = bufInitialise(&buf, 1024, 0x00, NULL);
+	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	bStatus = bufAppendBlock(&buf, initArray, 8, NULL);
+	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	fStatus = insertRunTestBefore(&buf, 5UL, 0xCAFEBABEUL, &lastRunTestOffset, &lastRunTestValue, NULL);
+	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	CHECK_EQUAL(8UL+5UL+5UL, buf.length);
+	CHECK_ARRAY_EQUAL(expected, buf.data, buf.length);
 }
