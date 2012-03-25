@@ -81,7 +81,7 @@ You can also use it in interactive mode (Linux x86_64):
   Python 2.7.1+ (r271:86832, Apr 11 2011, 18:13:53)
   [GCC 4.5.2] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
-  >>> from fpgalink import *
+  >>> from fpgalink2 import *
   >>> flLoadStandardFirmware("1443:0005", "1443:0005")       # 1443:0007 for Nexys3 & Atlys
   >>> handle = flOpen("1443:0005")
   >>> flPortAccess(handle, 0x0080, 0x0080)                   # Skip this for Nexys3 & Atlys
