@@ -18,34 +18,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libfpgalink.h>
+#include "../xsvf.h"
 
 #define bitsToBytes(x) ((x>>3) + (x&7 ? 1 : 0))
-
-typedef enum {
-	XCOMPLETE    = 0x00,
-	XTDOMASK     = 0x01,
-	XSIR         = 0x02,
-	XSDR         = 0x03,
-	XRUNTEST     = 0x04,
-	XREPEAT      = 0x07,
-	XSDRSIZE     = 0x08,
-	XSDRTDO      = 0x09,
-	XSETSDRMASKS = 0x0A,
-	XSDRINC      = 0x0B,
-	XSDRB        = 0x0C,
-	XSDRC        = 0x0D,
-	XSDRE        = 0x0E,
-	XSDRTDOB     = 0x0F,
-	XSDRTDOC     = 0x10,
-	XSDRTDOE     = 0x11,
-	XSTATE       = 0x12,
-	XENDIR       = 0x13,
-	XENDDR       = 0x14,
-	XSIR2        = 0x15,
-	XCOMMENT     = 0x16,
-	XWAIT        = 0x17
-} Command;
-
+#define printAddrs() if ( wantAddrs ) printf("%08zX: ", p-buffer)
 
 int main(int argc, const char *argv[]) {
 	const uint8 *buffer, *p;
@@ -53,115 +29,136 @@ int main(int argc, const char *argv[]) {
 	uint8 byte;
 	uint32 xsdrSize = 0;
 	uint32 numBytes, temp;
-	if ( argc != 2 ) {
-		fprintf(stderr, "Synopsis: %s <xsvfFile>\n", argv[0]);
+	bool wantAddrs = true;
+	if ( argc != 2 && argc != 3 ) {
+		fprintf(stderr, "Synopsis: %s [-n] <xsvfFile>\n", argv[0]);
 		exit(1);
 	}
-	buffer = flLoadFile(argv[1], &length);
+	if ( argv[1][0] == '-' && argv[1][1] == 'n' && argv[1][2] == '\0' ) {
+		buffer = flLoadFile(argv[2], &length);
+		wantAddrs = false;
+	} else {
+		buffer = flLoadFile(argv[1], &length);
+	}
 	p = buffer;
-	byte = *p++;
+	byte = *p;
 	while ( byte != XCOMPLETE ) {
 		switch ( byte ) {
 		case XTDOMASK:
+			printAddrs();
 			printf("XTDOMASK(");
 			numBytes = bitsToBytes(xsdrSize);
 			while ( numBytes ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				numBytes--;
 			}
 			printf(")\n");
 			break;
 		case XSDRTDO:
+			printAddrs();
 			printf("XSDRTDO(");
 			numBytes = temp = bitsToBytes(xsdrSize);
 			while ( numBytes ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				numBytes--;
 			}
 			printf(", ");
 			while ( temp ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				temp--;
 			}
 			printf(")\n");
 			break;
 		case XREPEAT:
-			printf("XREPEAT(%02X)\n", *p++);
+			printAddrs();
+			printf("XREPEAT(%02X)\n", *++p);
 			break;
 		case XRUNTEST:
-			printf("XRUNTEST(%02X%02X%02X%02X)\n", p[0], p[1], p[2], p[3]);
+			printAddrs();
+			printf("XRUNTEST(%02X%02X%02X%02X)\n", p[1], p[2], p[3], p[4]);
 			p += 4;
 			break;
 		case XSDRSIZE:
-			xsdrSize = *p++;
+			printAddrs();
+			xsdrSize = *++p;
 			xsdrSize <<= 8;
-			xsdrSize |= *p++;
+			xsdrSize |= *++p;
 			xsdrSize <<= 8;
-			xsdrSize |= *p++;
+			xsdrSize |= *++p;
 			xsdrSize <<= 8;
-			xsdrSize |= *p++;
+			xsdrSize |= *++p;
 			printf("XSDRSIZE(%08X)\n", xsdrSize);
 			break;
 		case XSIR:
-			byte = *p++;
-			printf("XSIR(%02X, ", byte);
+			printAddrs();
+			printf("XSIR(");
+			byte = *++p;
+			printf("%02X, ", byte);
 			numBytes = bitsToBytes(byte);
 			while ( numBytes ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				numBytes--;
 			}
 			printf(")\n");
 			break;
 		case XSDR:
+			printAddrs();
 			printf("XSDR(");
 			numBytes = bitsToBytes(xsdrSize);
 			while ( numBytes ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				numBytes--;
 			}
 			printf(")\n");
 			break;
 		case XSDRB:
+			printAddrs();
 			printf("XSDRB(");
 			numBytes = bitsToBytes(xsdrSize);
 			while ( numBytes ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				numBytes--;
 			}
 			printf(")\n");
 			break;
 		case XSDRC:
+			printAddrs();
 			printf("XSDRC(");
 			numBytes = bitsToBytes(xsdrSize);
 			while ( numBytes ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				numBytes--;
 			}
 			printf(")\n");
 			break;
 		case XSDRE:
+			printAddrs();
 			printf("XSDRE(");
 			numBytes = bitsToBytes(xsdrSize);
 			while ( numBytes ) {
-				printf("%02X", *p++);
+				printf("%02X", *++p);
 				numBytes--;
 			}
 			printf(")\n");
 			break;
 		case XSTATE:
-			printf("XSTATE(%02X)\n", *p++);
+			printAddrs();
+			printf("XSTATE(%02X)\n", *++p);
 			break;
 		case XENDIR:
-			printf("XENDIR(%02X)\n", *p++);
+			printAddrs();
+			printf("XENDIR(%02X)\n", *++p);
 			break;
 		case XENDDR:
-			printf("XENDDR(%02X)\n", *p++);
+			printAddrs();
+			printf("XENDDR(%02X)\n", *++p);
+			p++;
 			break;
 		default:
 			fprintf(stderr, "Unrecognised command %02X\n", byte);
 			exit(1);
 		}
-		byte = *p++;
+		byte = *++p;
 	}
 	return 0;
 }
