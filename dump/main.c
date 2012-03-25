@@ -21,7 +21,7 @@
 #include "../xsvf.h"
 
 #define bitsToBytes(x) ((x>>3) + (x&7 ? 1 : 0))
-#define printAddrs() if ( wantAddrs ) printf("%08zX: ", p-buffer)
+#define printAddrs() if ( wantAddrs ) printf("%08tX: ", p-buffer)
 
 int main(int argc, const char *argv[]) {
 	const uint8 *buffer, *p;
