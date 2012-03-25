@@ -42,7 +42,7 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 	NeroStatus nStatus;
 	uint8 thisByte;
 	uint32 numBytes;
-	uint8 *ptr;
+	uint8 *tdoPtr, *tdiPtr;
 	uint8 i;
 	uint32 xsdrSize = 0;
 	uint32 xruntest = 0;
@@ -67,9 +67,9 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 		switch ( thisByte ) {
 		case XTDOMASK:
 			numBytes = bitsToBytes(xsdrSize);
-			ptr = tdoMask;
+			tdoPtr = tdoMask;
 			while ( numBytes-- ) {
-				*ptr++ = csvfGetByte(&cp);
+				*tdoPtr++ = csvfGetByte(&cp);
 			}
 			break;
 
@@ -82,9 +82,9 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			thisByte = csvfGetByte(&cp);
 			numBytes = bitsToBytes(thisByte);
-			ptr = tdiData;
+			tdiPtr = tdiData;
 			while ( numBytes-- ) {
-				*ptr++ = csvfGetByte(&cp);
+				*tdiPtr++ = csvfGetByte(&cp);
 			}
 			nStatus = neroShift(nero, thisByte, tdiData, NULL, true, error);  // -> Exit1-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
@@ -102,16 +102,12 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 
 		case XSDRTDO:
 			numBytes = bitsToBytes(xsdrSize);
-			ptr = tdoExpected;
+			tdiPtr = tdiData;
+			tdoPtr = tdoExpected;
 			while ( numBytes-- ) {
-				*ptr++ = csvfGetByte(&cp);
+				*tdiPtr++ = csvfGetByte(&cp);
+				*tdoPtr++ = csvfGetByte(&cp);
 			}
-			numBytes = bitsToBytes(xsdrSize);
-			ptr = tdiData;
-			while ( numBytes-- ) {
-				*ptr++ = csvfGetByte(&cp);
-			}
-
 			numBytes = bitsToBytes(xsdrSize);
 			i = 0;
 			do {
@@ -148,9 +144,9 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			tdiAll = malloc(numBytes);
-			ptr = tdiAll;
+			tdiPtr = tdiAll;
 			while ( numBytes-- ) {
-				*ptr++ = csvfGetByte(&cp);
+				*tdiPtr++ = csvfGetByte(&cp);
 			}
 			nStatus = neroShift(nero, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
 			free(tdiAll);

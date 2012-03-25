@@ -65,6 +65,31 @@ cleanup:
 	return returnCode;
 }
 
+// Reverse and interleave the incoming tdi, tdoExpected arrays:
+// 0123456789ABCDEFGHIJ -> 9J8I7H6G5F4E3D2C1B0A
+//
+static FLStatus swapAndInterleaveBytes(XC *xc, uint32 numBytes, struct Buffer *outBuf, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	uint8 *ptr;
+	BufferStatus bStatus;
+	uint32 i = numBytes;
+	bStatus = bufAppendConst(outBuf, 0x00, numBytes*2, error);
+	CHECK_STATUS(bStatus, "swapAndInterleaveBytes()", FL_BUF_APPEND_ERR);
+	ptr = outBuf->data + outBuf->length - 2;
+	while ( i-- ) {
+		*ptr = getNextByte(xc);
+		ptr -= 2;
+	}
+	i = numBytes;
+	ptr = outBuf->data + outBuf->length - 1;
+	while ( i-- ) {
+		*ptr = getNextByte(xc);
+		ptr -= 2;
+	}
+cleanup:
+	return returnCode;
+}
+
 static FLStatus sendXSize(struct Buffer *outBuf, uint32 xSize, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	BufferStatus bStatus;
@@ -153,7 +178,7 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 				}
 				bStatus = bufAppendByte(outBuf, XSDRTDO, error);
 				CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
-				fStatus = swapBytes(xc, 2*numBytes, outBuf, error);
+				fStatus = swapAndInterleaveBytes(xc, numBytes, outBuf, error);
 				CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
 			}
 			break;

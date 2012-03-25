@@ -152,7 +152,6 @@ int main(int argc, const char *argv[]) {
 		case XENDDR:
 			printAddrs();
 			printf("XENDDR(%02X)\n", *++p);
-			p++;
 			break;
 		default:
 			fprintf(stderr, "Unrecognised command %02X\n", byte);

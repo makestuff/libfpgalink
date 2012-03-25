@@ -356,6 +356,26 @@ static bool isAllZero(struct Buffer *buf) {
 	return true;
 }
 
+// Reverse and interleave the incoming tdi, tdoExpected arrays:
+// 0123456789ABCDEFGHIJ -> 9J8I7H6G5F4E3D2C1B0A
+//
+static FLStatus appendSwappedAndInterleaved(
+	struct Buffer *buf, const uint8 *tdi, const uint8 *exp, uint32 count, const char **error)
+{
+	FLStatus returnCode = FL_SUCCESS;
+	BufferStatus bStatus;
+	const uint8 *tdiPtr = tdi + count - 1;
+	const uint8 *expPtr = exp + count - 1;
+	while ( count-- ) {
+		bStatus = bufAppendByte(buf, *tdiPtr--, error);
+		CHECK_STATUS(bStatus, "appendSwapped()", FL_BUF_APPEND_ERR);
+		bStatus = bufAppendByte(buf, *expPtr--, error);
+		CHECK_STATUS(bStatus, "appendSwapped()", FL_BUF_APPEND_ERR);
+	}
+cleanup:
+	return returnCode;
+}
+
 static FLStatus appendSwapped(
 	struct Buffer *buf, const uint8 *src, uint32 count, const char **error)
 {
@@ -639,9 +659,7 @@ FLStatus parseLine(
 					}
 					bStatus = bufAppendByte(csvfBuf, XSDRTDO, error);
 					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
-					fStatus = appendSwapped(csvfBuf, tmpBody2.data, tmpBody2.length, error);
-					CHECK_STATUS(fStatus, "parseLine()", fStatus);
-					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
+					fStatus = appendSwappedAndInterleaved(csvfBuf, tmpBody1.data, tmpBody2.data, tmpBody2.length, error);
 					CHECK_STATUS(fStatus, "parseLine()", fStatus);
 				}
 				break;

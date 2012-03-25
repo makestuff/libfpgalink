@@ -717,7 +717,6 @@ uint8 jtagCsvfPlay(void) {
 	xdata uint8 i;
 	xdata uint32 xsdrSize = 0;
 	xdata uint16 xruntest = 0;
-	xdata uint8 tdoExpected[CSVF_BUF_SIZE];
 	xdata uint8 tdoMask[CSVF_BUF_SIZE];
 	jtagClockFSM(0x0000001F, 6);  // Go to Run-Test/Idle
 	thisByte = getNextByte();
@@ -753,18 +752,14 @@ uint8 jtagCsvfPlay(void) {
 		case XSDRTDO: {
 			xdata uint32 bitsRemaining = (xsdrSize-1) & 0xFFFFFFF8;    // Now an int number of bytes
 			xdata uint8 leftOver = (uint8)(xsdrSize - bitsRemaining);  // No bits in last byte (1-8)
-			xdata uint8 tdoByte, tdiByte, i, lastIndex;
+			xdata uint8 tdoByte, tdiByte, expectedByte, i, lastIndex;
 			jtagClockFSM(0x00000001, 3);
-			numBytes = bitsToBytes(xsdrSize);
-			i = 0;
-			while ( numBytes-- ) {
-				tdoExpected[i++] = getNextByte();
-			}
 			numBytes = (bitsRemaining>>3);
 			i = 0;
 			while ( numBytes-- ) {
 				tdoByte = shiftInOut(getNextByte());
-				if ( (tdoByte & tdoMask[i]) != (tdoExpected[i] & tdoMask[i]) ) {
+				expectedByte = getNextByte();
+				if ( (tdoByte & tdoMask[i]) != (expectedByte & tdoMask[i]) ) {
 					returnCode = ERROR_CSVF_FAILED_COMPARE;
 					goto cleanup;
 				}
@@ -772,6 +767,7 @@ uint8 jtagCsvfPlay(void) {
 			}
 			lastIndex = i;
 			tdiByte = getNextByte();  // Now do the bits in the final byte
+			expectedByte = getNextByte();
 			tdoByte = 0x00;
 			i = 1;
 			while ( i && leftOver ) {
@@ -788,7 +784,7 @@ uint8 jtagCsvfPlay(void) {
 				TCK = 0;
 				i <<= 1;
 			}
-			if ( (tdoByte & tdoMask[lastIndex]) != (tdoExpected[lastIndex] & tdoMask[lastIndex]) ) {
+			if ( (tdoByte & tdoMask[lastIndex]) != (expectedByte & tdoMask[lastIndex]) ) {
 				returnCode = ERROR_CSVF_FAILED_COMPARE;
 				goto cleanup;
 			}
