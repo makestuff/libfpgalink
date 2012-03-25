@@ -28,6 +28,8 @@
 // -------------------------------------------------------------------------------------------------
 
 static void dumpSimple(const unsigned char *input, unsigned int length, char *p);
+static bool tdoMatchFailed(
+	const uint8 *tdoData, const uint8 *tdoMask, const uint8 *tdoExpected, uint32 numBytes);
 
 // -------------------------------------------------------------------------------------------------
 // Public functions
@@ -43,7 +45,7 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 	uint8 *ptr;
 	uint8 i;
 	uint32 xsdrSize = 0;
-	uint16 xruntest = 0;
+	uint32 xruntest = 0;
 	uint8 tdoMask[128];
 	uint8 tdiData[128];
 	uint8 tdoData[128];
@@ -72,9 +74,7 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			break;
 
 		case XRUNTEST:
-			csvfGetByte(&cp);  // Ignore the MSW (realistically will it ever be nonzero?)
-			csvfGetByte(&cp);
-			xruntest = csvfGetWord(&cp);
+			xruntest = csvfGetLong(&cp);
 			break;
 
 		case XSIR:
@@ -101,8 +101,6 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			break;
 
 		case XSDRTDO:
-			nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			ptr = tdoExpected;
 			while ( numBytes-- ) {
@@ -113,29 +111,35 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			while ( numBytes-- ) {
 				*ptr++ = csvfGetByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+
 			numBytes = bitsToBytes(xsdrSize);
-			for ( i = 0; i < numBytes; i++ ) {
-				if ( (tdoData[i] & tdoMask[i]) != (tdoExpected[i] & tdoMask[i]) ) {
-					char data[CSVF_BUF_SIZE*2+1];
-					char mask[CSVF_BUF_SIZE*2+1];
-					char expected[CSVF_BUF_SIZE*2+1];
-					dumpSimple(tdoData, numBytes, data);
-					dumpSimple(tdoMask, numBytes, mask);
-					dumpSimple(tdoExpected, numBytes, expected);
-					errRender(
-						error,
-						"csvfPlay(): XSDRTDO failed:\n  Got: %s\n  Mask: %s\n  Expecting: %s",
-						data, mask, expected);
-					FAIL(CPLAY_COMPARE_ERR);
-				}
-			}
-			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			if ( xruntest ) {
-				nStatus = neroClocks(nero, xruntest, error);
+			i = 0;
+			do {
+				nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
 				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+				nStatus = neroShift(nero, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
+				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+				nStatus = neroClockFSM(nero, 0x0000001A, 6, error);  // -> Run-Test/Idle
+				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+				if ( xruntest ) {
+					nStatus = neroClocks(nero, xruntest, error);
+					CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+				}
+				i++;
+			} while ( tdoMatchFailed(tdoData, tdoMask, tdoExpected, numBytes) && i < 32 );
+
+			if ( i == 32 ) {
+				char data[CSVF_BUF_SIZE*2+1];
+				char mask[CSVF_BUF_SIZE*2+1];
+				char expected[CSVF_BUF_SIZE*2+1];
+				dumpSimple(tdoData, numBytes, data);
+				dumpSimple(tdoMask, numBytes, mask);
+				dumpSimple(tdoExpected, numBytes, expected);
+				errRender(
+					error,
+					"csvfPlay(): XSDRTDO failed:\n  Got: %s\n  Mask: %s\n  Expecting: %s",
+					data, mask, expected);
+				FAIL(CPLAY_COMPARE_ERR);
 			}
 			break;
 
@@ -157,14 +161,6 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 				nStatus = neroClocks(nero, xruntest, error);
 				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			}
-			break;
-
-		case XSTATE:
-			// The XSTATE commands appear to be pretty superfluous. For now we can get away with
-			// always switching to Run-Test/Idle when we get an XSTATE
-			csvfGetByte(&cp);
-			nStatus = neroClockFSM(nero, 0x0000001F, 6, error);  // -> Run-Test/Idle
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			break;
 
 		default:
@@ -198,3 +194,18 @@ static void dumpSimple(const unsigned char *input, unsigned int length, char *p)
 	}
 	*p = '\0';
 }
+
+static bool tdoMatchFailed(
+	const uint8 *tdoData, const uint8 *tdoMask, const uint8 *tdoExpected, uint32 numBytes)
+{
+	while ( numBytes-- ) {
+		if ( (*tdoData & *tdoMask) != (*tdoExpected & *tdoMask) ) {
+			return true;
+		}
+		tdoData++;
+		tdoExpected++;
+		tdoMask++;
+	}
+	return false;
+}
+
