@@ -33,7 +33,7 @@ int main(int argc, const char *argv[]) {
 	BufferStatus bStatus;
 	FLStatus fStatus;
 	const char *error = NULL;
-	uint32 csvfBufSize;
+	uint32 csvfBufSize = 0;
 	const char *srcFile, *dstFile;
 	bool doCompress;
 	const char *ext;
