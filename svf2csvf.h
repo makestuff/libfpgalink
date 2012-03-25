@@ -41,7 +41,9 @@ extern "C" {
 		uint32 curLength;
 		struct Buffer curMaskBuf;
 		uint32 curMaskBits;
-		uint32 runTestOffset;
+		uint32 lastCmdOffset;
+		uint32 lastRunTestOffset;
+		uint32 lastRunTestValue;
 	};
 
 	#define bitsToBytes(x) (((x)>>3) + ((x)&7 ? 1 : 0))
@@ -66,9 +68,14 @@ extern "C" {
 	
 	FLStatus parseLine(
 		struct ParseContext *cxt, const struct Buffer *lineBuf, struct Buffer *csvfBuf,
-		const char **error
+		uint32 *maxBufSize, const char **error
 	) WARN_UNUSED_RESULT;
 
+	FLStatus insertRunTestBefore(
+		struct Buffer *buf, uint32 offset, uint32 count,
+		uint32 *lastRunTestOffset, uint32 *lastRunTestValue,
+		const char **error
+	) WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus
 }

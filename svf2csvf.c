@@ -20,6 +20,7 @@
 #include <libbuffer.h>
 #include <liberror.h>
 #include "svf2csvf.h"
+#include "xsvf.h"
 
 static FLStatus shiftLeft(
 	struct Buffer *buffer, uint32 numBits, uint32 shiftCount, const char **error
@@ -39,9 +40,7 @@ static FLStatus appendSwapped(
 	struct Buffer *buf, const uint8 *src, uint32 count, const char **error
 ) WARN_UNUSED_RESULT;
 
-static FLStatus postProcess(
-	struct Buffer *buf, uint32 *maxBufSize, const char **error
-) WARN_UNUSED_RESULT;
+static FLStatus postProcess(struct Buffer *buf, const char **error) WARN_UNUSED_RESULT;
 
 static bool getHexNibble(char hexDigit, uint8 *nibble) {
 	if ( hexDigit >= '0' && hexDigit <= '9' ) {
@@ -230,31 +229,6 @@ cleanup:
 	return returnCode;
 }
 
-typedef enum {
-	XCOMPLETE    = 0x00,
-	XTDOMASK     = 0x01,
-	XSIR         = 0x02,
-	XSDR         = 0x03,
-	XRUNTEST     = 0x04,
-	XREPEAT      = 0x07,
-	XSDRSIZE     = 0x08,
-	XSDRTDO      = 0x09,
-	XSETSDRMASKS = 0x0A,
-	XSDRINC      = 0x0B,
-	XSDRB        = 0x0C,
-	XSDRC        = 0x0D,
-	XSDRE        = 0x0E,
-	XSDRTDOB     = 0x0F,
-	XSDRTDOC     = 0x10,
-	XSDRTDOE     = 0x11,
-	XSTATE       = 0x12,
-	XENDIR       = 0x13,
-	XENDDR       = 0x14,
-	XSIR2        = 0x15,
-	XCOMMENT     = 0x16,
-	XWAIT        = 0x17
-} Command;
-
 static FLStatus initBitStore(struct BitStore *store, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	BufferStatus bStatus;
@@ -295,7 +269,9 @@ FLStatus cxtInitialise(struct ParseContext *cxt, const char **error) {
 	bStatus = bufInitialise(&cxt->curMaskBuf, 1024, 0x00, error);
 	CHECK_STATUS(bStatus, "cxtInitialise()", FL_BUF_INIT_ERR);
 	cxt->curMaskBits = 0;
-	cxt->runTestOffset = 0;
+	cxt->lastCmdOffset = 0;
+	cxt->lastRunTestOffset = 0;
+	cxt->lastRunTestValue = 0;
 cleanup:
 	return returnCode;
 }
@@ -394,12 +370,57 @@ cleanup:
 	return returnCode;
 }
 
+FLStatus insertRunTestBefore(
+	struct Buffer *buf, uint32 offset, uint32 count,
+	uint32 *lastRunTestOffset, uint32 *lastRunTestValue, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	BufferStatus bStatus;
+	bool needFollowingZero = true;
+	if ( offset - 5 == *lastRunTestOffset ) {
+		// Just add to the previously inserted runtest command
+		offset -= 5;
+		count += readLongBE(buf->data + offset + 1);
+	} else if ( buf->data[offset] == XRUNTEST ) {
+		count += readLongBE(buf->data + offset + 1);
+		needFollowingZero = false;
+	} else {
+		// Move the block of data from offset to the end five bytes up to make room for an XRUNTEST
+		// command.
+		const uint32 oldLength = buf->length;
+		uint32 numBytes = oldLength - offset;
+		const uint8 *src;
+		uint8 *dst;
+		bStatus = bufAppendConst(buf, 0x00, 5, error);
+		CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+		dst = buf->data + oldLength + 4;
+		src = dst - 5;
+		while ( numBytes-- ) {
+			*dst-- = *src--;
+		}
+		buf->data[offset] = XRUNTEST;
+	}
+	*lastRunTestValue = count;
+	bStatus = bufWriteLongBE(buf, offset+1, count, error);
+	CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+	if ( needFollowingZero ) {
+		*lastRunTestOffset = buf->length;
+		bStatus = bufAppendByte(buf, XRUNTEST, error);
+		CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+		bStatus = bufAppendConst(buf, 0x00, 4, error);
+		CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+	} else {
+		*lastRunTestOffset = buf->length - 5;
+	}
+cleanup:
+	return returnCode;
+}
+
 /**
  * Parse the supplied SVF line, calling processLine() for shift operations as necessary.
  */
 FLStatus parseLine(
 	struct ParseContext *cxt, const struct Buffer *lineBuf, struct Buffer *csvfBuf,
-	const char **error)
+	uint32 *maxBufSize, const char **error)
 {
 	FLStatus returnCode = FL_SUCCESS, fStatus;
 	BufferStatus bStatus;
@@ -413,22 +434,26 @@ FLStatus parseLine(
 		// RUNTEST line is of the form "RUNTEST [IDLE] <count> TCK [ENDSTATE IDLE]"
 		const char *p = line + 7;
 		char *end;
-		uint32 count;
-		uint32 oldCount;
+		double count;
 		CHOMP();
 		if ( !strncmp(p, "IDLE ", 5) ) {
 			p += 4;
+			CHOMP();
 		}
-		CHOMP();
-		count = strtoul(p, &end, 10);
+		count = strtod(p, &end);
 		p = end;
 		CHOMP();
-		if ( strncmp(p, "TCK", 3) ) {
-			errRender(error, "parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK [ENDSTATE IDLE]\"");
+		if ( !strncmp(p, "TCK", 3) ) {
+			p += 3;
+			CHOMP();
+		} else if ( !strncmp(p, "SEC", 3) ) {
+			count *= 1000000.0;
+			p += 3;
+			CHOMP();
+		} else {
+			errRender(error, "parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK|SEC [ENDSTATE IDLE]\"");
 			FAIL(FL_SVF_PARSE_ERR);
 		}
-		p += 3;
-		CHOMP();
 		if ( !strncmp(p, "ENDSTATE IDLE", 13) ) {
 			p += 13;
 		}
@@ -437,14 +462,11 @@ FLStatus parseLine(
 			errRender(error, "parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK [ENDSTATE IDLE]\"");
 			FAIL(FL_SVF_PARSE_ERR);
 		}
-		// Write count value into csvfBuf at the last XRUNTEST
-		if ( cxt->runTestOffset == 0 ) {
-			errRender(error, "parseLine(): RUNTEST not expected here");
-			FAIL(FL_SVF_PARSE_ERR);
-		}
-		oldCount = readLongBE(csvfBuf->data + cxt->runTestOffset);
-		bStatus = bufWriteLongBE(csvfBuf, cxt->runTestOffset, oldCount + count, error);
-		CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+		fStatus = insertRunTestBefore(
+			csvfBuf, cxt->lastCmdOffset, count,
+			&cxt->lastRunTestOffset, &cxt->lastRunTestOffset, error
+		);
+		CHECK_STATUS(fStatus, "parseLine()", fStatus);
 	} else if (
 		(line[0] == 'H' || line[0] == 'S' || line[0] == 'T') &&
 		(line[1] == 'I' || line[1] == 'D') &&
@@ -474,7 +496,7 @@ FLStatus parseLine(
 		p = tmp;
 		CHOMP();
 		while ( *p ) {
-			if ( !strncmp(p, "TDI ", 4) ) {
+			if ( !strncmp(p, "TDI", 3) ) {
 				p += 3;
 				CHOMP();
 				#define EXPECT_CHAR(x, y) \
@@ -495,7 +517,7 @@ FLStatus parseLine(
 				EXPECT_CHAR(')', "TDI (<tdi>)");
 				*p++ = '\0';
 				FIX_ODD(tdi);
-			} else if ( !strncmp(p, "SMASK ", 6) ) {
+			} else if ( !strncmp(p, "SMASK", 5) ) {
 				p += 5;
 				CHOMP();
 				EXPECT_CHAR('(', "SMASK (<smask>)");
@@ -507,7 +529,7 @@ FLStatus parseLine(
 				EXPECT_CHAR(')', "SMASK (<smask>)");
 				*p++ = '\0';
 				FIX_ODD(smask);
-			} else if ( !strncmp(p, "TDO ", 4) ) {
+			} else if ( !strncmp(p, "TDO", 3) ) {
 				p += 3;
 				CHOMP();
 				EXPECT_CHAR('(', "TDO (<tdo>)");
@@ -519,7 +541,7 @@ FLStatus parseLine(
 				EXPECT_CHAR(')', "TDO (<tdo>)");
 				*p++ = '\0';
 				FIX_ODD(tdo);
-			} else if ( !strncmp(p, "MASK ", 5) ) {
+			} else if ( !strncmp(p, "MASK", 4) ) {
 				p += 4;
 				CHOMP();
 				EXPECT_CHAR('(', "MASK (<mask>)");
@@ -595,7 +617,8 @@ FLStatus parseLine(
 					&tmpBody1, &tmpHead, &tmpTail,
 					cxt->dataBody.numBits, cxt->dataHead.numBits, cxt->dataTail.numBits,
 					error);
-				if ( zeroMask ) {
+				cxt->lastCmdOffset = csvfBuf->length;
+				if ( zeroMask || !tdo ) {
 					bStatus = bufAppendByte(csvfBuf, XSDR, error);
 					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
 					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
@@ -611,6 +634,9 @@ FLStatus parseLine(
 						&tmpBody2, &tmpHead, &tmpTail,
 						cxt->dataBody.numBits, cxt->dataHead.numBits, cxt->dataTail.numBits,
 						error);
+					if ( maxBufSize && tmpBody2.length > *maxBufSize ) {
+						*maxBufSize = tmpBody2.length;
+					}
 					bStatus = bufAppendByte(csvfBuf, XSDRTDO, error);
 					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
 					fStatus = appendSwapped(csvfBuf, tmpBody2.data, tmpBody2.length, error);
@@ -643,12 +669,7 @@ FLStatus parseLine(
 					&tmpBody1, &tmpHead, &tmpTail,
 					cxt->insnBody.numBits, cxt->insnHead.numBits, cxt->insnTail.numBits,
 					error);
-				//if ( readLongBE(csvfBuf->data + cxt->runTestOffset) != 
-				bStatus = bufAppendByte(csvfBuf, XRUNTEST, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
-				cxt->runTestOffset = csvfBuf->length;
-				bStatus = bufAppendConst(csvfBuf, 0x00, 4, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				cxt->lastCmdOffset = csvfBuf->length;
 				bStatus = bufAppendByte(csvfBuf, XSIR, error);
 				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
 				bStatus = bufAppendByte(csvfBuf, cxt->insnBody.numBits + cxt->insnHead.numBits + cxt->insnTail.numBits, error);
@@ -674,64 +695,98 @@ cleanup:
 
 // Remove duplicate XRUNTEST commands.
 //
-static FLStatus postProcess(struct Buffer *buf, uint32 *maxBufSize, const char **error) {
+static FLStatus postProcess(struct Buffer *buf, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
-	uint8 *dst = buf->data;
-	const uint8 *src = dst;
-	uint32 tmp, i, numBytes = 0;
-	uint32 oldRunTest = 0xFFFFFFFF, newRunTest;
-	uint8 thisByte = *src++;
-	while ( thisByte != XCOMPLETE ) {
-		switch ( thisByte ) {
-		case XSDRSIZE:
-			numBytes = bitsToBytes(readLongBE(src));
-			*dst++ = XSDRSIZE;
-			COPY_BLOCK(4);
-			break;
-		case XTDOMASK:
-			*dst++ = XTDOMASK;
-			COPY_BLOCK(numBytes);
-			if ( maxBufSize && numBytes > *maxBufSize ) {
-				*maxBufSize = numBytes;
-			}
-			break;
-		case XRUNTEST:
-			newRunTest = readLongBE(src);
-			if ( newRunTest != oldRunTest ) {
-				*dst++ = XRUNTEST;
+	BufferStatus bStatus;
+	int pass;
+	for ( pass = 0; pass < 2; pass++ ) {
+		uint8 *dst = buf->data;
+		const uint8 *src = dst;
+		uint32 tmp, i, numBytes = 0;
+		uint32 oldRunTest = 0xFFFFFFFF, newRunTest;
+		uint8 thisByte = *src++;
+		size_t runTestOffset = 0;
+		bool seenShiftCommands = true;
+		while ( thisByte != XCOMPLETE ) {
+			switch ( thisByte ) {
+			case XSDRSIZE:
+				numBytes = bitsToBytes(readLongBE(src));
+				*dst++ = XSDRSIZE;
 				COPY_BLOCK(4);
-				oldRunTest = newRunTest;
-			} else {
-				src += 4;
+				break;
+			case XTDOMASK:
+				*dst++ = XTDOMASK;
+				COPY_BLOCK(numBytes);
+				break;
+			case XRUNTEST:
+				if ( pass == 0 ) {
+					// In the first pass, we deduplicate XRUNTEST commands that do not have shifting
+					// commands between them.
+					// "XRUNTEST(A),XSDRSIZE(),XTDOMASK(),XRUNTEST(B) -> XRUNTEST(B),XSDRSIZE(),XTDOMASK()
+					//                "XRUNTEST(A),XSIR(),XRUNTEST(B) -> XRUNTEST(A),XSIR(),XRUNTEST(B)
+					//                "XRUNTEST(A),XSDR(),XRUNTEST(B) -> XRUNTEST(A),XSDR(),XRUNTEST(B)
+					//             "XRUNTEST(A),XSDRTDO(),XRUNTEST(B) -> XRUNTEST(A),XSDRTDO(),XRUNTEST(B)
+					//
+					if ( seenShiftCommands ) {
+						// There have been some shift commands (XSIR,XSDR,XSDRTDO) since last XRUNTEST,
+						// so we can't deduplicate anything.
+						runTestOffset = src - buf->data - 1;
+						*dst++ = XRUNTEST;
+						COPY_BLOCK(4);
+						seenShiftCommands = false;
+					} else {
+						// There have only been non-shift commands (XSDRSIZE,XTDOMASK) since last time,
+						// so we can do some deduplication.
+						bStatus = bufWriteLongBE(buf, runTestOffset + 1, readLongBE(src), error);
+						src += 4;
+					}
+				} else {
+					// In the second pass, we remove XRUNTEST commands that are the same as the previous.
+					newRunTest = readLongBE(src);
+					if ( newRunTest != oldRunTest ) {
+						// This XRUNTEST is different from the old one, so copy it over...
+						*dst++ = XRUNTEST;
+						COPY_BLOCK(4);
+						oldRunTest = newRunTest;
+					} else {
+						// This XRUNTEST is the same as the last one, so drop it
+						src += 4;
+					}
+				}
+				break;
+			case XSIR:
+				seenShiftCommands = true;
+				*dst++ = XSIR;
+				i = *src++;
+				tmp = bitsToBytes(i);
+				*dst++ = i;
+				COPY_BLOCK(tmp);
+				break;
+			case XSDRTDO:
+				seenShiftCommands = true;
+				*dst++ = XSDRTDO;
+				COPY_BLOCK(numBytes);
+				COPY_BLOCK(numBytes);
+				break;
+			case XSDR:
+				seenShiftCommands = true;
+				*dst++ = XSDR;
+				COPY_BLOCK(numBytes);
+				break;
+			default:
+				errRender(error, "postProcess(): Unrecognised CSVF command (cmd=0x%02X, srcOffset=%d)!", thisByte, src - buf->data);
+				FAIL(FL_INTERNAL_ERR);
 			}
-			break;
-		case XSIR:
-			*dst++ = XSIR;
-			i = *src++;
-			tmp = bitsToBytes(i);
-			*dst++ = i;
-			COPY_BLOCK(tmp);
-			break;
-		case XSDRTDO:
-			*dst++ = XSDRTDO;
-			COPY_BLOCK(numBytes);
-			COPY_BLOCK(numBytes);
-			if ( maxBufSize && numBytes > *maxBufSize ) {
-				*maxBufSize = numBytes;
-			}
-			break;
-		case XSDR:
-			*dst++ = XSDR;
-			COPY_BLOCK(numBytes);
-			break;
-		default:
-			errRender(error, "deduplicate(): Unrecognised CSVF command (cmd=0x%02X, srcOffset=%d)!", thisByte, src - buf->data);
-			FAIL(FL_INTERNAL_ERR);
+			thisByte = *src++;
 		}
-		thisByte = *src++;
+		if ( pass == 0 && !seenShiftCommands ) {
+			buf->data[runTestOffset] = XCOMPLETE;
+			buf->length = runTestOffset + 1;
+		} else {
+			*dst++ = XCOMPLETE;
+			buf->length = dst - buf->data;
+		}
 	}
-	*dst++ = XCOMPLETE;
-	buf->length = dst - buf->data;
 cleanup:
 	return returnCode;
 }
@@ -748,12 +803,26 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	bool gotSemicolon;
 	struct ParseContext cxt = {{0,},};
 
+	// Always set XRUNTEST to 0 first
+	bStatus = bufAppendByte(csvfBuf, XRUNTEST, error);
+	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
+	bStatus = bufAppendConst(csvfBuf, 0x00, 4, error);
+	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
+
+	// Initialise context and line buffer
 	fStatus = cxtInitialise(&cxt, error);
 	CHECK_STATUS(fStatus, "flLoadSvfAndConvertToCsvf()", fStatus);
 	bStatus = bufInitialise(&lineBuf, 1024, 0x00, error);
 	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_INIT_ERR);
+	
+	// Load SVF file
 	buffer = flLoadFile(svfFile, &fileLength);
-	CHECK_STATUS(!buffer, "flLoadSvfAndConvertToCsvf()", FL_BUF_LOAD_ERR);
+	if ( !buffer ) {
+		//errRender(error, "flLoadSvfAndConvertToCsvf(): Unable to load SVF file %s", svfFile);
+		errRenderStd(error);
+		errPrefix(error, "flLoadSvfAndConvertToCsvf()");
+		FAIL(FL_BUF_LOAD_ERR);
+	}
 	end = buffer + fileLength;
 	p = buffer;
 	while ( p < end ) {
@@ -792,7 +861,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 				if ( gotSemicolon ) {
 					bStatus = bufAppendByte(&lineBuf, '\0', error);
 					CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
-					fStatus = parseLine(&cxt, &lineBuf, csvfBuf, error);
+					fStatus = parseLine(&cxt, &lineBuf, csvfBuf, maxBufSize, error);
 					CHECK_STATUS(fStatus, "flLoadSvfAndConvertToCsvf()", fStatus);
 					bufZeroLength(&lineBuf);
 				}
@@ -801,10 +870,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	}
 	bStatus = bufAppendByte(csvfBuf, 0x00, error);
 	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
-	if ( maxBufSize ) {
-		*maxBufSize = 0;
-	}
-	fStatus = postProcess(csvfBuf, maxBufSize, error);
+	fStatus = postProcess(csvfBuf, error);
 	CHECK_STATUS(fStatus, "flLoadSvfAndConvertToCsvf()", fStatus);
 
 cleanup:
