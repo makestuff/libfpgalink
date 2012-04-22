@@ -20,6 +20,7 @@
 #include <makestuff.h>
 #include <libbuffer.h>
 #include "libfpgalink.h"
+#include "firmware.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,6 +126,12 @@ extern "C" {
 
 	DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 		const char *svfFile, struct Buffer *csvfBuf, uint32 *maxBufSize, const char **error
+	) WARN_UNUSED_RESULT;
+
+	FLStatus copyFirmwareAndRewriteIDs(
+		const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid,
+		uint8 port, uint8 tdoBit, uint8 tdiBit, uint8 tmsBit, uint8 tckBit,
+		struct Buffer *dest, const char **error
 	) WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus

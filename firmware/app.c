@@ -32,10 +32,6 @@ void fifoSendPromData(uint32 bytesToSend);
 // General-purpose diagnostic code, for debugging. See CMD_GET_DIAG_CODE vendor command.
 xdata uint8 m_diagnosticCode = 0;
 
-// Defines for Digilent Nexys2
-#define bmN2FET bmBIT7
-sbit at 0xB7 N2FET; // Port D7
-
 // Called once at startup
 //
 void mainInit(void) {
@@ -102,10 +98,6 @@ void mainInit(void) {
 	OED = 0x00;
 	IOC = 0x00;
 	OEC = 0x00;
-
-	// Drive the Nexys2 FET to power up the FPGA
-	//OED |= bmN2FET;
-	//N2FET = 1;
 
 	// Disable JTAG mode by default (i.e don't drive JTAG pins)
 	jtagSetEnabled(false);
@@ -175,6 +167,25 @@ void mainLoop(void) {
 		syncExecute();
 	}
 }
+
+xdata uint8 pcPins;
+xdata uint8 pdPins;
+xdata uint8 pcDDR;
+xdata uint8 pdDDR;
+void maskC(void) {
+	pcDDR &= ~bmJTAG;          // cannot alter JTAG lines
+	pcDDR |= (OEC & bmJTAG);   // current state
+	pcPins &= ~bmJTAG;         // cannot alter JTAG lines
+	pcPins |= (IOC & bmJTAG);  // current state
+}
+void maskD(void) {
+	pdDDR &= ~bmJTAG;          // cannot alter JTAG lines
+	pdDDR |= (OED & bmJTAG);   // current state
+	pdPins &= ~bmJTAG;         // cannot alter JTAG lines
+	pdPins |= (IOD & bmJTAG);  // current state
+}
+typedef void (*MaskFunc)(void);
+const MaskFunc maskFunc[] = {maskC, maskD};
 
 // Called when a vendor command is received
 //
@@ -255,20 +266,13 @@ uint8 handleVendorCommand(uint8 cmd) {
 	//
 	case CMD_PORT_IO:
 		if ( SETUP_TYPE == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
-			xdata uint8 pdPins = SETUPDAT[2];  // wValue low byte
-			xdata uint8 pcPins = SETUPDAT[3];  // wValue high byte
-			xdata uint8 pdDDR = SETUPDAT[4];   // wIndex low byte
-			xdata uint8 pcDDR = SETUPDAT[5];   // wIndex high byte
-
-			// Update the DDR bits for port D & B:
-			pdDDR &= ~bmJTAG;         // cannot alter JTAG lines
-			pdDDR |= (OED & bmJTAG);  // current state
+			pdPins = SETUPDAT[2];  // wValue low byte
+			pcPins = SETUPDAT[3];  // wValue high byte
+			pdDDR = SETUPDAT[4];   // wIndex low byte
+			pcDDR = SETUPDAT[5];   // wIndex high byte
+			(*maskFunc[JTAG_PORT])();
 			OED = pdDDR;
 			OEC = pcDDR;
-
-			// Update the port bits for port D & B:
-			pdPins &= ~bmJTAG;         // cannot alter JTAG lines
-			pdPins |= (IOD & bmJTAG);  // current state
 			IOD = pdPins;
 			IOC = pcPins;
 

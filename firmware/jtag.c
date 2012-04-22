@@ -818,8 +818,8 @@ cleanup:
 //
 void jtagSetEnabled(bool enabled) {
 	if ( enabled ) {
-		OED |= (bmTDI | bmTMS | bmTCK);
+		JTAG_OE |= (bmTDI | bmTMS | bmTCK);
 	} else {
-		OED &= ~(bmTDI | bmTMS | bmTCK);
+		JTAG_OE &= ~(bmTDI | bmTMS | bmTCK);
 	}
 }		

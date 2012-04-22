@@ -21,17 +21,25 @@
 
 // Addressable bits on Port D for the four JTAG lines (named after the FPGA pins they connect to)
 // TDO is an input, the rest are outputs.
-sbit at 0xB0      TDO; // Port D0
-sbit at 0xB2      TDI; // Port D2
-sbit at 0xB3      TMS; // Port D3
-sbit at 0xB4      TCK; // Port D4
+sbit at (0xA0 + 16*JTAG_PORT + TDO_BIT) TDO; // Port D0
+sbit at (0xA0 + 16*JTAG_PORT + TDI_BIT) TDI; // Port D2
+sbit at (0xA0 + 16*JTAG_PORT + TMS_BIT) TMS; // Port D3
+sbit at (0xA0 + 16*JTAG_PORT + TCK_BIT) TCK; // Port D4
 
 // Equivalent bitmasks for OED and IOD.
-#define bmTDO     bmBIT0
-#define bmTDI     bmBIT2
-#define bmTMS     bmBIT3
-#define bmTCK     bmBIT4
-#define bmJTAG    (bmBIT0|bmBIT2|bmBIT3|bmBIT4)
+#define bmTDO (1<<TDO_BIT)
+#define bmTDI (1<<TDI_BIT)
+#define bmTMS (1<<TMS_BIT)
+#define bmTCK (1<<TCK_BIT)
+#define bmJTAG (bmTDO|bmTDI|bmTMS|bmTCK)
+
+#if JTAG_PORT == 0
+	#define JTAG_OE OEC
+#elif JTAG_PORT == 1
+	#define JTAG_OE OED
+#else
+	#error Unsupported JTAG_PORT
+#endif
 
 // Macros for NeroJTAG implementation
 #define ENDPOINT_SIZE 512

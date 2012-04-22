@@ -437,6 +437,8 @@ extern "C" {
 	 *
 	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
 	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) that you \b want the FX2 device to be.
+	 * @param port The port number on the FX2LP to use for JTAG operations (0=C, 1=D).
+	 * @param jtagPort A string describing the JTAG port, e.g "D0234".
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -449,7 +451,7 @@ extern "C" {
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flLoadStandardFirmware(
-		const char *curVidPid, const char *newVidPid, const char **error
+		const char *curVidPid, const char *newVidPid, const char *jtagPort, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -467,6 +469,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) you want the FX2 to be on power-on.
+	 * @param jtagPort A string describing the JTAG port, e.g "D0234".
 	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
 	 * @param xsvfFile An XSVF file to play on power-up, or \c NULL.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -481,8 +484,8 @@ extern "C" {
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flFlashStandardFirmware(
-		struct FLContext *handle, const char *newVidPid, uint32 eepromSize,
-		const char *xsvfFile, const char **error
+		struct FLContext *handle, const char *newVidPid, const char *jtagPort,
+		uint32 eepromSize, const char *xsvfFile, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**

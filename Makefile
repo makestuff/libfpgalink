@@ -39,16 +39,27 @@ tools:
 gen_fw: $(MKFW)
 	mkdir -p gen_fw
 	make -C firmware clean
-	make -C firmware
-	LD_LIBRARY_PATH=$(dir $(MKFW)) $(MKFW) firmware/firmware.hex ram bix > gen_fw/ramFirmware.c
-	cp -p firmware/firmware.hex gen_fw/ramFirmware.hex
+	make -C firmware FLAGS="-DJTAG_PORT=1 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3"
+	cp firmware/firmware.hex gen_fw/ramFirmware1.hex
 	make -C firmware clean
-	make -C firmware FLAGS="-DEEPROM -DBOOT"
-	LD_LIBRARY_PATH=$(dir $(MKFW)) $(MKFW) firmware/firmware.hex eepromWithBoot iic gen_fw/eepromWithBootFirmware.iic > gen_fw/eepromWithBootFirmware.c
+	make -C firmware FLAGS="-DJTAG_PORT=0 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4"
+	cp firmware/firmware.hex gen_fw/ramFirmware2.hex
 	make -C firmware clean
-	make -C firmware FLAGS="-DEEPROM"
-	LD_LIBRARY_PATH=$(dir $(MKFW)) $(MKFW) firmware/firmware.hex eepromNoBoot iic gen_fw/eepromNoBootFirmware.iic > gen_fw/eepromNoBootFirmware.c
+	make -C firmware FLAGS="-DJTAG_PORT=1 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3 -DEEPROM -DBOOT"
+	cp firmware/firmware.hex gen_fw/eepromWithBootFirmware1.hex
 	make -C firmware clean
+	make -C firmware FLAGS="-DJTAG_PORT=0 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4 -DEEPROM -DBOOT"
+	cp firmware/firmware.hex gen_fw/eepromWithBootFirmware2.hex
+	make -C firmware clean
+	make -C firmware FLAGS="-DJTAG_PORT=1 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3 -DEEPROM"
+	cp firmware/firmware.hex gen_fw/eepromNoBootFirmware1.hex
+	make -C firmware clean
+	make -C firmware FLAGS="-DJTAG_PORT=0 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4 -DEEPROM"
+	cp firmware/firmware.hex gen_fw/eepromNoBootFirmware2.hex
+	make -C firmware clean
+	$(MKFW) gen_fw/ramFirmware1.hex gen_fw/ramFirmware2.hex ram bix > gen_fw/ramFirmware.c
+	$(MKFW) gen_fw/eepromWithBootFirmware1.hex gen_fw/eepromWithBootFirmware2.hex eepromWithBoot iic > gen_fw/eepromWithBootFirmware.c
+	$(MKFW) gen_fw/eepromNoBootFirmware1.hex gen_fw/eepromNoBootFirmware2.hex eepromNoBoot iic > gen_fw/eepromNoBootFirmware.c
 
 gen_csvf:
 	mkdir -p gen_svf

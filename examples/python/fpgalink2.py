@@ -88,9 +88,9 @@ fpgalink.flPlayXSVF.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
 fpgalink.flPlayXSVF.restype = FLStatus
 
 # FX2 Firmware Operations
-fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
+fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, c_char_p, POINTER(ErrorString)]
 fpgalink.flLoadStandardFirmware.restype = FLStatus
-fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, uint32, c_char_p, POINTER(ErrorString)]
+fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, c_char_p, uint32, c_char_p, POINTER(ErrorString)]
 fpgalink.flFlashStandardFirmware.restype = FLStatus
 fpgalink.flSaveFirmware.argtypes = [FLHandle, uint32, c_char_p, POINTER(ErrorString)]
 fpgalink.flSaveFirmware.restype = FLStatus
@@ -245,9 +245,9 @@ def flPlayXSVF(handle, xsvfFile):
         raise FLException(s)
 
 # Load standard firmware into the FX2 chip
-def flLoadStandardFirmware(curVidPid, newVidPid):
+def flLoadStandardFirmware(curVidPid, newVidPid, jtagPort):
     error = ErrorString()
-    status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), byref(error))
+    status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), jtagPort.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -274,9 +274,9 @@ def flAppendWriteRegisterCommand(handle, reg, values):
         raise FLException(s)
 
 # Flash standard firmware into the FX2's EEPROM
-def flFlashStandardFirmware(handle, newVidPid, eepromSize, xsvfFile = None):
+def flFlashStandardFirmware(handle, newVidPid, jtagPort, eepromSize, xsvfFile = None):
     error = ErrorString()
-    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), eepromSize, xsvfFile.encode('ascii'), byref(error))
+    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), jtagPort.encode('ascii'), eepromSize, xsvfFile.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -292,21 +292,28 @@ if __name__ == "__main__":
     parser.add_argument('-p', action="store_true", default=False, help="FPGA is powered from USB (Nexys2 only!)")
     parser.add_argument('-s', action="store_true", default=False, help="scan the JTAG chain")
     parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="renumerated vendor and product ID of the FPGALink device")
-    parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="initial vendor and product ID of the FPGALink device")
+    parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="initial vendor and product ID of the (FX2LP-based) FPGALink device")
+    parser.add_argument('-j', action="store", nargs=1, metavar="<jtagPort>", help="JTAG port specification for the (FX2LP-based) FPGALink device")
     parser.add_argument('-x', action="store", nargs=1, metavar="<xsvfFile>", help="XSVF or CSVF file to play into the JTAG chain")
     parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to register 0")
     argList = parser.parse_args()
     handle = FLHandle()
     try:
+        if ( argList.j and not argList.i ):
+            raise FLException("You can't specify -j without -i")
+
         vp = argList.v[0]
         print "Attempting to open connection to FPGALink device %s..." % vp
         try:
             handle = flOpen(vp)
         except FLException, ex:
             if ( argList.i ):
+                jtagPort = "D0234"
+                if ( argList.j ):
+                    jtagPort = argList.j[0]
                 ivp = argList.i[0]
                 print "Loading firmware into %s..." % ivp
-                flLoadStandardFirmware(ivp, vp);
+                flLoadStandardFirmware(ivp, vp, jtagPort);
 
                 print "Awaiting renumeration..."
                 if ( not flAwaitDevice(vp, 600) ):
