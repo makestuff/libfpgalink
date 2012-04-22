@@ -40,6 +40,10 @@ else ifeq ($(PLATFORM),nexys3)
 	FPGA = xc6slx16-csg324-3
 	MAPFLAGS =
 	PARFLAGS =
+else ifeq ($(PLATFORM),lx9)
+	FPGA = xc6slx9-tqg144-2
+	MAPFLAGS =
+	PARFLAGS =
 endif
 
 X2C := xsvf2csvf
