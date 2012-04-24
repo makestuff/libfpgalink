@@ -20,7 +20,11 @@
 #include <libfx2loader.h>
 #include <liberror.h>
 #include <libusbwrap.h>
-#include <usb.h>
+#ifdef WIN32
+	#include <lusb0_usb.h>
+#else
+	#include <usb.h>
+#endif
 #include "firmware/defs.h"
 #include "libfpgalink.h"
 #include "private.h"

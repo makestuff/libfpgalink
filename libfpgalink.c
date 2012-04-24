@@ -16,7 +16,11 @@
  */
 #include <makestuff.h>
 #include <libusbwrap.h>
-#include <usb.h>
+#ifdef WIN32
+	#include <lusb0_usb.h>
+#else
+	#include <usb.h>
+#endif
 #include <libsync.h>
 #include <liberror.h>
 #include <libbuffer.h>
