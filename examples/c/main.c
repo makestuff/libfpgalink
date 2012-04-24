@@ -39,7 +39,7 @@ int main(int argc, const char *argv[]) {
 	uint32 fileLen;
 	uint8 *buffer = NULL;
 	uint32 numDevices, scanChain[16], i;
-	const char *vp = NULL, *ivp = NULL, *xsvfFile = NULL, *dataFile = NULL;
+	const char *vp = NULL, *ivp = NULL, *jtagPort = NULL, *xsvfFile = NULL, *dataFile = NULL;
 	bool scan = false, usbPower = false;
 	const char *const prog = argv[0];
 
@@ -68,24 +68,35 @@ int main(int argc, const char *argv[]) {
 		case 'i':
 			GET_ARG("i", ivp, 3);
 			break;
+		case 'j':
+			GET_ARG("j", jtagPort, 4);
+			break;
 		case 'x':
-			GET_ARG("x", xsvfFile, 4);
+			GET_ARG("x", xsvfFile, 5);
 			break;
 		case 'f':
-			GET_ARG("f", dataFile, 5);
+			GET_ARG("f", dataFile, 6);
 			break;
 		default:
 			invalid(prog, argv[0][1]);
-			FAIL(6);
+			FAIL(7);
 		}
 		argv++;
 		argc--;
 	}
 	if ( !vp ) {
 		missing(prog, "v <VID:PID>");
-		FAIL(7);
+		FAIL(8);
 	}
-	
+
+	if ( !ivp && jtagPort ) {
+		fprintf(stderr, "You can't specify --j without -i");
+		FAIL(9);
+	}
+	if ( !jtagPort ) {
+		jtagPort = "D0234";
+	}
+
 	flInitialise();
 	
 	printf("Attempting to open connection to FPGALink device %s...\n", vp);
@@ -94,8 +105,8 @@ int main(int argc, const char *argv[]) {
 		if ( ivp ) {
 			int count = 60;
 			printf("Loading firmware into %s...\n", ivp);
-			status = flLoadStandardFirmware(ivp, vp, &error);
-			CHECK(8);
+			status = flLoadStandardFirmware(ivp, vp, jtagPort, &error);
+			CHECK(10);
 			
 			printf("Awaiting renumeration");
 			flSleep(1000);
@@ -104,28 +115,28 @@ int main(int argc, const char *argv[]) {
 				fflush(stdout);
 				flSleep(100);
 				status = flIsDeviceAvailable(vp, &flag, &error);
-				CHECK(9);
+				CHECK(11);
 				count--;
 			} while ( !flag && count );
 			printf("\n");
 			if ( !flag ) {
 				fprintf(stderr, "FPGALink device did not renumerate properly as %s\n", vp);
-				FAIL(10);
+				FAIL(12);
 			}
 			
 			printf("Attempting to open connection to FPGLink device %s again...\n", vp);
 			status = flOpen(vp, &handle, &error);
-			CHECK(11);
+			CHECK(13);
 		} else {
 			fprintf(stderr, "Could not open FPGALink device at %s and no initial VID:PID was supplied\n", vp);
-			FAIL(12);
+			FAIL(14);
 		}
 	}
 	
 	if ( usbPower ) {
 		printf("Connecting USB power to FPGA...\n");
 		status = flPortAccess(handle, 0x0080, 0x0080, NULL, &error);
-		CHECK(13);
+		CHECK(15);
 		flSleep(100);
 	}
 
@@ -134,7 +145,7 @@ int main(int argc, const char *argv[]) {
 	if ( scan ) {
 		if ( isNeroCapable ) {
 			status = flScanChain(handle, &numDevices, scanChain, 16, &error);
-			CHECK(14);
+			CHECK(16);
 			if ( numDevices ) {
 				printf("The FPGALink device at %s scanned its JTAG chain, yielding:\n", vp);
 				for ( i = 0; i < numDevices; i++ ) {
@@ -145,7 +156,7 @@ int main(int argc, const char *argv[]) {
 			}
 		} else {
 			fprintf(stderr, "JTAG chain scan requested but FPGALink device at %s does not support NeroJTAG\n", vp);
-			FAIL(15);
+			FAIL(17);
 		}
 	}
 
@@ -153,23 +164,23 @@ int main(int argc, const char *argv[]) {
 		printf("Playing \"%s\" into the JTAG chain on FPGALink device %s...\n", xsvfFile, vp);
 		if ( isNeroCapable ) {
 			status = flPlayXSVF(handle, xsvfFile, &error);
-			CHECK(16);
+			CHECK(18);
 		} else {
 			fprintf(stderr, "XSVF play requested but device at %s does not support NeroJTAG\n", vp);
-			FAIL(17);
+			FAIL(19);
 		}
 	}
 	
 	if ( dataFile && !isCommCapable ) {
 		fprintf(stderr, "Data file load requested but device at %s does not support CommFPGA\n", vp);
-		FAIL(18);
+		FAIL(20);
 	}
 	
 	if ( isCommCapable ) {
 		printf("Writing register 0x01 to zero count...\n");
 		byte = 0x01;
 		status = flWriteRegister(handle, 1000, 0x01, 1, &byte, &error);
-		CHECK(19);
+		CHECK(21);
 
 		if ( dataFile ) {
 			buffer = flLoadFile(dataFile, &fileLen);
@@ -183,23 +194,23 @@ int main(int argc, const char *argv[]) {
 					"Writing %0.2f MiB (checksum 0x%04X) from %s to FPGALink device %s...\n",
 					(double)fileLen/(1024*1024), checksum, dataFile, vp);
 				status = flWriteRegister(handle, 30000, 0x00, fileLen, buffer, &error);
-				CHECK(20);
+				CHECK(22);
 			} else {
 				fprintf(stderr, "Unable to load file %s!\n", dataFile);
-				FAIL(21);
+				FAIL(23);
 			}
 		}		
 		printf("Reading register...\n");
 		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
-		CHECK(22);
-		printf("Got 0x%02X\n", buf[0]);
-		printf("Reading register...\n");
-		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
-		CHECK(23);
-		printf("Got 0x%02X\n", buf[0]);
-		printf("Reading register...\n");
-		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
 		CHECK(24);
+		printf("Got 0x%02X\n", buf[0]);
+		printf("Reading register...\n");
+		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
+		CHECK(25);
+		printf("Got 0x%02X\n", buf[0]);
+		printf("Reading register...\n");
+		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
+		CHECK(26);
 		printf("Got 0x%02X\n", buf[0]);
 	}
 
@@ -219,6 +230,7 @@ void usage(const char *prog) {
 	printf("  -s             scan the JTAG chain\n");
 	printf("  -v <VID:PID>   renumerated vendor and product ID of the FPGALink device\n");
 	printf("  -i <VID:PID>   initial vendor and product ID of the FPGALink device\n");
-	printf("  -x <xsvfFile>  XSVF or CSVF file to play into the JTAG chain\n");
+	printf("  -j <jtagPort>  JTAG port config (e.g D0234)\n");
+	printf("  -x <xsvfFile>  SVF, XSVF or CSVF file to play into the JTAG chain\n");
 	printf("  -f <dataFile>  binary data to write to register 0\n");
 }
