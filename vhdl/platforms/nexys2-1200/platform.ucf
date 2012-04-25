@@ -14,68 +14,69 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-NET "reset_in"        LOC = "B18";   # BTN(3)
 
-# PortB
-NET "fifoData_io<0>"  LOC = "R14";   # PB0
-NET "fifoData_io<1>"  LOC = "R13";   # PB1
-NET "fifoData_io<2>"  LOC = "P13";   # PB2
-NET "fifoData_io<3>"  LOC = "T12";   # PB3
-NET "fifoData_io<4>"  LOC = "N11";   # PB4
-NET "fifoData_io<5>"  LOC = "R11";   # PB5
-NET "fifoData_io<6>"  LOC = "P10";   # PB6
-NET "fifoData_io<7>"  LOC = "R10";   # PB7
+#===============================================================================
+# USB interface
+#===============================================================================
+NET "fifoData_io<0>"  LOC="R14"  | IOSTANDARD=LVTTL;   # PB0
+NET "fifoData_io<1>"  LOC="R13"  | IOSTANDARD=LVTTL;   # PB1
+NET "fifoData_io<2>"  LOC="P13"  | IOSTANDARD=LVTTL;   # PB2
+NET "fifoData_io<3>"  LOC="T12"  | IOSTANDARD=LVTTL;   # PB3
+NET "fifoData_io<4>"  LOC="N11"  | IOSTANDARD=LVTTL;   # PB4
+NET "fifoData_io<5>"  LOC="R11"  | IOSTANDARD=LVTTL;   # PB5
+NET "fifoData_io<6>"  LOC="P10"  | IOSTANDARD=LVTTL;   # PB6
+NET "fifoData_io<7>"  LOC="R10"  | IOSTANDARD=LVTTL;   # PB7
 
-NET "ifclk_in"        LOC = "T15";
-NET "gotData_in"      LOC = "V16";   # FLAGC
-NET "gotRoom_in"      LOC = "U14";   # FLAGB
+NET "ifclk_in"        LOC="T15"  | IOSTANDARD=LVTTL;
+NET "gotData_in"      LOC="V16"  | IOSTANDARD=LVTTL;   # FLAGC
+NET "gotRoom_in"      LOC="U14"  | IOSTANDARD=LVTTL;   # FLAGB
 
-# PortA
-NET "sloe_out"        LOC = "V15";   # PA2
-NET "fifoAddr_out<0>" LOC = "T14";   # PA4
-NET "fifoAddr_out<1>" LOC = "V13";   # PA5
-NET "pktEnd_out"      LOC = "V12";   # PA6
+NET "sloe_out"        LOC="V15"  | IOSTANDARD=LVTTL;   # PA2
+NET "fifoAddr_out<0>" LOC="T14"  | IOSTANDARD=LVTTL;   # PA4
+NET "fifoAddr_out<1>" LOC="V13"  | IOSTANDARD=LVTTL;   # PA5
+NET "pktEnd_out"      LOC="V12"  | IOSTANDARD=LVTTL;   # PA6
 
-NET "slrd_out"        LOC = "N9";
-NET "slwr_out"        LOC = "V9";
+NET "slrd_out"        LOC="N9"   | IOSTANDARD=LVTTL;
+NET "slwr_out"        LOC="V9"   | IOSTANDARD=LVTTL;
 
+#===============================================================================
 # On-board peripheral signals
-NET "led_out<0>"      LOC = "J14";
-NET "led_out<1>"      LOC = "J15";
-NET "led_out<2>"      LOC = "K15";
-NET "led_out<3>"      LOC = "K14";
-NET "led_out<4>"      LOC = "E16";
-NET "led_out<5>"      LOC = "P16";
-NET "led_out<6>"      LOC = "E4";
-NET "led_out<7>"      LOC = "P4";
+#===============================================================================
+NET "led_out<0>"      LOC="J14"  | IOSTANDARD=LVTTL;
+NET "led_out<1>"      LOC="J15"  | IOSTANDARD=LVTTL;
+NET "led_out<2>"      LOC="K15"  | IOSTANDARD=LVTTL;
+NET "led_out<3>"      LOC="K14"  | IOSTANDARD=LVTTL;
+NET "led_out<4>"      LOC="E16"  | IOSTANDARD=LVTTL;
+NET "led_out<5>"      LOC="P16"  | IOSTANDARD=LVTTL;
+NET "led_out<6>"      LOC="E4"   | IOSTANDARD=LVTTL;
+NET "led_out<7>"      LOC="P4"   | IOSTANDARD=LVTTL;
 
-NET "sseg_out<6>"     LOC = "H14"; # segment g
-NET "sseg_out<5>"     LOC = "J17"; # segment f
-NET "sseg_out<4>"     LOC = "G14"; # segment e
-NET "sseg_out<3>"     LOC = "D16"; # segment d
-NET "sseg_out<2>"     LOC = "D17"; # segment c
-NET "sseg_out<1>"     LOC = "F18"; # segment b
-NET "sseg_out<0>"     LOC = "L18"; # segment a
-NET "sseg_out<7>"     LOC = "C17"; # decimal point
+NET "sseg_out<0>"     LOC="L18"  | IOSTANDARD=LVTTL;   # segment a
+NET "sseg_out<1>"     LOC="F18"  | IOSTANDARD=LVTTL;   # segment b
+NET "sseg_out<2>"     LOC="D17"  | IOSTANDARD=LVTTL;   # segment c
+NET "sseg_out<3>"     LOC="D16"  | IOSTANDARD=LVTTL;   # segment d
+NET "sseg_out<4>"     LOC="G14"  | IOSTANDARD=LVTTL;   # segment e
+NET "sseg_out<5>"     LOC="J17"  | IOSTANDARD=LVTTL;   # segment f
+NET "sseg_out<6>"     LOC="H14"  | IOSTANDARD=LVTTL;   # segment g
+NET "sseg_out<7>"     LOC="C17"  | IOSTANDARD=LVTTL;   # decimal point
 
-NET "anode_out<0>"    LOC = "F17";
-NET "anode_out<1>"    LOC = "H17";
-NET "anode_out<2>"    LOC = "C18";
-NET "anode_out<3>"    LOC = "F15";
+NET "anode_out<0>"    LOC="F17"  | IOSTANDARD=LVTTL;
+NET "anode_out<1>"    LOC="H17"  | IOSTANDARD=LVTTL;
+NET "anode_out<2>"    LOC="C18"  | IOSTANDARD=LVTTL;
+NET "anode_out<3>"    LOC="F15"  | IOSTANDARD=LVTTL;
 
-NET "sw_in<0>"        LOC = "G18";   # SW0
-NET "sw_in<1>"        LOC = "H18";   # SW1
-NET "sw_in<2>"        LOC = "K18";   # SW2
-NET "sw_in<3>"        LOC = "K17";   # SW3
-NET "sw_in<4>"        LOC = "L14";   # SW4
-NET "sw_in<5>"        LOC = "L13";   # SW5
-NET "sw_in<6>"        LOC = "N17";   # SW6
-NET "sw_in<7>"        LOC = "R17";   # SW7
+NET "sw_in<0>"        LOC="G18"  | IOSTANDARD=LVTTL;   # SW0
+NET "sw_in<1>"        LOC="H18"  | IOSTANDARD=LVTTL;   # SW1
+NET "sw_in<2>"        LOC="K18"  | IOSTANDARD=LVTTL;   # SW2
+NET "sw_in<3>"        LOC="K17"  | IOSTANDARD=LVTTL;   # SW3
+NET "sw_in<4>"        LOC="L14"  | IOSTANDARD=LVTTL;   # SW4
+NET "sw_in<5>"        LOC="L13"  | IOSTANDARD=LVTTL;   # SW5
+NET "sw_in<6>"        LOC="N17"  | IOSTANDARD=LVTTL;   # SW6
+NET "sw_in<7>"        LOC="R17"  | IOSTANDARD=LVTTL;   # SW7
 
-#========================================================
-# Timing constraint of S3 50-MHz onboard oscillator
-# name of the clock signal is clk
-#========================================================
+#===============================================================================
+# Timing constraint of FX2 48MHz clock "ifclk_in"
+#===============================================================================
 NET "ifclk_in" CLOCK_DEDICATED_ROUTE = FALSE;
 NET "ifclk_in" TNM_NET = "ifclk_in";
 TIMESPEC "TS_clk" = PERIOD "ifclk_in" 20 ns HIGH 50 %;

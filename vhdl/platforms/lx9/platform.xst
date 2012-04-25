@@ -1,7 +1,6 @@
 set -tmpdir "xst/projnav.tmp"
 set -xsthdpdir "xst"
 run
--generics {RESET_POLARITY='0'}
 -ifn toplevel.prj
 -ifmt mixed
 -ofn toplevel

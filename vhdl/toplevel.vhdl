@@ -20,11 +20,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity toplevel is
-	generic(
-		RESET_POLARITY: std_logic := '1'
-	);
 	port(
-		reset_in     : in std_logic;
 		ifclk_in     : in std_logic;
 
 		-- Data & control from the FX2
@@ -60,14 +56,14 @@ architecture behavioural of toplevel is
 		STATE_END_WRITE_NONALIGNED,
 		STATE_READ
 	);
-	signal state, state_next         : StateType;
+	signal state, state_next         : StateType := STATE_IDLE;
 	signal count, count_next         : unsigned(31 downto 0);  -- Read/Write count
 	signal addr, addr_next           : std_logic_vector(1 downto 0);
 	signal isWrite, isWrite_next     : std_logic;
 	signal isAligned, isAligned_next : std_logic;
-	signal checksum, checksum_next   : std_logic_vector(15 downto 0);
-	signal r0, r1, r0_next, r1_next  : std_logic_vector(7 downto 0);
-	signal r2, r3, r2_next, r3_next  : std_logic_vector(7 downto 0);
+	signal checksum, checksum_next   : std_logic_vector(15 downto 0) := x"0000";
+	signal r0, r1, r0_next, r1_next  : std_logic_vector(7 downto 0) := x"00";
+	signal r2, r3, r2_next, r3_next  : std_logic_vector(7 downto 0) := x"00";
 	signal fifoOp                    : std_logic_vector(2 downto 0);
 	constant FIFO_READ               : std_logic_vector(2 downto 0) := "100";  -- assert slrd_out & sloe_out
 	constant FIFO_WRITE              : std_logic_vector(2 downto 0) := "011";  -- assert slwr_out
@@ -75,20 +71,9 @@ architecture behavioural of toplevel is
 	constant OUT_FIFO                : std_logic_vector(1 downto 0) := "10"; -- EP6OUT
 	constant IN_FIFO                 : std_logic_vector(1 downto 0) := "11"; -- EP8IN
 begin
-	process(ifclk_in, reset_in)
+	process(ifclk_in)
 	begin
-		if ( reset_in = RESET_POLARITY ) then
-			state     <= STATE_IDLE;
-			count     <= (others => '0');
-			addr      <= (others => '0');
-			isWrite   <= '0';
-			isAligned <= '0';
-			checksum  <= (others => '0');
-			r0        <= (others => '0');
-			r1        <= (others => '0');
-			r2        <= (others => '0');
-			r3        <= (others => '0');
-		elsif ( ifclk_in'event and ifclk_in = '1' ) then
+		if ( rising_edge(ifclk_in) ) then
 			state     <= state_next;
 			count     <= count_next;
 			addr      <= addr_next;
@@ -247,11 +232,11 @@ begin
 	-- LEDs and 7-seg display
 	led_out     <= r0;
 	sseg_out(7) <= '1';  -- Decimal point off
-	sevenseg : entity work.sevenseg
+	sevenSeg : entity work.sevenseg
 		port map(
-			clk    => ifclk_in,
-			data   => checksum,
-			segs   => sseg_out(6 downto 0),
-			anodes => anode_out
+			clk_in     => ifclk_in,
+			data_in    => checksum,
+			segs_out   => sseg_out(6 downto 0),
+			anodes_out => anode_out
 		);
 end behavioural;

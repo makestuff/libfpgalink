@@ -21,10 +21,10 @@ use ieee.numeric_std.all;
 
 entity sevenseg is
 	port(
-		clk     : in    std_logic;
-		data    : in    std_logic_vector(15 downto 0);
-		segs    : out   std_logic_vector(6 downto 0);
-		anodes  : out   std_logic_vector(3 downto 0)
+		clk_in     : in    std_logic;
+		data_in    : in    std_logic_vector(15 downto 0);
+		segs_out   : out   std_logic_vector(6 downto 0);
+		anodes_out : out   std_logic_vector(3 downto 0)
 	);
 end sevenseg;
 
@@ -45,30 +45,30 @@ begin
 	anode_select <= std_logic_vector(count(COUNTER_WIDTH-1 downto COUNTER_WIDTH-2));
 	
 	-- Update counter, drive anodes and select bits to display for each 7-seg
-	process(clk)
+	process(clk_in)
 	begin
-		if ( clk'event and clk = '1' ) then
+		if ( rising_edge(clk_in) ) then
 			count <= count_next;
 			case anode_select is
 				when "00" =>
-					anodes <= "0111";
-					nibble <= data(15 downto 12);
+					anodes_out <= "0111";
+					nibble <= data_in(15 downto 12);
 				when "01" =>
-					anodes <= "1011";
-					nibble <= data(11 downto 8);
+					anodes_out <= "1011";
+					nibble <= data_in(11 downto 8);
 				when "10" =>
-					anodes <= "1101";
-					nibble <= data(7 downto 4);
+					anodes_out <= "1101";
+					nibble <= data_in(7 downto 4);
 				when others =>
-					anodes <= "1110";
-					nibble <= data(3 downto 0);
+					anodes_out <= "1110";
+					nibble <= data_in(3 downto 0);
 			end case;
 		end if;
 	end process;
 
 	-- Decode selected nibble
 	with nibble select
-		segs <=
+		segs_out <=
 			"1000000" when "0000",
 			"1111001" when "0001",
 			"0100100" when "0010",
