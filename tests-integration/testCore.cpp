@@ -103,7 +103,7 @@ TEST(FL_loadCustomFirmware) {
 	CHECK_EQUAL(FL_FILE_ERR, fStatus);
 
 	// Check bad target device
-	fStatus = flLoadCustomFirmware(AVR_VIDPID, "../gen_fw/ramFirmware.hex", NULL);
+	fStatus = flLoadCustomFirmware(AVR_VIDPID, "../gen_fw/ramFirmware1.hex", NULL);
 	CHECK_EQUAL(FL_FX2_ERR, fStatus);
 }
 
@@ -113,15 +113,15 @@ TEST(FL_loadStandardFirmware) {
 	int count;
 
 	// Verify that a silly current VID/PID gives an error
-	fStatus = flLoadStandardFirmware("0000:0000", FX2_VIDPID, NULL);
+	fStatus = flLoadStandardFirmware("0000:0000", FX2_VIDPID, "D0234", NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 
 	// Verify that trying to load an FX2 firmware into an AVR gives an error
-	fStatus = flLoadStandardFirmware(AVR_VIDPID, AVR_VIDPID, NULL);
+	fStatus = flLoadStandardFirmware(AVR_VIDPID, AVR_VIDPID, "D0234", NULL);
 	CHECK_EQUAL(FL_FX2_ERR, fStatus);
 
 	// Verify that a good current VID/PID works
-	fStatus = flLoadStandardFirmware(FX2_VIDPID, FX2_VIDPID, NULL);
+	fStatus = flLoadStandardFirmware(FX2_VIDPID, FX2_VIDPID, "D0234", NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
 
 	// We've got to go, cos if we don't go...
@@ -165,11 +165,11 @@ TEST(FL_deviceInUse) {
 	FLStatus fStatus;
 
 	// Device already open, so this should give FL_USB_ERR
-	fStatus = flLoadStandardFirmware(FX2_VIDPID, FX2_VIDPID, NULL);
+	fStatus = flLoadStandardFirmware(FX2_VIDPID, FX2_VIDPID, "D0234", NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 
 	// This too
-	fStatus = flLoadCustomFirmware(FX2_VIDPID, "../../temp/ramFirmware.hex", NULL);
+	fStatus = flLoadCustomFirmware(FX2_VIDPID, "../../temp/ramFirmware1.hex", NULL);
 	CHECK_EQUAL(FL_USB_ERR, fStatus);
 }
 
