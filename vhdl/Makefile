@@ -14,11 +14,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-TOP_LEVEL = TopLevel
+TOP_LEVEL = toplevel
 PLATFORM = nexys2-1200
 VHDLS = \
 	$(TOP_LEVEL).vhdl \
-	SevenSeg.vhdl
+	sevenseg.vhdl
 
 ifeq ($(PLATFORM),s3board)
 	FPGA = xc3s200-ft256-4
@@ -48,7 +48,7 @@ endif
 
 X2C := xsvf2csvf
 
-all: $(TOP_LEVEL).csvf
+all: $(TOP_LEVEL).xsvf
 
 report: $(TOP_LEVEL).twr
 

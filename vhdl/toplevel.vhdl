@@ -19,7 +19,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity TopLevel is
+entity toplevel is
 	generic(
 		RESET_POLARITY: std_logic := '1'
 	);
@@ -45,9 +45,9 @@ entity TopLevel is
 		led_out      : out std_logic_vector(7 downto 0);
 		sw_in        : in std_logic_vector(7 downto 0)
 	);
-end TopLevel;
+end toplevel;
 
-architecture Behavioural of TopLevel is
+architecture behavioural of toplevel is
 	type StateType is (
 		STATE_IDLE,
 		STATE_GET_COUNT0,
@@ -247,11 +247,11 @@ begin
 	-- LEDs and 7-seg display
 	led_out     <= r0;
 	sseg_out(7) <= '1';  -- Decimal point off
-	sevenSeg : entity work.SevenSeg
+	sevenseg : entity work.sevenseg
 		port map(
 			clk    => ifclk_in,
 			data   => checksum,
 			segs   => sseg_out(6 downto 0),
 			anodes => anode_out
 		);
-end Behavioural;
+end behavioural;

@@ -2,12 +2,12 @@ set -tmpdir "xst/projnav.tmp"
 set -xsthdpdir "xst"
 run
 -generics {RESET_POLARITY='0'}
--ifn TopLevel.prj
+-ifn toplevel.prj
 -ifmt mixed
--ofn TopLevel
+-ofn toplevel
 -ofmt NGC
 -p xc6slx45-3-csg324
--top TopLevel
+-top toplevel
 -opt_mode Speed
 -opt_level 1
 -power NO

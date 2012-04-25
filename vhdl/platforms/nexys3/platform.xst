@@ -1,12 +1,12 @@
 set -tmpdir "xst/projnav.tmp"
 set -xsthdpdir "xst"
 run
--ifn TopLevel.prj
+-ifn toplevel.prj
 -ifmt mixed
--ofn TopLevel
+-ofn toplevel
 -ofmt NGC
 -p xc6slx16-3csg324
--top TopLevel
+-top toplevel
 -opt_mode Speed
 -opt_level 1
 -power NO

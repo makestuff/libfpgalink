@@ -1,5 +1,5 @@
 setMode -bs
-setCable -port xsvf -file TopLevel.xsvf
-addDevice -p 1 -file TopLevel.bit
+setCable -port xsvf -file toplevel.xsvf
+addDevice -p 1 -file toplevel.bit
 program -p 1
 quit
