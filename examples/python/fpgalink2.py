@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #
 # Copyright (C) 2009-2012 Chris McClelland
 #
@@ -14,7 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#!/usr/bin/python
 import array
 import time
 import sys
