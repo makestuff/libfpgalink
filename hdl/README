@@ -1,0 +1,9 @@
+In this directory you will find Hardware Description Language code which
+implements the FPGA side of the CommFPGA protocol used by FPGALink devices. The
+design is modular, vendor-neutral and implementations are provided in both VHDL
+and Verilog.
+
+Subdirectories:
+  common - Makefiles needed to build the HDL code for Xilinx or Altera tools.
+  sync - A synchronous CommFPGA implementation for the Cypress FX2LP.
+  epp - A placeholder for an asynchronous implementation, emulating EPP.
