@@ -15,7 +15,7 @@ for i in atlys lx9 nexys2-1200 nexys2-500 nexys3 s3board xylo-l; do
 	make clean
 	cd ${HDL}/sync/vhdl/ex_fifo/
 	make clean allclean
-
+exit 1
 	echo Building ${i}...
 	cd ${HDL}/sync/verilog/ex_cksum
 	make PLATFORM=${i}

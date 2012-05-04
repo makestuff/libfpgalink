@@ -27,7 +27,7 @@ module
 		output reg                     tick_out
 	);
 
-	parameter TOP_BIT = 2**CEILING_WIDTH - 1;
+	localparam TOP_BIT = 2**CEILING_WIDTH - 1;
 	function[TOP_BIT:0] reverse(input[COUNTER_WIDTH:0] fwd);
 		integer i;
 		for ( i = 0; i <= TOP_BIT; i = i + 1 )
