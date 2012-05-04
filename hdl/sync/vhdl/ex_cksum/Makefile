@@ -17,10 +17,10 @@
 TOP_LEVEL := top_level
 PLATFORM  := nexys2-1200
 COMMON    := ../../../common
-LANGUAGE  := vhdl
+HDL       := vhdl
 HDLS := \
 	$(TOP_LEVEL).vhdl \
-	$(COMMON)/$(LANGUAGE)/seven_seg/seven_seg.vhdl \
+	$(COMMON)/$(HDL)/seven_seg/seven_seg.vhdl \
 	../comm_fpga/comm_fpga.vhdl
 
 include $(COMMON)/top.mk

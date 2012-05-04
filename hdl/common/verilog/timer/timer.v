@@ -16,10 +16,11 @@
 //
 module
 	timer#(
-		// This should be overridden by the inferring hardware or testbench!
 		parameter
-			COUNTER_WIDTH = 25,
-			CEILING_WIDTH = 4
+		// This gives the number of bits in the counter
+		COUNTER_WIDTH = 25,
+		// This gives the number of bits in the ceiling value
+		CEILING_WIDTH = 4
 	)(
 		input wire                    clk_in,
 		input wire[CEILING_WIDTH-1:0] ceiling_in,
@@ -38,7 +39,7 @@ module
 		index = COUNTER_WIDTH - ceiling_in;
 		if ( count[index] == 1'b0 )
 			begin
-				count_next = count + 1;
+				count_next = count + 1'b1;
 				tick_out = 1'b0;
 			end
 		else

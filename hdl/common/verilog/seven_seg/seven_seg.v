@@ -15,7 +15,14 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 module
-	seven_seg(
+	seven_seg#(
+		parameter
+		// This can be overridden to change the refresh rate. The anode pattern will change at a
+		// frequency given by F(clk_in) / (2**COUNTER_WIDTH). So for a 50MHz clk_in and
+		// COUNTER_WIDTH=18, the anode pattern changes at ~191Hz, which means each digit gets
+		// refreshed at ~48Hz.
+		COUNTER_WIDTH = 18
+	)(
 		input  wire       clk_in,
 		input  wire[15:0] data_in,
 		input  wire[3:0]  dots_in,
@@ -23,11 +30,6 @@ module
 		output wire[3:0]  anodes_out
 	);
 
-	// This can be overridden to change the refresh rate. The anode pattern will change at a
-	// frequency given by F(clk_in) / (2**COUNTER_WIDTH). So for a 50MHz clk_in and
-	// COUNTER_WIDTH=18, the anode pattern changes at ~191Hz, which means each digit gets
-	// refreshed at ~48Hz.
-	parameter               COUNTER_WIDTH = 18;
 	reg[COUNTER_WIDTH-1:0]  count         = 0;
 	wire[COUNTER_WIDTH-1:0] count_next;
 	wire[1:0]               anodeSelect;
@@ -40,7 +42,7 @@ module
 		count <= count_next;
 
 	// Increment counter and derive anode select from top two bits
-	assign count_next = count + 1;
+	assign count_next = count + 1'b1;
 	assign anodeSelect = count[COUNTER_WIDTH-1:COUNTER_WIDTH-2];
 
 	// Drive anodes

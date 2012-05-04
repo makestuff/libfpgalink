@@ -87,7 +87,7 @@ module
 	assign readFifoDataIn = count;
 	assign readFifoRead = (chanRead == 1'b1 && chanAddr == 7'b0000000) ? 1'b1 : 1'b0;
 	assign chanGotData = (readFifoEmpty == 1'b1 && chanAddr == 7'b0000000) ? 1'b0 : 1'b1;
-	assign count_next = (readFifoWrite == 1'b1) ? count + 1 : count;
+	assign count_next = (readFifoWrite == 1'b1) ? count + 1'b1 : count;
 	
 	// Select values to return for each channel when the host is reading
 	assign chanDataIn =
