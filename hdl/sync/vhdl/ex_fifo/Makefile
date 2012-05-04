@@ -14,25 +14,28 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-TOP_LEVEL = top_level
-PLATFORM = nexys2-1200
-COMMON := ../../../common/vhdl
-HDLS = \
+TOP_LEVEL := top_level
+PLATFORM  := nexys2-1200
+COMMON    := ../../../common
+LANGUAGE  := vhdl
+EXTRAS    := fifo.ngc
+HDLS := \
 	$(TOP_LEVEL).vhdl \
-	../comm_fpga/comm_fpga.vhdl \
-	$(COMMON)/fifo_gen/$(PLATFORM)/fifo.vhdl \
-	$(COMMON)/seven_seg/seven_seg.vhdl \
-	$(COMMON)/timer/timer.vhdl
-EXTRAS = fifo.ngc
+	$(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM)/fifo.vhdl \
+	$(COMMON)/$(LANGUAGE)/seven_seg/seven_seg.vhdl \
+	$(COMMON)/$(LANGUAGE)/timer/timer.vhdl \
+	../comm_fpga/comm_fpga.vhdl
 
--include ../../../common/Makefile.xilinx
+include $(COMMON)/top.mk
 
-$(COMMON)/fifo_gen/$(PLATFORM)/fifo.vhdl: $(COMMON)/fifo_gen/$(PLATFORM)/fifo.vhd
+$(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM)/fifo.vhdl: $(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM)/fifo.vhd
 	cp -p $< $@
-fifo.ngc: $(COMMON)/fifo_gen/$(PLATFORM)/fifo.ngc
+
+fifo.ngc: $(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM)/fifo.ngc
 	cp -p $< $@
-$(COMMON)/fifo_gen/$(PLATFORM)/fifo.vhd $(COMMON)/fifo_gen/$(PLATFORM)/fifo.ngc: $(COMMON)/fifo_gen/$(PLATFORM)/fifo_gen.batch
-	cd $(COMMON)/fifo_gen/$(PLATFORM) && coregen -b fifo_gen.batch
+
+$(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM)/fifo.vhd $(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM)/fifo.ngc: $(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM)/fifo_gen.batch
+	cd $(COMMON)/$(LANGUAGE)/fifo_gen/$(PLATFORM) && coregen -b fifo_gen.batch
 
 allclean: FORCE
-	cd $(COMMON)/fifo_gen && for i in *; do mv $$i/fifo_gen.batch .; rm -rf $$i; mkdir $$i; mv fifo_gen.batch $$i; done
+	cd $(COMMON)/$(LANGUAGE)/fifo_gen && for i in *; do mv $$i/fifo_gen.batch .; rm -rf $$i; mkdir $$i; mv fifo_gen.batch $$i; done

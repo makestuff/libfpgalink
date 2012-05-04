@@ -18,8 +18,8 @@ SET addpads = false
 SET asysymbol = true
 SET busformat = BusFormatAngleBracketNotRipped
 SET createndf = false
-SET designentry = VHDL
-SET device = xc3s1200e
+SET designentry = Verilog
+SET device = xc3s500e
 SET devicefamily = spartan3e
 SET flowvendor = Other
 SET formalverification = false
@@ -29,8 +29,8 @@ SET package = fg320
 SET removerpms = false
 SET simulationfiles = Behavioral
 SET speedgrade = -4
-SET verilogsim = false
-SET vhdlsim = true
+SET verilogsim = true
+SET vhdlsim = false
 # END Project Options
 # BEGIN Select
 SELECT Fifo_Generator xilinx.com:ip:fifo_generator:8.1

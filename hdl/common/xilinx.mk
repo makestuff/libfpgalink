@@ -14,40 +14,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-ifeq ($(PLATFORM),s3board)
-	FPGA = xc3s200-ft256-4
-	MAPFLAGS = -cm area
-	PARFLAGS = -t 1
-else ifeq ($(PLATFORM),nexys2-500)
-	FPGA = xc3s500e-fg320-4
-	MAPFLAGS = -cm area
-	PARFLAGS = -t 1
-else ifeq ($(PLATFORM),nexys2-1200)
-	FPGA = xc3s1200e-fg320-4
-	MAPFLAGS = -cm area
-	PARFLAGS = -t 1
-else ifeq ($(PLATFORM),atlys)
-	FPGA = xc6slx45-csg324-3
-	MAPFLAGS =
-	PARFLAGS =
-else ifeq ($(PLATFORM),nexys3)
-	FPGA = xc6slx16-csg324-3
-	MAPFLAGS =
-	PARFLAGS =
-else ifeq ($(PLATFORM),lx9)
-	FPGA = xc6slx9-tqg144-2
-	MAPFLAGS =
-	PARFLAGS =
-endif
-
-X2C := xsvf2csvf
-
 all: $(EXTRAS) $(TOP_LEVEL).xsvf
 
 report: $(TOP_LEVEL).twr
-
-$(TOP_LEVEL).csvf: $(TOP_LEVEL).xsvf
-	$(X2C) $(TOP_LEVEL).xsvf $(TOP_LEVEL).csvf
 
 # This assumes that the "XILINX" environment variable is set 
 $(TOP_LEVEL).xsvf: ../../platforms/$(PLATFORM)/platform.batch $(TOP_LEVEL).bit
@@ -84,5 +53,3 @@ $(TOP_LEVEL).prj: $(HDLS)
 
 clean: FORCE
 	rm -rf *.edif *.svf *.xsvf *.csvf _ngo *.bgn *.drc *.ncd *.ntrc_log *.prj *.twr *.csv *.html fx2fpga_xdb _xmsgs *.bit *.gise *.ngc *.pad *.ptwx *.twx *.ngm *.txt *.xml *.xrpt *.bld *.ise *.ngd *.par *.stx *.map *.twr auto_project_xdb *.cmd_log *.lso *.ngr *.pcf *.syr *.unroutes *.xpi *.mrp xst *.log *.cmd *.xwbt iseconfig xlnx_auto_0_xdb
-
-FORCE:

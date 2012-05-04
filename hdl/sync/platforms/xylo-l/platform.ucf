@@ -1,0 +1,82 @@
+#
+# Copyright (C) 2009-2012 Chris McClelland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+#===============================================================================
+# USB interface
+#===============================================================================
+NET "fx2Clk_in"       LOC="P181" | IOSTANDARD=LVTTL;   # IFCLK
+NET "fx2Addr_out<0>"  LOC="P180" | IOSTANDARD=LVTTL;   # PA4/FIFOADR0
+NET "fx2Addr_out<1>"  LOC="P161" | IOSTANDARD=LVTTL;   # PA5/FIFOADR1
+
+NET "fx2Data_io<0>"   LOC="P192" | IOSTANDARD=LVTTL;   # PB0/FD0
+NET "fx2Data_io<1>"   LOC="P187" | IOSTANDARD=LVTTL;   # PB1/FD1
+NET "fx2Data_io<2>"   LOC="P189" | IOSTANDARD=LVTTL;   # PB2/FD2
+NET "fx2Data_io<3>"   LOC="P190" | IOSTANDARD=LVTTL;   # PB3/FD3
+NET "fx2Data_io<4>"   LOC="P172" | IOSTANDARD=LVTTL;   # PB4/FD4
+NET "fx2Data_io<5>"   LOC="P171" | IOSTANDARD=LVTTL;   # PB5/FD5
+NET "fx2Data_io<6>"   LOC="P168" | IOSTANDARD=LVTTL;   # PB6/FD6
+NET "fx2Data_io<7>"   LOC="P167" | IOSTANDARD=LVTTL;   # PB7/FD7
+
+NET "fx2Read_out"     LOC="P185" | IOSTANDARD=LVTTL;   # RDY0/SLRD
+NET "fx2OE_out"       LOC="P178" | IOSTANDARD=LVTTL;   # PA2/SLOE
+NET "fx2GotData_in"   LOC="P175" | IOSTANDARD=LVTTL;   # CTL2/FLAGC
+
+NET "fx2Write_out"    LOC="P186" | IOSTANDARD=LVTTL;   # RDY1/SLWR
+NET "fx2GotRoom_in"   LOC="P174" | IOSTANDARD=LVTTL;   # CTL1/FLAGB
+NET "fx2PktEnd_out"   LOC="P160" | IOSTANDARD=LVTTL;   # PA6/PKTEND
+
+#===============================================================================
+# On-board peripheral signals
+#===============================================================================
+NET "led_out<0>"      LOC="P112" | IOSTANDARD=LVTTL;
+NET "led_out<1>"      LOC="P115" | IOSTANDARD=LVTTL;
+NET "led_out<2>"      LOC="P116" | IOSTANDARD=LVTTL;
+NET "led_out<3>"      LOC="P119" | IOSTANDARD=LVTTL;
+NET "led_out<4>"      LOC="P122" | IOSTANDARD=LVTTL;
+NET "led_out<5>"      LOC="P123" | IOSTANDARD=LVTTL;
+NET "led_out<6>"      LOC="P126" | IOSTANDARD=LVTTL;
+NET "led_out<7>"      LOC="P128" | IOSTANDARD=LVTTL;
+
+NET "sseg_out<0>"     LOC="P129" | IOSTANDARD=LVTTL;   # segment a
+NET "sseg_out<1>"     LOC="P132" | IOSTANDARD=LVTTL;   # segment b
+NET "sseg_out<2>"     LOC="P134" | IOSTANDARD=LVTTL;   # segment c
+NET "sseg_out<3>"     LOC="P135" | IOSTANDARD=LVTTL;   # segment d
+NET "sseg_out<4>"     LOC="P137" | IOSTANDARD=LVTTL;   # segment e
+NET "sseg_out<5>"     LOC="P139" | IOSTANDARD=LVTTL;   # segment f
+NET "sseg_out<6>"     LOC="P140" | IOSTANDARD=LVTTL;   # segment g
+NET "sseg_out<7>"     LOC="P144" | IOSTANDARD=LVTTL;   # decimal point
+
+NET "anode_out<0>"    LOC="P127" | IOSTANDARD=LVTTL;
+NET "anode_out<1>"    LOC="P133" | IOSTANDARD=LVTTL;
+NET "anode_out<2>"    LOC="P138" | IOSTANDARD=LVTTL;
+NET "anode_out<3>"    LOC="P145" | IOSTANDARD=LVTTL;
+
+NET "sw_in<0>"        LOC="P110" | IOSTANDARD=LVTTL;   # SW0
+NET "sw_in<1>"        LOC="P113" | IOSTANDARD=LVTTL;   # SW1
+NET "sw_in<2>"        LOC="P118" | IOSTANDARD=LVTTL;   # SW2
+NET "sw_in<3>"        LOC="P120" | IOSTANDARD=LVTTL;   # SW3
+NET "sw_in<4>"        LOC="P124" | IOSTANDARD=LVTTL;   # SW4
+NET "sw_in<5>"        LOC="P130" | IOSTANDARD=LVTTL;   # SW5
+NET "sw_in<6>"        LOC="P136" | IOSTANDARD=LVTTL;   # SW6
+NET "sw_in<7>"        LOC="P142" | IOSTANDARD=LVTTL;   # SW7
+
+#===============================================================================
+# Timing constraint of FX2 48MHz clock "fx2Clk_in"
+#===============================================================================
+NET "fx2Clk_in" CLOCK_DEDICATED_ROUTE = FALSE;
+NET "fx2Clk_in" TNM_NET = "fx2Clk_in";
+TIMESPEC "TS_clk" = PERIOD "fx2Clk_in" 20 ns HIGH 50 %;

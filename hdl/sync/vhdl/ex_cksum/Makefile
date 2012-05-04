@@ -14,11 +14,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-TOP_LEVEL = top_level
-PLATFORM = nexys2-1200
-HDLS = \
+TOP_LEVEL := top_level
+PLATFORM  := nexys2-1200
+COMMON    := ../../../common
+LANGUAGE  := vhdl
+HDLS := \
 	$(TOP_LEVEL).vhdl \
-	../comm_fpga/comm_fpga.vhdl \
-	../../../common/vhdl/seven_seg/seven_seg.vhdl
+	$(COMMON)/$(LANGUAGE)/seven_seg/seven_seg.vhdl \
+	../comm_fpga/comm_fpga.vhdl
 
--include ../../../common/Makefile.xilinx
+include $(COMMON)/top.mk
