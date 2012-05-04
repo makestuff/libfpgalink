@@ -23,22 +23,22 @@ entity comm_fpga is
 	port(
 		-- FX2 interface
 		fx2Clk_in      : in    std_logic;                    -- 48MHz clock from FX2
+		fx2FifoSel_out : out   std_logic;                    -- select FIFO: '0' for EP6OUT, '1' for EP8IN
 		fx2Data_io     : inout std_logic_vector(7 downto 0); -- 8-bit data to/from FX2
-		fx2GotData_in  : in    std_logic;                    -- FLAGC=EF (active-low), so '1' when there's data
-		fx2GotRoom_in  : in    std_logic;                    -- FLAGB=FF (active-low), so '1' when there's room
-		fx2Read_out    : out   std_logic;
-		fx2Write_out   : out   std_logic;
-		fx2FifoSel_out : out   std_logic;                    -- '0' for EP6OUT, '1' for EP8IN
-		fx2PktEnd_out  : out   std_logic;                    -- asserted when a host read needs to be committed early
+		fx2Read_out    : out   std_logic;                    -- asserted (active-low) when reading from FX2
+		fx2GotData_in  : in    std_logic;                    -- asserted (active-high) when FX2 has data for us
+		fx2Write_out   : out   std_logic;                    -- asserted (active-low) when writing to FX2
+		fx2GotRoom_in  : in    std_logic;                    -- asserted (active-high) when FX2 has room for more data from us
+		fx2PktEnd_out  : out   std_logic;                    -- asserted (active-low) when a host read needs to be committed early
 
 		-- Channel read/write interface
-		chanAddr_out    : out   std_logic_vector(6 downto 0);  -- the selected channel
+		chanAddr_out    : out   std_logic_vector(6 downto 0);  -- the selected channel (0-127)
 		chanData_in     : in    std_logic_vector(7 downto 0);  -- data lines used when the host reads from a channel
-		chanRead_out    : out   std_logic;                     -- '1' means "put data on chanData_in"
-		chanGotData_in  : in    std_logic;                     -- '1' means "there's data available for reading on selected channel"
+		chanRead_out    : out   std_logic;                     -- '1' means "on the next clock rising edge, put your next byte of data on chanData_in"
+		chanGotData_in  : in    std_logic;                     -- channel logic can drive this low to say "I don't have data ready for you"
 		chanData_out    : out   std_logic_vector(7 downto 0);  -- data lines used when the host writes to a channel
-		chanWrite_out   : out   std_logic;                     -- '1' means "get data from chanData_out"
-		chanGotRoom_in  : in    std_logic                      -- '1' means "there's space available for writing on selected channel"
+		chanWrite_out   : out   std_logic;                     -- '1' means "on the next clock rising edge, please accept the data on chanData_out"
+		chanGotRoom_in  : in    std_logic                      -- channel logic can drive this low to say "I'm not ready for more data yet"
 	);
 end comm_fpga;
 
@@ -58,19 +58,19 @@ architecture behavioural of comm_fpga is
 		S_END_WRITE_NONALIGNED,
 		S_READ
 	);
-	constant FIFO_READ               : std_logic_vector(1 downto 0) := "10"; -- assert fx2Read_out
-	constant FIFO_WRITE              : std_logic_vector(1 downto 0) := "01"; -- assert fx2Write_out
-	constant FIFO_NOP                : std_logic_vector(1 downto 0) := "11"; -- assert nothing
-	constant OUT_FIFO                : std_logic := '0'; -- EP6OUT
-	constant IN_FIFO                 : std_logic := '1'; -- EP8IN
-	signal state, state_next         : StateType := S_IDLE;
+	constant FIFO_READ               : std_logic_vector(1 downto 0) := "10";             -- assert fx2Read_out (active-low)
+	constant FIFO_WRITE              : std_logic_vector(1 downto 0) := "01";             -- assert fx2Write_out (active-low)
+	constant FIFO_NOP                : std_logic_vector(1 downto 0) := "11";             -- assert nothing
+	constant OUT_FIFO                : std_logic                    := '0';              -- EP6OUT
+	constant IN_FIFO                 : std_logic                    := '1';              -- EP8IN
+	signal state, state_next         : StateType                    := S_IDLE;
 	signal fifoOp                    : std_logic_vector(1 downto 0) := FIFO_NOP;
-	signal count, count_next         : unsigned(31 downto 0) := (others => '0');  -- Read/Write count
-	signal addr, addr_next           : std_logic_vector(6 downto 0) := (others => '0');
-	signal isWrite, isWrite_next     : std_logic := '0';
-	signal isAligned, isAligned_next : std_logic := '0';
-	signal dataOut                   : std_logic_vector(7 downto 0);
-	signal driveBus                  : std_logic;
+	signal count, count_next         : unsigned(31 downto 0)        := (others => '0');  -- read/write count
+	signal addr, addr_next           : std_logic_vector(6 downto 0) := (others => '0');  -- channel being accessed (0-127)
+	signal isWrite, isWrite_next     : std_logic                    := '0';              -- is this access is an FX2 FIFO write or a read?
+	signal isAligned, isAligned_next : std_logic                    := '0';              -- is this FX2 FIFO write block-aligned?
+	signal dataOut                   : std_logic_vector(7 downto 0);                     -- data to be driven on fx2Data_io
+	signal driveBus                  : std_logic;                                        -- whether or not to drive fx2Data_io
 begin
 	-- Infer registers
 	process(fx2Clk_in)
@@ -92,12 +92,12 @@ begin
 		state_next <= state;
 		count_next <= count;
 		addr_next <= addr;
-		isWrite_next <= isWrite;       -- is the FPGA writing to the FX2?
-		isAligned_next <= isAligned;   -- does this FIFO write end on a block (512-byte) boundary?
+		isWrite_next <= isWrite;      -- is the FPGA writing to the FX2?
+		isAligned_next <= isAligned;  -- does this FIFO write end on a block (512-byte) boundary?
 		dataOut <= (others => '0');
-		driveBus <= '0';
-		fifoOp <= FIFO_READ;           -- read the FX2 FIFO by default
-		fx2PktEnd_out <= '1';          -- inactive: FPGA does not commit a short packet.
+		driveBus <= '0';              -- don't drive fx2Data_io by default
+		fifoOp <= FIFO_READ;          -- read the FX2 FIFO by default
+		fx2PktEnd_out <= '1';         -- inactive: FPGA does not commit a short packet.
 		chanRead_out <= '0';
 		chanWrite_out <= '0';
 
@@ -139,14 +139,14 @@ begin
 				end if;
 
 			when S_BEGIN_WRITE =>
-				fx2FifoSel_out   <= IN_FIFO;   -- Writing to FX2
-				fifoOp         <= FIFO_NOP;
+				fx2FifoSel_out <= IN_FIFO;   -- Writing to FX2
+				fifoOp <= FIFO_NOP;
 				if ( count(8 downto 0) = "000000000" ) then
 					isAligned_next <= '1';
 				else
 					isAligned_next <= '0';
 				end if;
-				state_next     <= S_WRITE;
+				state_next <= S_WRITE;
 
 			when S_WRITE =>
 				fx2FifoSel_out <= IN_FIFO;   -- Writing to FX2
@@ -155,7 +155,7 @@ begin
 					dataOut <= chanData_in;
 					driveBus <= '1';
 					chanRead_out <= '1';
-					count_next  <= count - 1;
+					count_next <= count - 1;
 					if ( count = 1 ) then
 						if ( isAligned = '1' ) then
 							state_next <= S_END_WRITE_ALIGNED;  -- don't assert fx2PktEnd
@@ -169,21 +169,21 @@ begin
 
 			when S_END_WRITE_ALIGNED =>
 				fx2FifoSel_out <= IN_FIFO;   -- Writing to FX2
-				fifoOp       <= FIFO_NOP;
-				state_next   <= S_IDLE;
+				fifoOp <= FIFO_NOP;
+				state_next <= S_IDLE;
 
 			when S_END_WRITE_NONALIGNED =>
 				fx2FifoSel_out <= IN_FIFO;   -- Writing to FX2
-				fifoOp       <= FIFO_NOP;
-				fx2PktEnd_out   <= '0';  	   -- Active: FPGA commits the packet.
-				state_next   <= S_IDLE;
+				fifoOp <= FIFO_NOP;
+				fx2PktEnd_out <= '0';        -- Active: FPGA commits the packet early.
+				state_next <= S_IDLE;
 
 			when S_READ =>
 				fx2FifoSel_out <= OUT_FIFO;  -- Reading from FX2
 				if ( fx2GotData_in = '1' and chanGotRoom_in = '1') then
 					-- A data byte will be available on the next clock edge
 					chanWrite_out <= '1';
-					count_next  <= count - 1;
+					count_next <= count - 1;
 					if ( count = 1 ) then
 						state_next <= S_IDLE;
 					end if;
@@ -197,9 +197,9 @@ begin
 				if ( fx2GotData_in = '1' ) then
 					-- The read/write flag and a seven-bit channel address will be available on the
 					-- next clock edge.
-					addr_next    <= fx2Data_io(6 downto 0);
+					addr_next <= fx2Data_io(6 downto 0);
 					isWrite_next <= fx2Data_io(7);
-					state_next   <= S_GET_COUNT0;
+					state_next <= S_GET_COUNT0;
 				end if;
 		end case;
 	end process;

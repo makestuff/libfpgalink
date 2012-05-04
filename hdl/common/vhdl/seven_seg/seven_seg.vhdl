@@ -41,6 +41,8 @@ architecture behavioural of seven_seg is
 	signal count_next  : unsigned(COUNTER_WIDTH-1 downto 0);
 	signal anodeSelect : std_logic_vector(1 downto 0);
 	signal nibble      : std_logic_vector(3 downto 0);
+	signal segs        : std_logic_vector(6 downto 0);
+	signal dot         : std_logic;
 begin
 	-- Infer counter register
 	process(clk_in)
@@ -60,23 +62,23 @@ begin
 		"1011" when "01",
 		"1101" when "10",
 		"1110" when others;
-	
+
+	-- Select the appropriate bit from dots_in
+	with anodeSelect select dot <=
+		not(dots_in(3)) when "00",
+		not(dots_in(2)) when "01",
+		not(dots_in(1)) when "10",
+		not(dots_in(0)) when others;
+
 	-- Choose a nibble to display
 	with anodeSelect select nibble <= 
 		data_in(15 downto 12) when "00",
 		data_in(11 downto 8)  when "01",
 		data_in(7 downto 4)   when "10",
 		data_in(3 downto 0)   when others;
-
-	-- Display the dots
-    with anodeSelect select segs_out(7) <=
-		not(dots_in(3)) when "00",
-        not(dots_in(2)) when "01",
-        not(dots_in(1)) when "10",
-        not(dots_in(0)) when others;
 	
 	-- Decode chosen nibble
-	with nibble select segs_out(6 downto 0) <=
+	with nibble select segs <=
 		"1000000" when "0000",
 		"1111001" when "0001",
 		"0100100" when "0010",
@@ -93,4 +95,7 @@ begin
 		"0100001" when "1101",
 		"0000110" when "1110",
 		"0001110" when others;
+
+	-- Drive segs_out
+	segs_out <= dot & segs;
 end behavioural;

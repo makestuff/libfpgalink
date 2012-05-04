@@ -22,39 +22,46 @@ use ieee.numeric_std.all;
 entity top_level is
 	port(
 		-- FX2 interface
-		fx2Clk_in     : in    std_logic;
-		fx2Data_io    : inout std_logic_vector(7 downto 0);
-		fx2GotData_in : in    std_logic;                    -- FLAGC=EF (active-low), so '1' when there's data
-		fx2GotRoom_in : in    std_logic;                    -- FLAGB=FF (active-low), so '1' when there's room
-		fx2Read_out   : out   std_logic;                    -- PA2
-		fx2OE_out     : out   std_logic;
-		fx2Write_out  : out   std_logic;
-		fx2Addr_out   : out   std_logic_vector(1 downto 0); -- PA4 & PA5
-		fx2PktEnd_out : out   std_logic;                    -- PA6
+		fx2Clk_in     : in    std_logic;                    -- 48MHz clock from FX2
+		fx2Addr_out   : out   std_logic_vector(1 downto 0); -- select FIFO: "10" for EP6OUT, "11" for EP8IN
+		fx2Data_io    : inout std_logic_vector(7 downto 0); -- 8-bit data to/from FX2
+		fx2Read_out   : out   std_logic;                    -- asserted (active-low) when reading from FX2
+		fx2OE_out     : out   std_logic;                    -- asserted (active-low) to tell FX2 to drive bus
+		fx2GotData_in : in    std_logic;                    -- asserted (active-high) when FX2 has data for us
+		fx2Write_out  : out   std_logic;                    -- asserted (active-low) when writing to FX2
+		fx2GotRoom_in : in    std_logic;                    -- asserted (active-high) when FX2 has room for more data from us
+		fx2PktEnd_out : out   std_logic;                    -- asserted (active-low) when a host read needs to be committed early
 
 		-- Onboard peripherals
-		sseg_out      : out std_logic_vector(7 downto 0);
-		anode_out     : out std_logic_vector(3 downto 0);
-		led_out       : out std_logic_vector(7 downto 0);
-		sw_in         : in std_logic_vector(7 downto 0)
+		sseg_out      : out   std_logic_vector(7 downto 0); -- seven-segment display cathodes (one for each segment)
+		anode_out     : out   std_logic_vector(3 downto 0); -- seven-segment display anodes (one for each digit)
+		led_out       : out   std_logic_vector(7 downto 0); -- eight LEDs
+		sw_in         : in    std_logic_vector(7 downto 0)  -- eight switches
 	);
 end top_level;
 
 architecture behavioural of top_level is
+	-- Channel read/write interface:
+	signal chanAddr                : std_logic_vector(6 downto 0);  -- the selected channel (0-127)
+	signal chanDataIn              : std_logic_vector(7 downto 0);  -- data lines used when the host reads from a channel
+	signal chanRead                : std_logic;                     -- '1' means "on the next clock rising edge, put your next byte of data on chanData_in"
+	signal chanGotData             : std_logic;                     -- channel logic can drive this low to say "I don't have data ready for you"
+	signal chanDataOut             : std_logic_vector(7 downto 0);  -- data lines used when the host writes to a channel
+	signal chanWrite               : std_logic;                     -- '1' means "on the next clock rising edge, please accept the data on chanData_out"
+	signal chanGotRoom             : std_logic;                     -- channel logic can drive this low to say "I'm not ready for more data yet"
+
+	-- Needed so that the comm_fpga module can drive both fx2Read_out and fx2OE_out
+	signal fx2Read                 : std_logic;
+
+	-- Flags for display on the 7-seg decimal points
+	signal flags                   : std_logic_vector(3 downto 0);
+
+	-- Registers implementing the channels
 	signal checksum, checksum_next : std_logic_vector(15 downto 0) := x"0000";
 	signal r0, r0_next             : std_logic_vector(7 downto 0) := x"00";
 	signal r1, r1_next             : std_logic_vector(7 downto 0) := x"00";
 	signal r2, r2_next             : std_logic_vector(7 downto 0) := x"00";
 	signal r3, r3_next             : std_logic_vector(7 downto 0) := x"00";
-	signal chanAddr                : std_logic_vector(6 downto 0);
-	signal chanDataIn              : std_logic_vector(7 downto 0);
-	signal chanDataOut             : std_logic_vector(7 downto 0);
-	signal chanWrite               : std_logic;
-	signal chanRead                : std_logic;
-	signal chanGotData             : std_logic;
-	signal chanGotRoom             : std_logic;
-	signal fx2Read                 : std_logic;
-	signal flags                   : std_logic_vector(3 downto 0);
 begin
 	-- Infer registers
 	process(fx2Clk_in)
@@ -68,7 +75,7 @@ begin
 		end if;
 	end process;
 
-	-- Drive register inputs for when the host is writing
+	-- Drive register inputs for each channel when the host is writing
 	checksum_next <=
 		std_logic_vector(unsigned(checksum) + unsigned(chanDataOut)) when chanAddr = "0000000" and chanWrite = '1'
 		else x"0000" when chanAddr = "0000001" and chanWrite = '1' and chanDataOut(0) = '1'
@@ -98,22 +105,22 @@ begin
 		port map(
 			-- FX2 interface
 			fx2Clk_in      => fx2Clk_in,
-			fx2Data_io     => fx2Data_io,
-			fx2GotData_in  => fx2GotData_in,
-			fx2GotRoom_in  => fx2GotRoom_in,
-			fx2Read_out    => fx2Read,
-			fx2Write_out   => fx2Write_out,
 			fx2FifoSel_out => fx2Addr_out(0),
+			fx2Data_io     => fx2Data_io,
+			fx2Read_out    => fx2Read,
+			fx2GotData_in  => fx2GotData_in,
+			fx2Write_out   => fx2Write_out,
+			fx2GotRoom_in  => fx2GotRoom_in,
 			fx2PktEnd_out  => fx2PktEnd_out,
 
 			-- Channel read/write interface
 			chanAddr_out   => chanAddr,
 			chanData_in    => chanDataIn,
-			chanData_out   => chanDataOut,
 			chanRead_out   => chanRead,
-			chanWrite_out  => chanWrite,
 			chanGotData_in => chanGotData,
-			chanGotRoom_in => chanGotROom
+			chanData_out   => chanDataOut,
+			chanWrite_out  => chanWrite,
+			chanGotRoom_in => chanGotRoom
 		);
 
 	-- LEDs and 7-seg display
