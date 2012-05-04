@@ -21,8 +21,9 @@ use ieee.numeric_std.all;
 
 entity timer is
 	generic (
-		-- This should be overridden by the inferring hardware or testbench!
+		-- This gives the number of bits to be counted when ceiling_in is zero
 		COUNTER_WIDTH : integer := 25;
+		-- This gives the number of bits in the ceiling value
 		CEILING_WIDTH : integer := 4
 	);
 	port(
@@ -33,7 +34,17 @@ entity timer is
 end timer;
 
 architecture behavioural of timer is
+	constant TOP_BIT : natural := 2**CEILING_WIDTH - 1;
+	function reverse(fwd : in std_logic_vector) return std_logic_vector is
+		variable result : std_logic_vector(TOP_BIT downto 0);
+	begin
+		for i in result'range loop
+			result(i) := fwd(COUNTER_WIDTH-i);
+		end loop;
+		return result;
+	end;
 	signal count, count_next : std_logic_vector(COUNTER_WIDTH downto 0) := (others => '0');
+	signal revCount : std_logic_vector(TOP_BIT downto 0);
 begin
 	-- Infer registers
 	process(clk_in)
@@ -43,11 +54,11 @@ begin
 		end if;
 	end process;
 
-	process(count, ceiling_in)
-		variable index : integer range COUNTER_WIDTH-(2**CEILING_WIDTH) to COUNTER_WIDTH;
+	revCount <= reverse(count);
+	
+	process(count, revCount, ceiling_in)
 	begin
-		index := COUNTER_WIDTH - to_integer(unsigned(ceiling_in));
-		if ( count(index) = '0' ) then
+		if ( revCount(to_integer(unsigned(ceiling_in))) = '0' ) then
 			count_next <= std_logic_vector(unsigned(count) + 1);
 			tick_out <= '0';
 		else
