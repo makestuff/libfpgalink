@@ -199,11 +199,11 @@ TEST(FL_playXsvf) {
 	CHECK_EQUAL(FL_UNSUPPORTED_CMD_ERR, fStatus);
 
 	// Verify that the AVR (having nothing on its JTAG lines) gives FL_JTAG_ERR because the XSVF's IDCODE check fails
-	fStatus = flPlayXSVF(avrHandle, "../gen_xsvf/s3board.xsvf", NULL);
+	fStatus = flPlayXSVF(avrHandle, "../gen_xsvf/ex_cksum_s3board_vhdl.xsvf", NULL);
 	CHECK_EQUAL(FL_JTAG_ERR, fStatus);
 
-	// Verify that the FX2 (having an s3board on its JTAG lines) gives FL_JTAG_ERR because nexys2-1200.xsvf's IDCODE check fails
-	fStatus = flPlayXSVF(fx2Handle, "../gen_xsvf/nexys2-1200.xsvf", NULL);
+	// Verify that the FX2 (having an s3board on its JTAG lines) gives FL_JTAG_ERR because the XSVF's IDCODE check fails
+	fStatus = flPlayXSVF(fx2Handle, "../gen_xsvf/ex_cksum_nexys2-1200_vhdl.xsvf", NULL);
 	CHECK_EQUAL(FL_JTAG_ERR, fStatus);
 }
 

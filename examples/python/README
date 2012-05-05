@@ -17,7 +17,7 @@ board.
     -s             scan the JTAG chain
     -v <VID:PID>   renumerated vendor and product ID of the FPGALink device
     -i <VID:PID>   initial vendor and product ID of the FPGALink device
-    -x <xsvfFile>  XSVF or CSVF file to play into the JTAG chain
+    -x <xsvfFile>  SVF, XSVF or CSVF file to play into the JTAG chain
     -f <dataFile>  binary data to write to register 0
 
 There are separate bindings for different Python versions:
@@ -33,15 +33,15 @@ NONINTERACTIVE EXECUTION
 
 Linux x86_64:
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo LD_LIBRARY_PATH=../../linux.x86_64/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/nexys2-1200.csvf -f /var/tmp/foo.dat
+  sudo LD_LIBRARY_PATH=../../linux.x86_64/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf -f /var/tmp/foo.dat
 
 Linux i686:
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo LD_LIBRARY_PATH=../../linux.i686/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/nexys2-1200.csvf -f /var/tmp/foo.dat
+  sudo LD_LIBRARY_PATH=../../linux.i686/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf -f /var/tmp/foo.dat
 
 Linux armel:
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo LD_LIBRARY_PATH=../../linux.armel/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/nexys2-1200.csvf -f /var/tmp/foo.dat
+  sudo LD_LIBRARY_PATH=../../linux.armel/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf -f /var/tmp/foo.dat
 
   NOTE: With Python 2.6 you will need to install the argparse module, thus:
     wget -qO- 'http://argparse.googlecode.com/files/argparse-1.2.1.tar.gz' | tar zxf -
@@ -49,7 +49,7 @@ Linux armel:
 
 Linux ppc:
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  sudo LD_LIBRARY_PATH=../../linux.ppc/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/nexys2-1200.csvf -f /var/tmp/foo.dat
+  sudo LD_LIBRARY_PATH=../../linux.ppc/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf -f /var/tmp/foo.dat
 
   NOTE: With Python 2.5 & 2.6 you will need to install the argparse module, thus:
     wget -qO- 'http://argparse.googlecode.com/files/argparse-1.2.1.tar.gz' | tar zxf -
@@ -57,7 +57,7 @@ Linux ppc:
 
 MacOSX:
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  DYLD_LIBRARY_PATH=../../darwin/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/nexys2-1200.csvf -f /var/tmp/foo.dat
+  DYLD_LIBRARY_PATH=../../darwin/rel ./fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf -f /var/tmp/foo.dat
 
   NOTE: On Snow Leopard you will need to install the argparse module (not required for Lion), thus:
     curl -sL 'http://argparse.googlecode.com/files/argparse-1.2.1.tar.gz' | tar zxf -
@@ -66,10 +66,10 @@ MacOSX:
 
 Windows (assuming you're running from http://bit.ly/k0ydbN):
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  PATH=../../win32/rel:$PATH /c/Python27/python fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/nexys2-1200.csvf -f /var/tmp/foo.dat
+  PATH=../../win32/rel:$PATH /c/Python27/python fpgalink2.py -p -s -v 1443:0005 -i 1443:0005 -x ../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf -f /var/tmp/foo.dat
 
 This connects to the device at 1443:0005 (hopefully a 1200K Digilent Nexys2), loads the onboard FX2
-chip with a new firmware, loads the nexys2-1200.csvf design into the board's FPGA, and then does
+chip with a new firmware, loads the ex_cksum_nexys2-1200_vhdl.csvf design into the board's FPGA, and then does
 some register reads and writes. The changes to the board are lost on the next power cycle, so it's
 safe to try.
 
@@ -85,7 +85,7 @@ You can also use it in interactive mode (Linux x86_64):
   >>> flLoadStandardFirmware("1443:0005", "1443:0005")       # 1443:0007 for Nexys3 & Atlys
   >>> handle = flOpen("1443:0005")
   >>> flPortAccess(handle, 0x0080, 0x0080)                   # Skip this for Nexys3 & Atlys
-  >>> flPlayXSVF(handle, "../../gen_csvf/nexys2-1200.csvf")  # Or atlys.csvf/nexys3.csvf
+  >>> flPlayXSVF(handle, "../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf")  # Or other SVF, XSVF or CSVF
   >>> flWriteRegister(handle, 1000, 0x00, 0x10)
   >>> flClose(handle)
   >>> 

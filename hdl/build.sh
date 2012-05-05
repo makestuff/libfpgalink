@@ -5,11 +5,11 @@ if [ $# != 1 ]; then
 	exit 1
 fi
 
-export X2C=$(pwd)
+export HDL=$(pwd)
+export X2C=${HDL}/../$1
 
 echo HDL build starting at $(date)...
 
-export HDL=$(dirname $0)
 rm -rf ../gen_xsvf ../gen_csvf
 mkdir ../gen_xsvf ../gen_csvf
 for p in atlys lx9 nexys2-1200 nexys2-500 nexys3 s3board xylo-l; do

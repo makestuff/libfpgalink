@@ -74,9 +74,32 @@ static void testRoundTrip(const char *xsvfFile, uint32 expectedMaxBufSize) {
 }
 
 TEST(FPGALink_testRoundTrip) {
-	testRoundTrip("../gen_xsvf/s3board.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/nexys2-500.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/nexys2-1200.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/atlys.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/nexys3.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_cksum_atlys_verilog.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_cksum_atlys_vhdl.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_cksum_lx9_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_lx9_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-1200_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-1200_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-500_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-500_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_nexys3_verilog.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_cksum_nexys3_vhdl.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_cksum_s3board_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_s3board_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_cksum_xylo-l_verilog.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_cksum_xylo-l_vhdl.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_fifo_atlys_verilog.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_fifo_atlys_vhdl.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_fifo_lx9_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_lx9_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-1200_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-1200_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-500_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-500_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_nexys3_verilog.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_fifo_nexys3_vhdl.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_fifo_s3board_verilog.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_s3board_vhdl.xsvf", 5U);
+	testRoundTrip("../gen_xsvf/ex_fifo_xylo-l_verilog.xsvf", 4U);
+	testRoundTrip("../gen_xsvf/ex_fifo_xylo-l_vhdl.xsvf", 4U);
 }
