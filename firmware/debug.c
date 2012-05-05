@@ -1,5 +1,6 @@
 #include <fx2regs.h>
 #include <makestuff.h>
+#include "debug.h"
 
 #ifdef DEBUG
 sbit at 0xB7 USART; // Port D7
