@@ -62,35 +62,7 @@ gen_fw: $(MKFW)
 	$(MKFW) gen_fw/eepromNoBootFirmware1.hex gen_fw/eepromNoBootFirmware2.hex eepromNoBoot iic > gen_fw/eepromNoBootFirmware.c
 
 gen_csvf:
-	mkdir -p gen_svf
-	mkdir -p gen_xsvf
-	mkdir -p gen_csvf
-	make -C vhdl clean
-	make -C vhdl PLATFORM=nexys2-500 toplevel.xsvf
-	cp -rp vhdl/toplevel.svf gen_svf/nexys2-500.svf
-	cp -rp vhdl/toplevel.xsvf gen_xsvf/nexys2-500.xsvf
-	$(X2C) vhdl/toplevel.xsvf gen_csvf/nexys2-500.csvf
-	make -C vhdl clean
-	make -C vhdl PLATFORM=nexys2-1200 toplevel.xsvf
-	cp -rp vhdl/toplevel.svf gen_svf/nexys2-1200.svf
-	cp -rp vhdl/toplevel.xsvf gen_xsvf/nexys2-1200.xsvf
-	$(X2C) vhdl/toplevel.xsvf gen_csvf/nexys2-1200.csvf
-	make -C vhdl clean
-	make -C vhdl PLATFORM=s3board toplevel.xsvf
-	cp -rp vhdl/toplevel.svf gen_svf/s3board.svf
-	cp -rp vhdl/toplevel.xsvf gen_xsvf/s3board.xsvf
-	$(X2C) vhdl/toplevel.xsvf gen_csvf/s3board.csvf
-	make -C vhdl clean
-	make -C vhdl PLATFORM=atlys toplevel.xsvf
-	cp -rp vhdl/toplevel.svf gen_svf/atlys.svf
-	cp -rp vhdl/toplevel.xsvf gen_xsvf/atlys.xsvf
-	$(X2C) vhdl/toplevel.xsvf gen_csvf/atlys.csvf
-	make -C vhdl clean
-	make -C vhdl PLATFORM=nexys3 toplevel.xsvf
-	cp -rp vhdl/toplevel.svf gen_svf/nexys3.svf
-	cp -rp vhdl/toplevel.xsvf gen_xsvf/nexys3.xsvf
-	$(X2C) vhdl/toplevel.xsvf gen_csvf/nexys3.csvf
-	make -C vhdl clean
+	cd hdl && ./build.sh $(X2C)
 
 $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
 	make -C $<

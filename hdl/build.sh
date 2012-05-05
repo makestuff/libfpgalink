@@ -1,44 +1,36 @@
 #!/bin/bash
 
-echo Build starting at $(date)...
+if [ $# != 1 ]; then
+	echo "Synopsis: $0 <xsvf2csvf path>"
+	exit 1
+fi
 
-export HDL=/home/chris/makestuff/libs/libfpgalink/hdl
-rm -rf gen_xsvf
-mkdir gen_xsvf
-for i in atlys lx9 nexys2-1200 nexys2-500 nexys3 s3board xylo-l; do
-	echo Preparing ${i}...
-	cd ${HDL}/sync/verilog/ex_cksum
-	make clean
-	cd ${HDL}/sync/verilog/ex_fifo/
-	make clean allclean
-	cd ${HDL}/sync/vhdl/ex_cksum
-	make clean
-	cd ${HDL}/sync/vhdl/ex_fifo/
-	make clean allclean
+export X2C=$(pwd)
 
-	echo Building ${i}...
-	cd ${HDL}/sync/verilog/ex_cksum
-	make PLATFORM=${i}
-	cp top_level.xsvf ${HDL}/gen_xsvf/ex_cksum_${i}_verilog.xsvf
-	cd ${HDL}/sync/verilog/ex_fifo/
-	make PLATFORM=${i}
-	cp top_level.xsvf ${HDL}/gen_xsvf/ex_fifo_${i}_verilog.xsvf
-	cd ${HDL}/sync/vhdl/ex_cksum
-	make PLATFORM=${i}
-	cp top_level.xsvf ${HDL}/gen_xsvf/ex_cksum_${i}_vhdl.xsvf
-	cd ${HDL}/sync/vhdl/ex_fifo/
-	make PLATFORM=${i}
-	cp top_level.xsvf ${HDL}/gen_xsvf/ex_fifo_${i}_vhdl.xsvf
+echo HDL build starting at $(date)...
 
-	echo Cleaning ${i}...
-	cd ${HDL}/sync/verilog/ex_cksum
-	make clean
-	cd ${HDL}/sync/verilog/ex_fifo/
-	make clean allclean
-	cd ${HDL}/sync/vhdl/ex_cksum
-	make clean
-	cd ${HDL}/sync/vhdl/ex_fifo/
-	make clean allclean
+export HDL=$(dirname $0)
+rm -rf ../gen_xsvf ../gen_csvf
+mkdir ../gen_xsvf ../gen_csvf
+for p in atlys lx9 nexys2-1200 nexys2-500 nexys3 s3board xylo-l; do
+	echo Building for platform: ${p}...
+	for l in vhdl verilog; do
+		# cksum example
+		cd ${HDL}/sync/${l}/ex_cksum
+		make clean
+		make PLATFORM=${p}
+		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_cksum_${p}_${l}.xsvf
+		${X2C} ${HDL}/../gen_xsvf/ex_cksum_${p}_${l}.xsvf ${HDL}/../gen_csvf/ex_cksum_${p}_${l}.csvf
+		make clean
+
+		# fifo example
+		cd ${HDL}/sync/${l}/ex_fifo
+		make clean allclean
+		make PLATFORM=${p}
+		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_fifo_${p}_${l}.xsvf
+		${X2C} ${HDL}/../gen_xsvf/ex_fifo_${p}_${l}.xsvf ${HDL}/../gen_csvf/ex_fifo_${p}_${l}.csvf
+		make clean allclean
+	done
 done
 
-echo Build finished at $(date)
+echo HDL build finished at $(date)
