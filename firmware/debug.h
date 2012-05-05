@@ -19,6 +19,8 @@
 
 #include <makestuff.h>
 
+//#define DEBUG
+
 void usartInit(void);
 void usartSendByte(uint8 c);
 void usartSendByteHex(uint8 byte);
