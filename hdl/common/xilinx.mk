@@ -49,7 +49,7 @@ $(TOP_LEVEL).ngc: ../../platforms/$(PLATFORM)/platform.xst $(TOP_LEVEL).prj
 	xst -intstyle ise -ifn $< -ofn $(TOP_LEVEL).syr
 
 $(TOP_LEVEL).prj: $(HDLS)
-	for i in $+; do j=$$(basename $$i); if [ $${j#*.} = "vhdl" ]; then echo "vhdl work \"$$i\""; elif [ $${j#*.} = "v" ]; then echo "verilog work \"$$i\""; fi; done > $@
+	for i in $+; do if [ "$${i##*.}" = "vhdl" ]; then echo "vhdl work \"$$i\""; elif [ "$${i##*.}" = "v" ]; then echo "verilog work \"$$i\""; fi; done > $@
 
 clean: FORCE
 	rm -rf *.edif *.svf *.xsvf *.csvf _ngo *.bgn *.drc *.ncd *.ntrc_log *.prj *.twr *.csv *.html fx2fpga_xdb _xmsgs *.bit *.gise *.ngc *.pad *.ptwx *.twx *.ngm *.txt *.xml *.xrpt *.bld *.ise *.ngd *.par *.stx *.map *.twr auto_project_xdb *.cmd_log *.lso *.ngr *.pcf *.syr *.unroutes *.xpi *.mrp xst *.log *.cmd *.xwbt iseconfig xlnx_auto_0_xdb
