@@ -177,9 +177,9 @@ int main(int argc, const char *argv[]) {
 	}
 	
 	if ( isCommCapable ) {
-		printf("Writing register 0x01 to zero count...\n");
+		printf("Writing channel 0x01 to zero count...\n");
 		byte = 0x01;
-		status = flWriteRegister(handle, 1000, 0x01, 1, &byte, &error);
+		status = flWriteChannel(handle, 1000, 0x01, 1, &byte, &error);
 		CHECK(21);
 
 		if ( dataFile ) {
@@ -193,23 +193,23 @@ int main(int argc, const char *argv[]) {
 				printf(
 					"Writing %0.2f MiB (checksum 0x%04X) from %s to FPGALink device %s...\n",
 					(double)fileLen/(1024*1024), checksum, dataFile, vp);
-				status = flWriteRegister(handle, 30000, 0x00, fileLen, buffer, &error);
+				status = flWriteChannel(handle, 30000, 0x00, fileLen, buffer, &error);
 				CHECK(22);
 			} else {
 				fprintf(stderr, "Unable to load file %s!\n", dataFile);
 				FAIL(23);
 			}
 		}		
-		printf("Reading register...\n");
-		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
+		printf("Reading channel...\n");
+		status = flReadChannel(handle, 1000, 0x00, 2, buf, &error);
 		CHECK(24);
 		printf("Got 0x%02X\n", buf[0]);
-		printf("Reading register...\n");
-		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
+		printf("Reading channel...\n");
+		status = flReadChannel(handle, 1000, 0x00, 2, buf, &error);
 		CHECK(25);
 		printf("Got 0x%02X\n", buf[0]);
-		printf("Reading register...\n");
-		status = flReadRegister(handle, 1000, 0x00, 2, buf, &error);
+		printf("Reading channel...\n");
+		status = flReadChannel(handle, 1000, 0x00, 2, buf, &error);
 		CHECK(26);
 		printf("Got 0x%02X\n", buf[0]);
 	}
@@ -232,5 +232,5 @@ void usage(const char *prog) {
 	printf("  -i <VID:PID>   initial vendor and product ID of the FPGALink device\n");
 	printf("  -j <jtagPort>  JTAG port config (e.g D0234)\n");
 	printf("  -x <xsvfFile>  SVF, XSVF or CSVF file to play into the JTAG chain\n");
-	printf("  -f <dataFile>  binary data to write to register 0\n");
+	printf("  -f <dataFile>  binary data to write to channel 0\n");
 }

@@ -189,24 +189,24 @@ chris@armel$
 
 The syntax of the read ("r") command is as follows:
 
-  r<register> [<count> [<fileName>]]
+  r<channel> [<count> [<fileName>]]
 
 Where:
 
-  register: The FPGA register address, 0-7f.
-  count:    How many times to read the register, default 1.
+  channel:  The FPGA channel, 0-7f.
+  count:    How many bytes to read from the FPGA channel, default 1.
   fileName: A binary file (in "quotes") to write the FPGA's data to.
 
 If you don't specify a fileName, the FPGA's data is printed to stdout as a hex dump.
 
 The syntax of the write ("w") command is as follows:
 
-  w<register> <byteSeq | fileName>
+  w<channel> <byteSeq | fileName>
 
 Where:
 
-  register: The FPGA register address, 0-7f.
-  byteSeq:  A sequence of bytes to be written to the FPGA, e.g 0123456789abcdef
+  channel:  The FPGA channel, 0-7f.
+  byteSeq:  A sequence of bytes to be written to the FPGA channel, e.g 0123456789abcdef
   fileName: An existing binary file (in "quotes") to dump into the FPGA.
 
 All numbers are in hexadecimal. Since a byte is two hex digits, the byteSeq must have an even number
@@ -220,6 +220,8 @@ Executing CommFPGA actions on FPGALink device 1443:0005...
          00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
 00000000 12 34 34 34 34                                  .4444
 chris@armel$
+
+You are free to implement each FPGA channel however you like, e.g a simple register, or a FIFO.
 EOF
 
 # Package it up

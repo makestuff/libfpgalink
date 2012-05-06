@@ -78,10 +78,10 @@ fpgalink.flIsCommCapable.restype = uint8
 # CommFPGA Operations
 fpgalink.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flIsFPGARunning.restype = FLStatus
-fpgalink.flWriteRegister.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flWriteRegister.restype = FLStatus
-fpgalink.flReadRegister.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flReadRegister.restype = FLStatus
+fpgalink.flWriteChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flWriteChannel.restype = FLStatus
+fpgalink.flReadChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flReadChannel.restype = FLStatus
 
 # NeroJTAG Operations
 fpgalink.flPlayXSVF.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
@@ -98,8 +98,8 @@ fpgalink.flFlashCustomFirmware.argtypes = [FLHandle, c_char_p, uint32, POINTER(E
 fpgalink.flFlashCustomFirmware.restype = FLStatus
 fpgalink.flCleanWriteBuffer.argtypes = [FLHandle]
 fpgalink.flCleanWriteBuffer.restype = None
-fpgalink.flAppendWriteRegisterCommand.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flAppendWriteRegisterCommand.restype = FLStatus
+fpgalink.flAppendWriteChannelCommand.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flAppendWriteChannelCommand.restype = FLStatus
 
 # Open a connection to the FPGALink device
 def flOpen(vp):
@@ -187,47 +187,47 @@ def flIsFPGARunning(handle):
     else:
         return False
 
-# Write one or more bytes to the specified register
-def flWriteRegister(handle, timeout, reg, values):
+# Write one or more bytes to the specified channel
+def flWriteChannel(handle, timeout, chan, values):
     error = ErrorString()
     if ( isinstance(values, bytearray) ):
         # Write the contents of the byte array:
         numValues = len(values)
         BufType = uint8*numValues
         buf = BufType.from_buffer(values)
-        status = fpgalink.flWriteRegister(handle, timeout, reg, numValues, buf, byref(error))
+        status = fpgalink.flWriteChannel(handle, timeout, chan, numValues, buf, byref(error))
     elif ( isinstance(values, int) ):
         # Write a single integer
         if ( values > 0xFF ):
             raise FLException("Supplied value won't fit in a byte!")
-        status = fpgalink.flWriteRegister(handle, timeout, reg, 1, (uint8*1)(values), byref(error))
+        status = fpgalink.flWriteChannel(handle, timeout, chan, 1, (uint8*1)(values), byref(error))
     else:
         # Write the contents of a file
         fileLen = uint32()
         fileData = fpgalink.flLoadFile(values.encode('ascii'), byref(fileLen))
         if ( fileData == None ):
             raise FLException("Cannot load file!")
-        status = fpgalink.flWriteRegister(handle, timeout, reg, fileLen, fileData, byref(error))
+        status = fpgalink.flWriteChannel(handle, timeout, chan, fileLen, fileData, byref(error))
         fpgalink.flFreeFile(fileData)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Read one or more values from the specified register
-def flReadRegister(handle, timeout, reg, count = 1):
+# Read one or more values from the specified channel
+def flReadChannel(handle, timeout, chan, count = 1):
     error = ErrorString()
     if ( count == 1 ):
         # Read a single byte
         buf = uint8()
-        status = fpgalink.flReadRegister(handle, timeout, reg, 1, byref(buf), byref(error))
+        status = fpgalink.flReadChannel(handle, timeout, chan, 1, byref(buf), byref(error))
         returnValue = buf.value
     else:
         # Read multiple bytes
         byteArray = bytearray(count)
         BufType = uint8*count
         buf = BufType.from_buffer(byteArray)
-        status = fpgalink.flReadRegister(handle, timeout, reg, count, buf, byref(error))
+        status = fpgalink.flReadChannel(handle, timeout, chan, count, buf, byref(error))
         returnValue = byteArray
     if ( status != FL_SUCCESS ):
         s = str(error.value)
@@ -253,20 +253,20 @@ def flLoadStandardFirmware(curVidPid, newVidPid, jtagPort):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Append register write to init buffer
-def flAppendWriteRegisterCommand(handle, reg, values):
+# Append channel write to init buffer
+def flAppendWriteChannelCommand(handle, chan, values):
     error = ErrorString()
     if ( isinstance(values, (list, tuple, array.array)) ):
         numValues = len(values)
-        status = fpgalink.flAppendWriteRegisterCommand(handle, reg, numValues, (uint8*numValues)(*values), byref(error))
+        status = fpgalink.flAppendWriteChannelCommand(handle, chan, numValues, (uint8*numValues)(*values), byref(error))
     elif ( isinstance(values, int) ):
-        status = fpgalink.flAppendWriteRegisterCommand(handle, reg, 1, (uint8*1)(values), byref(error))
+        status = fpgalink.flAppendWriteChannelCommand(handle, chan, 1, (uint8*1)(values), byref(error))
     else:
         fileLen = uint32()
         fileData = fpgalink.flLoadFile(values, byref(fileLen))
         if ( fileData == None ):
             raise FLException("Cannot load file!")
-        status = fpgalink.flAppendWriteRegisterCommand(handle, reg, fileLen, fileData, byref(error))
+        status = fpgalink.flAppendWriteChannelCommand(handle, chan, fileLen, fileData, byref(error))
         fpgalink.flFreeFile(fileData)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="initial vendor and product ID of the (FX2LP-based) FPGALink device")
     parser.add_argument('-j', action="store", nargs=1, metavar="<jtagPort>", help="JTAG port specification for the (FX2LP-based) FPGALink device")
     parser.add_argument('-x', action="store", nargs=1, metavar="<xsvfFile>", help="SVF, XSVF or CSVF file to play into the JTAG chain")
-    parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to register 0")
+    parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to channel 0")
     argList = parser.parse_args()
     handle = FLHandle()
     try:
@@ -355,20 +355,20 @@ if __name__ == "__main__":
             raise FLException("Data file load requested but device at %s does not support CommFPGA" % vp)
 
         if ( isCommCapable ):
-            print "Writing register 0x01 to zero count..."
-            flWriteRegister(handle, 1000, 0x01, 0x01)
+            print "Writing channel 1 to zero count..."
+            flWriteChannel(handle, 1000, 0x01, 0x01)
 
             if ( argList.f ):
                 dataFile = argList.f[0]
                 print "Writing %s to FPGALink device %s..." % (dataFile, vp)
-                flWriteRegister(handle, 32760, 0x00, dataFile)
+                flWriteChannel(handle, 32760, 0x00, dataFile)
             
-            print "Reading register..."
-            print "Got 0x%02X" % flReadRegister(handle, 1000, 0x00)
-            print "Reading register..."
-            print "Got 0x%02X" % flReadRegister(handle, 1000, 0x00)
-            print "Reading register..."
-            print "Got 0x%02X" % flReadRegister(handle, 1000, 0x00)
+            print "Reading channel 0..."
+            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x00)
+            print "Reading channel 0..."
+            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x00)
+            print "Reading channel 0..."
+            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x00)
 
     except FLException, ex:
         print ex

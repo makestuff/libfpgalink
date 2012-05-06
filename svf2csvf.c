@@ -483,7 +483,7 @@ FLStatus parseLine(
 			FAIL(FL_SVF_PARSE_ERR);
 		}
 		fStatus = insertRunTestBefore(
-			csvfBuf, cxt->lastCmdOffset, count,
+			csvfBuf, cxt->lastCmdOffset, (uint32)count,
 			&cxt->lastRunTestOffset, &cxt->lastRunTestOffset, error
 		);
 		CHECK_STATUS(fStatus, "parseLine()", fStatus);
@@ -690,7 +690,7 @@ FLStatus parseLine(
 				cxt->lastCmdOffset = csvfBuf->length;
 				bStatus = bufAppendByte(csvfBuf, XSIR, error);
 				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
-				bStatus = bufAppendByte(csvfBuf, cxt->insnBody.numBits + cxt->insnHead.numBits + cxt->insnTail.numBits, error);
+				bStatus = bufAppendByte(csvfBuf, (uint8)(cxt->insnBody.numBits + cxt->insnHead.numBits + cxt->insnTail.numBits), error);
 				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
 				fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
 				CHECK_STATUS(fStatus, "parseLine()", fStatus);
@@ -777,7 +777,7 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 				*dst++ = XSIR;
 				i = *src++;
 				tmp = bitsToBytes(i);
-				*dst++ = i;
+				*dst++ = (uint8)i;
 				COPY_BLOCK(tmp);
 				break;
 			case XSDRTDO:

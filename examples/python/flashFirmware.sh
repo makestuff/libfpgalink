@@ -31,9 +31,9 @@ from fpgalink${PYTHON_VERSION} import *
 flLoadStandardFirmware("04B4:8613", "04B4:8613", "${JTAG_PORT}")
 flAwaitDevice("04B4:8613", 600)
 handle = flOpen("04B4:8613")
-flAppendWriteRegisterCommand(handle, 0x00, 0x10)
-flAppendWriteRegisterCommand(handle, 0x00, 0x10)
-flAppendWriteRegisterCommand(handle, 0x00, 0x10)
+flAppendWriteChannelCommand(handle, 0x00, 0x10)
+flAppendWriteChannelCommand(handle, 0x00, 0x10)
+flAppendWriteChannelCommand(handle, 0x00, 0x10)
 flFlashStandardFirmware(handle, "04B4:8613", "${JTAG_PORT}", 512, "../../gen_csvf/ex_cksum_s3board_vhdl.csvf")
 flClose(handle)
 quit()
@@ -49,10 +49,10 @@ read -n 1 -s
 sudo LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
 from fpgalink${PYTHON_VERSION} import *
 handle = flOpen("04B4:8613")
-flWriteRegister(handle, 1000, 0x00, 0x10)
-flWriteRegister(handle, 1000, 0x00, 0x10)
-flWriteRegister(handle, 1000, 0x00, 0x10)
-flWriteRegister(handle, 1000, 0x00, 0xaa)
+flWriteChannel(handle, 1000, 0x00, 0x10)
+flWriteChannel(handle, 1000, 0x00, 0x10)
+flWriteChannel(handle, 1000, 0x00, 0x10)
+flWriteChannel(handle, 1000, 0x00, 0xaa)
 flClose(handle)
 quit()
 EOF

@@ -21,9 +21,9 @@
  * The <b>FPGALink</b> library makes it easier to talk to an FPGA over USB (via a suitable micro).
  *
  * It performs three classes of function:
- * - Load firmware into an FX2LP chip
- * - Play an SVF or XSVF file into a JTAG chain
- * - Communicate with a target device over USB
+ * - Load device firmware and EEPROM (specific to Cypress FX2LP)
+ * - Play an SVF, XSVF or CSVF file into a JTAG chain for FPGA programming
+ * - Read and write (over USB) up to 128 byte-wide data channels in the target FPGA
  */
 #ifndef FPGALINK_H
 #define FPGALINK_H
@@ -185,10 +185,10 @@ extern "C" {
 	/**
 	 * @brief Check to see if the device supports \b CommFPGA.
 	 *
-	 * \b CommFPGA is a simple register read/write protocol using USB bulk endpoints 6 and 8. This
+	 * \b CommFPGA is a simple channel read/write protocol using USB bulk endpoints 6 and 8. This
 	 * only returns whether the micro itself supports the protocol, not whether the target logic
 	 * device has been configured with a suitable design implementing the other end of the protocol.
-	 * An affirmative response means you are free to call \c flReadRegister(), \c flWriteRegister()
+	 * An affirmative response means you are free to call \c flReadChannel(), \c flWriteChannel()
 	 * and \c flIsFPGARunning().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
@@ -200,7 +200,7 @@ extern "C" {
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
-	// CommFPGA register read/write functions (only if flIsCommCapable() returns true)
+	// CommFPGA channel read/write functions (only if flIsCommCapable() returns true)
 	// ---------------------------------------------------------------------------------------------
 	/**
 	 * @name CommFPGA Operations
@@ -232,18 +232,18 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Read the specified register into the supplied buffer.
+	 * @brief Read the specified channel into the supplied buffer.
 	 *
-	 * Read \c count bytes from the FPGA register \c reg to the \c data array, with the given
+	 * Read \c count bytes from the FPGA channel \c chan to the \c data array, with the given
 	 * \c timeout in milliseconds. In the event of a timeout, the connection between host and FPGA
 	 * will be left in an undefined state; before the two can resynchronise it's likely the FPGA
 	 * will need to be reset and the host side disconnected (\c flOpen()) and reconnected
-	 * (\c flClose()) again. Before calling \c flReadRegister(), you should verify that the
+	 * (\c flClose()) again. Before calling \c flReadChannel(), you should verify that the
 	 * \b FPGALink device actually supports \b CommFPGA using \c flIsCommCapable().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param timeout The time to wait (in milliseconds) for the read to complete before giving up.
-	 * @param reg The FPGA register to read.
+	 * @param chan The FPGA channel to read.
 	 * @param count The number of bytes to read.
 	 * @param buf The address of a buffer to store the bytes read from the FPGA.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -256,24 +256,24 @@ extern "C" {
 	 *     - \c FL_PROTOCOL_ERR if the device does not support \b CommFPGA.
 	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
 	 */
-	DLLEXPORT(FLStatus) flReadRegister(
-		struct FLContext *handle, uint32 timeout, uint8 reg, uint32 count, uint8 *buf,
+	DLLEXPORT(FLStatus) flReadChannel(
+		struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, uint8 *buf,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Write the supplied data to the specified register.
+	 * @brief Write the supplied data to the specified channel.
 	 *
-	 * Write \c count bytes from the \c data array to FPGA register \c reg, with the given
+	 * Write \c count bytes from the \c data array to FPGA channel \c chan, with the given
 	 * \c timeout in milliseconds. In the event of a timeout, the connection between host and FPGA
 	 * will be left in an undefined state; before the two can resynchronise it's likely the FPGA
 	 * will need to be reset and the host side disconnected (\c flOpen()) and reconnected
-	 * (\c flClose()) again. Before calling \c flWriteRegister(), you should verify that the
+	 * (\c flClose()) again. Before calling \c flWriteChannel(), you should verify that the
 	 * \b FPGALink device actually supports \b CommFPGA using \c flIsCommCapable().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param timeout The time to wait (in milliseconds) for the write to complete before giving up.
-	 * @param reg The FPGA register to write.
+	 * @param chan The FPGA channel to write.
 	 * @param count The number of bytes to write.
 	 * @param data The address of the array of bytes to be written to the FPGA.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -286,25 +286,25 @@ extern "C" {
 	 *     - \c FL_PROTOCOL_ERR if the device does not support \b CommFPGA.
 	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
 	 */
-	DLLEXPORT(FLStatus) flWriteRegister(
-		struct FLContext *handle, uint32 timeout, uint8 reg, uint32 count, const uint8 *data,
+	DLLEXPORT(FLStatus) flWriteChannel(
+		struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, const uint8 *data,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Append a write command to the end of the write buffer.
 	 *
-	 * The write buffer is like a notepad onto which one or more FPGA register write commands can be
+	 * The write buffer is like a notepad onto which one or more FPGA channel write commands can be
 	 * written by calls to this function. The current state of the notepad can then be played in one
 	 * go (by \c flPlayWriteBuffer()) or written (by \c flFlashStandardFirmware()) to the FX2's
 	 * EEPROM for execution on power-on.
 	 *
 	 * You'll notice that apart from the lack of a \c timeout parameter, the signature of this
-	 * function is identical to that of \c flWriteRegister(), but rather than executing the write
+	 * function is identical to that of \c flWriteChannel(), but rather than executing the write
 	 * immediately, it just appends the write command to the write buffer for playback later.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param reg The FPGA register to write.
+	 * @param chan The FPGA channel to write.
 	 * @param count The number of bytes to write.
 	 * @param data The address of the array of bytes to be written to the FPGA.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -316,15 +316,15 @@ extern "C" {
 	 *     - \c FL_SUCCESS if the write command was successfully appended to the write buffer.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
-	DLLEXPORT(FLStatus) flAppendWriteRegisterCommand(
-		struct FLContext *handle, uint8 reg, uint32 count, const uint8 *data, const char **error
+	DLLEXPORT(FLStatus) flAppendWriteChannelCommand(
+		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Play the write buffer into the \b FPGALink device immediately.
 	 *
-	 * Appending several small (i.e <10KiB) register writes to the write buffer and playing them in
-	 * one go is more efficient than making several calls to \c flWriteRegister().
+	 * Appending several small (i.e <10KiB) channel writes to the write buffer and playing them in
+	 * one go is more efficient than making several calls to \c flWriteChannel().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param timeout The time to wait (in milliseconds) for the operation to complete before giving
@@ -346,8 +346,8 @@ extern "C" {
 	/**
 	 * @brief Clean the write buffer (if any).
 	 * 
-	 * The write buffer is like a notepad onto which one or more FPGA register write commands can be
-	 * written (by \c flAppendWriteRegisterCommand()). The current state of the notepad can then be
+	 * The write buffer is like a notepad onto which one or more FPGA channel write commands can be
+	 * written (by \c flAppendWriteChannelCommand()). The current state of the notepad can then be
 	 * played in one go (by \c flPlayWriteBuffer()) or written (by \c flFlashStandardFirmware()) to
 	 * the FX2's EEPROM for execution on power-on.
 	 *
@@ -473,7 +473,7 @@ extern "C" {
 	 * Load a precompiled firmware into the FX2's EEPROM such that it will enumerate on power-on as
 	 * the "new" VID/PID. If \c xsvfFile is not \c NULL, its contents are compressed and appended to
 	 * the end of the FX2 firmware, and played into the JTAG chain on power-on. If a write buffer
-	 * has been built (by calls to \c flAppendWriteRegisterCommand()), this will be appended to the
+	 * has been built (by calls to \c flAppendWriteChannelCommand()), this will be appended to the
 	 * end of the FPGA configuration data and will be played into the FPGA on power-on config.
 	 *
 	 * In addition to the "new" VID/PID, you can also customise the port pins used for JTAG

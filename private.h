@@ -37,9 +37,9 @@ extern "C" {
 
 	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will
 	// arise if these bytes are not valid FPGALink READ or WRITE commands:
-	//   WRITE (six or more bytes):  [Reg,      N, Data0, Data1, ... DataN]
-	//   READ (exactly five bytes):  [Reg|0x80, N]
-	//     Reg is the FPGA register number (0-127)
+	//   WRITE (six or more bytes):  [Chan,      N, Data0, Data1, ... DataN]
+	//   READ (exactly five bytes):  [Chan|0x80, N]
+	//     Chan is the FPGA channel (0-127)
 	//     N is a big-endian uint32 representing the number of data bytes to read or write
 	//
 	// Immediately after sending a read command you MUST call flRead() with count=N.

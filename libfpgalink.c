@@ -193,42 +193,42 @@ FLStatus flRead(
 	return FL_SUCCESS;
 }
 
-DLLEXPORT(FLStatus) flWriteRegister(
-	struct FLContext *handle, uint32 timeout, uint8 reg, uint32 count, const uint8 *data,
+DLLEXPORT(FLStatus) flWriteChannel(
+	struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, const uint8 *data,
 	const char **error)
 {
 	FLStatus returnCode, fStatus;
-	uint8 command[] = {reg & 0x7F, 0x00, 0x00, 0x00, 0x00};
+	uint8 command[] = {chan & 0x7F, 0x00, 0x00, 0x00, 0x00};
 	if ( !handle->isCommCapable ) {
-		errRender(error, "flWriteRegister(): This device does not support CommFPGA");
+		errRender(error, "flWriteChannel(): This device does not support CommFPGA");
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	flWriteLong(count, command+1);
 	fStatus = flWrite(handle, command, 5, 100, error);
-	CHECK_STATUS(fStatus, "flWriteRegister()", fStatus);
+	CHECK_STATUS(fStatus, "flWriteChannel()", fStatus);
 	fStatus = flWrite(handle, data, count, timeout, error);
-	CHECK_STATUS(fStatus, "flWriteRegister()", fStatus);
+	CHECK_STATUS(fStatus, "flWriteChannel()", fStatus);
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;
 }
 
 // Append a write command to the end of the write buffer
-DLLEXPORT(FLStatus) flAppendWriteRegisterCommand(
-	struct FLContext *handle, uint8 reg, uint32 count, const uint8 *data, const char **error)
+DLLEXPORT(FLStatus) flAppendWriteChannelCommand(
+	struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data, const char **error)
 {
 	FLStatus returnCode;
 	BufferStatus bStatus;
-	uint8 command[] = {reg & 0x7F, 0x00, 0x00, 0x00, 0x00};
+	uint8 command[] = {chan & 0x7F, 0x00, 0x00, 0x00, 0x00};
 	if ( !handle->writeBuffer.data ) {
 		bStatus = bufInitialise(&handle->writeBuffer, 1024, 0x00, error);
-		CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
+		CHECK_STATUS(bStatus, "flAppendWriteChannelCommand()", FL_ALLOC_ERR);
 	}
 	flWriteLong(count, command+1);
 	bStatus = bufAppendBlock(&handle->writeBuffer, command, 5, error);
-	CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
+	CHECK_STATUS(bStatus, "flAppendWriteChannelCommand()", FL_ALLOC_ERR);
 	bStatus = bufAppendBlock(&handle->writeBuffer, data, count, error);
-	CHECK_STATUS(bStatus, "flAppendWriteRegisterCommand()", FL_ALLOC_ERR);
+	CHECK_STATUS(bStatus, "flAppendWriteChannelCommand()", FL_ALLOC_ERR);
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;
@@ -258,21 +258,21 @@ DLLEXPORT(void) flCleanWriteBuffer(struct FLContext *handle) {
 	}
 }
 
-DLLEXPORT(FLStatus) flReadRegister(
-	struct FLContext *handle, uint32 timeout, uint8 reg, uint32 count, uint8 *buf,
+DLLEXPORT(FLStatus) flReadChannel(
+	struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, uint8 *buf,
 	const char **error)
 {
 	FLStatus returnCode, fStatus;
-	uint8 command[] = {reg | 0x80, 0x00, 0x00, 0x00, 0x00};
+	uint8 command[] = {chan | 0x80, 0x00, 0x00, 0x00, 0x00};
 	if ( !handle->isCommCapable ) {
-		errRender(error, "flReadRegister(): This device does not support CommFPGA");
+		errRender(error, "flReadChannel(): This device does not support CommFPGA");
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	flWriteLong(count, command+1);
 	fStatus = flWrite(handle, command, 5, 100, error);
-	CHECK_STATUS(fStatus, "flReadRegister()", fStatus);
+	CHECK_STATUS(fStatus, "flReadChannel()", fStatus);
 	fStatus = flRead(handle, buf, count, timeout, error);
-	CHECK_STATUS(fStatus, "flReadRegister()", fStatus);
+	CHECK_STATUS(fStatus, "flReadChannel()", fStatus);
 	return FL_SUCCESS;
 cleanup:
 	return returnCode;
