@@ -1,7 +1,57 @@
 --------------------------------- FIFO EXAMPLE ---------------------------------
 
+INTRODUCTION
+
 The ex_fifo example implements the CommFPGA module's channel interface using a
 pair of FIFOs. It demonstrates throttling of the data flow to and from the host.
+
+
+BUILDING FROM SOURCE
+
+You can just run "make PLATFORM=<your platform>" to build. You can see the
+supported platforms in ../../platforms/. If yours is not listed, ask about it on
+the mailing list.
+
+
+GENERATING THE FIFO CORE
+
+Unfortunately Xilinx's tools are a bit brain-dead and don't let you script the
+generation of a FIFO core in manner that is independent of ISE version. As is,
+the Makefile assumes you have ISE 13.1. If you have a different ISE version you
+will probably have to generate the FIFO core manually:
+
+    mkdir fifo
+    cd fifo
+    coregen
+
+When coregen starts, follow these steps:
+    * Select "File -> New Project".
+    * Save "coregen.cgp".
+    * In "Project Options":
+      * In "Part": Choose your FPGA family, product, package etc.
+      * In "Generation": Choose "Design Entry=Verilog".
+      * Click "OK".
+    * Double-click "Memories & Storage Elements -> FIFOs -> Fifo Generator".
+    * In "Fifo Generator":
+      * Choose "fifo" for "Component Name" & click "Next" twice.
+      * Choose "First-Word Fall-Through", "Width=8", "Depth=128" & "Next" twice.
+      * Uncheck "Reset Pin" & "Next".
+      * Check "Data Count" (width should already be 8) & "Next" twice.
+      * Click "Generate".
+    * Exit coregen when generation is complete.
+
+Now copy the generated Verilog stub and NGC file to the project directory:
+
+    cp fifo.ngc ..
+    cp fifo.v ../fifo.v
+    cd ..
+
+Now edit the Makefile, putting a "#" in front of the EXTRAS line, and removing
+the path components on the line with "fifo.v" so the line just reads
+"<TAB>fifo.v \".
+
+
+DETAILED DESCRIPTION
 
 Writes to channel 0 insert data into the write FIFO. The write FIFO is drained
 continuously by a variable-rate process which displays each byte on the eight

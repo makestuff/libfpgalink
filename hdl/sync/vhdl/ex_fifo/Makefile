@@ -18,10 +18,10 @@ TOP_LEVEL := top_level
 PLATFORM  := nexys2-1200
 COMMON    := ../../../common
 HDL       := vhdl
-EXTRAS    := fifo.ngc
+#EXTRAS    := fifo.ngc
 HDLS := \
 	$(TOP_LEVEL).vhdl \
-	$(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.vhdl \
+	fifo.vhdl \
 	$(COMMON)/$(HDL)/seven_seg/seven_seg.vhdl \
 	$(COMMON)/$(HDL)/timer/timer.vhdl \
 	../comm_fpga/comm_fpga.vhdl

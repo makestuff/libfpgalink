@@ -1,0 +1,5 @@
+------------------------- EPP COMMFPGA IMPLEMENTATION --------------------------
+
+This directory is a placeholder for an Enhanced Parallel Port implementation of
+the CommFPGA protocol. This implementation will work on boards incorporating an
+EPP-like interface, e.g Digilent Basys2.

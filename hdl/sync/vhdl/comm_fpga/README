@@ -1,0 +1,37 @@
+----------------------------- VHDL COMMFPGA MODULE -----------------------------
+
+INTRODUCTION
+
+The CommFPGA module has one external-facing port and two internal-facing ports:
+
+External port:
+    fx2Clk_in        : FX2-driven 48MHz clock
+    fx2FifoSel_out   : FPGA drives low to select EP6OUT, high for EP8IN
+    ifx2Data_io[7:0] : Bidirectional eight-bit databus
+    fx2Read_out      : FPGA asserts (low) in order to clock data in from FX2
+    fx2GotData_in    : FX2 asserts (high) when it has data ready for reading
+    fx2Write_out     : FPGA asserts (low) in order to clock data out to FX2
+    fx2GotRoom_in    : FX2 asserts (high) when it has room for more FPGA data
+    fx2PktEnd_out    : FPGA asserts (low) to signal premature end to a packet
+
+Read Channel (i,e host reading from FPGA channel):
+    chanAddr_out     : The channel (0-127) to read data from (shared)
+    chanData_in      : The channel input data (valid before each clock)
+    chanRead_out     : CommFPGA asserts (high) when it wants a byte from channel
+    chanGotData_in   : Can be deasserted to signal empty channel to CommFPGA
+
+Write Channel (i.e, host writing to FPGA channel):
+    chanAddr_out     : The channel (0-127) to write data to (shared)
+    chanData_out     : The channel output data (valid before each clock)
+    chanWrite_out    : CommFPGA asserts (high) to write a byte into the channel
+    chanGotRoom_in   : Can be deasserted to signal full channel to CommFPGA
+
+You can see two examples of instantiating the CommFPGA module in your own VHDL
+by looking in the ex_fifo and ex_cksum directories, alongside this one.
+
+
+SIMULATION
+
+The CommFPGA module may be simulated using GHDL, and the resulting waves
+displayed with GTKWave. Just type "make waves". You will need GHDL and GTKWave
+installed.
