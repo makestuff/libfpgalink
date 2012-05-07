@@ -82,11 +82,11 @@ You can also use it in interactive mode (Linux x86_64):
   [GCC 4.5.2] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> from fpgalink2 import *
-  >>> flLoadStandardFirmware("1443:0005", "1443:0005")       # 1443:0007 for Nexys3 & Atlys
-  >>> handle = flOpen("1443:0005")
-  >>> flPortAccess(handle, 0x0080, 0x0080)                   # Skip this for Nexys3 & Atlys
+  >>> flLoadStandardFirmware("1443:0005", "1443:0005", "D0234")            # 1443:0007 for Nexys3 & Atlys
+  >>> handle = flOpen("1443:0005")                                         # Open the connection
+  >>> flPortAccess(handle, 0x0080, 0x0080)                                 # Skip this for Nexys3 & Atlys
   >>> flPlayXSVF(handle, "../../gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf")  # Or other SVF, XSVF or CSVF
-  >>> flWriteChannel(handle, 1000, 0x00, 0x10)
+  >>> flWriteChannel(handle, 1000, 0x00, 0x10)                             # Write a byte to channel 0
   >>> flClose(handle)
   >>> 
   chris@wotan$ 

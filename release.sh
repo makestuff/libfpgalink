@@ -82,8 +82,8 @@ cp -rp ${FLCLI}/win32/dbg/flcli.exe ${FLCLI}/win32/dbg/libargtable2.dll ${FLCLI}
 cp -rp ../../common/makestuff.h ${LIB}-${DATE}/
 cp -rp ${LIB}.h ${LIB}-${DATE}/
 
-# VHDL files
-cp -rp vhdl ${LIB}-${DATE}/
+# HDL files
+cp -rp hdl ${LIB}-${DATE}/
 
 # CSVF files
 cp -rp gen_csvf ${LIB}-${DATE}/
@@ -131,20 +131,22 @@ is useful for testing, etc. Unlike the rest of FPGALink, flcli is GPLv3-licensed
 chris@armel$ flcli --help
 FPGALink Command-Line Interface Copyright (C) 2012 Chris McClelland
 
-Usage: flcli [-psch] [-i <VID:PID>] -v <VID:PID> [-x <fileName>] [-a <actionString>]
+Usage: flcli [-psch] [-i <VID:PID>] -v <VID:PID> [-j <portSpec>] [-x <fileName>] [-a <actionString>]
 
 Interact with an FPGALink device.
 
   -i, --ivp=<VID:PID>          vendor ID and product ID (e.g 04B4:8613)
   -v, --vp=<VID:PID>           vendor ID and product ID (e.g 04B4:8613)
-  -x, --xsvf=<fileName>        XSVF or CSVF file to load
+  -j, --jtag=<portSpec>        JTAG port config (e.g D0234)
+  -x, --xsvf=<fileName>        SVF, XSVF or CSVF file to load
   -p, --power                  FPGA is powered from USB (Nexys2 only!)
   -s, --scan                   scan the JTAG chain
   -a, --action=<actionString>  a series of CommFPGA actions
   -c, --cli                    start up an interactive CommFPGA session
   -h, --help                   print this help and exit
 
-So assuming you're using a Digilent Nexys2 connected to an ARM Linux machine:
+So assuming you're using a Digilent Nexys2 connected to an ARM Linux machine, you can load one of
+the supplied example FPGA designs:
 
 chris@armel$ sudo linux.armel/rel/flcli -i 1443:0005 -v 1443:0005 -x gen_csvf/ex_cksum_nexys2-1200_vhdl.csvf -p -s
 Attempting to open connection to FPGALink device 1443:0005...
@@ -221,7 +223,21 @@ Executing CommFPGA actions on FPGALink device 1443:0005...
 00000000 12 34 34 34 34                                  .4444
 chris@armel$
 
-You are free to implement each FPGA channel however you like, e.g a simple register, or a FIFO.
+If you want to incorporate the FPGALink dynamic-link library into your own software, I have supplied
+example code for how to do this from C, Python and Excel/VBA.
+
+On the FPGA side, there is a simple module provided in both VHDL and Verilog for you to instantiate
+in your FPGA designs. You are free to choose the actual implementation of the channels themselves
+(Perhaps simple registers? Perhaps FIFOs?). I have supplied a couple of examples of how to
+instantiate the module in your FPGA designs:
+
+  hdl/sync/vhdl/ex_cksum
+  hdl/sync/vhdl/ex_fifo
+
+or if you prefer Verilog:
+
+  hdl/sync/verilog/ex_cksum
+  hdl/sync/verilog/ex_fifo
 EOF
 
 # Package it up
