@@ -7,7 +7,7 @@ The CommFPGA module has one external-facing port and two internal-facing ports:
 External port:
     fx2Clk_in        : FX2-driven 48MHz clock
     fx2FifoSel_out   : FPGA drives low to select EP6OUT, high for EP8IN
-    ifx2Data_io[7:0] : Bidirectional eight-bit databus
+    fx2Data_io[7:0]  : Bidirectional eight-bit databus
     fx2Read_out      : FPGA asserts (low) in order to clock data in from FX2
     fx2GotData_in    : FX2 asserts (high) when it has data ready for reading
     fx2Write_out     : FPGA asserts (low) in order to clock data out to FX2
