@@ -30,10 +30,10 @@ module
 		output wire[6:0] chanAddr_out,     // the selected channel (0-127)
 		input  wire[7:0] chanData_in,      // data lines used when the host reads from a channel
 		output reg       chanRead_out,     // '1' means "on the next clock rising edge, put your next byte of data on chanData_in"
-		input wire       chanGotData_in,   // channel logic can drive this low to say "I don't have data ready for you"
+		input  wire      chanGotData_in,   // channel logic can drive this low to say "I don't have data ready for you"
 		output wire[7:0] chanData_out,     // data lines used when the host writes to a channel
 		output reg       chanWrite_out,    // '1' means "on the next clock rising edge, please accept the data on chanData_out"
-		input wire       chanGotRoom_in    // channel logic can drive this low to say "I'm not ready for more data yet"
+		input  wire      chanGotRoom_in    // channel logic can drive this low to say "I'm not ready for more data yet"
 	);
 
 	// The read/write nomenclature here refers to the FPGA reading and writing the FX2 FIFOs, and is therefore
