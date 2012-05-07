@@ -18,7 +18,6 @@ choose.
     and wire it up so that each channel is wired to a simple register.
 
 [vhdl|verilog]/ex_fifo:
-verilog/ex_fifo
     A slightly more involved example showing how to wire the CommFPGA module to
     a pair of FIFOs.
 
