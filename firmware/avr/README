@@ -1,0 +1,58 @@
+An implementation of the NeroJTAG protocol for USB AVRs.
+
+BUILDING
+
+On Windows you'll need:
+  * WinAVR (http://winavr.sourceforge.net)
+  * Atmel FLIP (http://www.atmel.com/dyn/products/tools_card.asp?tool_id=3886)
+
+On Linux you'll need:
+  * sudo apt-get install gcc-avr
+  * sudo apt-get install avr-libc
+  * sudo apt-get install dfu-programmer
+
+Install MakeStuff build infrastructure (see http://bit.ly/makestuff):
+  curl -sL http://www.swaton.ukfsn.org/bin/makestuff-lindar-20110912.tar.gz | tar zxf -
+
+Fetch neroJtag and build:
+  cd makestuff/apps
+  ../common/msget.sh neroJtag
+  cd neroJtag/
+  make
+
+Flashing the firmware:
+  On Linux: sudo make dfu
+  On Windows: make flip
+
+
+USAGE
+
+Now you can (for example) program a Digilent S3BOARD:
+
+chris@wotan$ cd $HOME
+chris@wotan$ curl -sL http://www.swaton.ukfsn.org/bin/libfpgalink-20110912.tar.gz | tar zxf -
+chris@wotan$ cd libfpgalink-20110912/examples/python/
+chris@wotan$ wget http://www.digilentinc.com/Data/Products/S3BOARD/S3BOARD-demo.zip
+chris@wotan$ unzip S3BOARD-demo.zip
+chris@wotan$ cat > s3demo.batch <<EOF
+> setMode -bs
+> setCable -port xsvf -file s3demo.xsvf
+> addDevice -p 1 -file S3Demo/s3demo.bit
+> addDevice -p 2 -file /opt/Xilinx/13.1/ISE_DS/ISE/xcf/data/xcf02s.bsd
+> program -p 1
+> quit
+> EOF
+chris@wotan$ impact -batch s3demo.batch
+chris@wotan$ sudo LD_LIBRARY_PATH=../../linux.x86_64/rel python
+Python 2.7.1+ (r271:86832, Apr 11 2011, 18:13:53) 
+[GCC 4.5.2] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from fpgalink import *
+>>> handle = flOpen("03eb:3002")
+>>> flPlayXSVF(handle, "s3demo.xsvf")
+>>> flClose(handle)
+>>> 
+chris@wotan$ 
+
+You will find a nice infrastructure for building FPGA code in the 'vhdl' directory of the
+FPGALink project (https://github.com/makestuff/libfpgalink).
