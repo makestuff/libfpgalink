@@ -24,7 +24,7 @@
 #include "desc.h"
 #include "jtag.h"
 #include "sync.h"
-#include "vendorCommands.h"
+#include "../../vendorCommands.h"
 //#define DEBUG
 #ifdef DEBUG
 	#include "debug.h"

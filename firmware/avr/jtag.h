@@ -31,8 +31,8 @@
 enum {
 	TMS = 0x01,
 	TCK = 0x02,
-	TDI = 0x04
-	TDO = 0x08,
+	TDI = 0x04,
+	TDO = 0x08
 };
 
 // Enable or disable the JTAG lines (i.e drive them or tristate them)
