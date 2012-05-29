@@ -19,7 +19,7 @@
 #include <delay.h>
 #include <setupdat.h>
 #include <makestuff.h>
-#include "../vendorCommands.h"
+#include "../../vendorCommands.h"
 #include "prom.h"
 #include "jtag.h"
 #include "sync.h"
