@@ -29,10 +29,10 @@
 
 // Bit masks on Port B for the four JTAG lines
 enum {
-	TCK = 0x80,
-	TMS = 0x40,
-	TDO = 0x20,
-	TDI = 0x10
+	TMS = 0x01,
+	TCK = 0x02,
+	TDI = 0x04
+	TDO = 0x08,
 };
 
 // Enable or disable the JTAG lines (i.e drive them or tristate them)

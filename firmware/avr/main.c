@@ -30,10 +30,10 @@
 	#include "debug.h"
 #endif
 
-#define EPP_ADDRSTB (1<<0)
-#define EPP_DATASTB (1<<1)
-#define EPP_WRITE   (1<<2)
-#define EPP_WAIT    (1<<3)
+#define EPP_ADDRSTB (1<<4)
+#define EPP_DATASTB (1<<5)
+#define EPP_WRITE   (1<<6)
+#define EPP_WAIT    (1<<7)
 
 void doComms(void) {
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
@@ -65,25 +65,25 @@ void doComms(void) {
 		#endif
 
 		// Wait for FPGA to assert eppWait
-		while ( PINB & EPP_WAIT );
+		while ( PINC & EPP_WAIT );
 
 		// Put addr on port D, strobe an addr write
-		PORTB &= ~EPP_WRITE;    // AVR writes to FPGA
+		PORTC &= ~EPP_WRITE;    // AVR writes to FPGA
 		PORTD = i;              // set value of data lines
 		DDRD = 0xFF;            // drive data lines
-		PORTB &= ~EPP_ADDRSTB;  // assert address strobe
+		PORTC &= ~EPP_ADDRSTB;  // assert address strobe
 		
 		// Wait for FPGA to deassert eppWait
-		while ( !(PINB & EPP_WAIT) );
+		while ( !(PINC & EPP_WAIT) );
 		
 		// Deassert address strobe, telling FPGA that it's OK to end the cycle
-		PORTB |= EPP_ADDRSTB;
+		PORTC |= EPP_ADDRSTB;
 		
 		if ( i & 0x80 ) {
 			// The host is reading a channel ----------------------------------------------------------
 
 			DDRD = 0x00;         // stop driving data lines
-			PORTB |= EPP_WRITE;  // FPGA writes to AVR
+			PORTC |= EPP_WRITE;  // FPGA writes to AVR
 
 			// We're reading from the FPGA and sending to the host
 			Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
@@ -92,19 +92,19 @@ void doComms(void) {
 				// Fetch 64 bytes from FPGA
 				for ( i = 0; i < 64; i++ ) {
 					// Wait for FPGA to assert eppWait
-					while ( PINB & EPP_WAIT );
+					while ( PINC & EPP_WAIT );
 					
 					// Assert data strobe, to read a byte
-					PORTB &= ~EPP_DATASTB;
+					PORTC &= ~EPP_DATASTB;
 					
 					// Wait for FPGA to deassert eppWait
-					while ( !(PINB & EPP_WAIT) );
+					while ( !(PINC & EPP_WAIT) );
 
 					// Sample data lines
 					buf[i] = PIND;
 					
 					// Deassert data strobe, telling FPGA that it's OK to end the cycle
-					PORTB |= EPP_DATASTB;
+					PORTC |= EPP_DATASTB;
 				}
 
 				// Send the data packet to host
@@ -116,19 +116,19 @@ void doComms(void) {
 			// Get last few bytes of data from FPGA
 			for ( i = 0; i < mod64; i++ ) {
 				// Wait for FPGA to assert eppWait
-				while ( PINB & EPP_WAIT );
+				while ( PINC & EPP_WAIT );
 				
 				// Put byte on port D, strobe a data read
-				PORTB &= ~(EPP_DATASTB);
+				PORTC &= ~EPP_DATASTB;
 				
 				// Wait for FPGA to deassert eppWait
-				while ( !(PINB & EPP_WAIT) );
+				while ( !(PINC & EPP_WAIT) );
 				
 				// Sample data lines
 				buf[i] = PIND;
 				
 				// Signal FPGA that it's OK to end cycle
-				PORTB |= (EPP_DATASTB);
+				PORTC |= EPP_DATASTB;
 			}
 			
 			// And send it to the host
@@ -146,17 +146,17 @@ void doComms(void) {
 
 				for ( i = 0; i < 64; i++ ) {
 					// Wait for FPGA to assert eppWait
-					while ( PINB & EPP_WAIT );
+					while ( PINC & EPP_WAIT );
 					
 					// Put byte on port D, strobe a data write
 					PORTD = buf[i];
-					PORTB &= ~EPP_DATASTB;
+					PORTC &= ~EPP_DATASTB;
 					
 					// Wait for FPGA to deassert eppWait
-					while ( !(PINB & EPP_WAIT) );
+					while ( !(PINC & EPP_WAIT) );
 					
 					// Signal FPGA that it's OK to end cycle
-					PORTB |= EPP_DATASTB;
+					PORTC |= EPP_DATASTB;
 				}
 			}
 			
@@ -165,21 +165,21 @@ void doComms(void) {
 			Endpoint_ClearOUT();
 			for ( i = 0; i < mod64; i++ ) {
 				// Wait for FPGA to assert eppWait
-				while ( PINB & EPP_WAIT );
+				while ( PINC & EPP_WAIT );
 				
 				// Put byte on port D, strobe a data write
 				PORTD = buf[i];
-				PORTB &= ~EPP_DATASTB;
+				PORTC &= ~EPP_DATASTB;
 				
 				// Wait for FPGA to deassert eppWait
-				while ( !(PINB & EPP_WAIT) );
+				while ( !(PINC & EPP_WAIT) );
 				
 				// Signal FPGA that it's OK to end cycle
-				PORTB |= EPP_DATASTB;
+				PORTC |= EPP_DATASTB;
 			}
 
 			DDRD = 0x00;         // stop driving port D
-			PORTB |= EPP_WRITE;  // FPGA writes to AVR
+			PORTC |= EPP_WRITE;  // FPGA writes to AVR
 		}
 	}
 }
@@ -191,16 +191,16 @@ int main(void) {
 	MCUSR &= ~(1 << WDRF);
 	wdt_disable();
 	clock_prescale_set(clock_div_1);
-	PORTB = 0x00;
-	DDRB = 0x00;
+	PORTC = 0x00;
+	DDRC = 0x00;
 	DDRD = 0x00;
 	jtagSetEnabled(false);
 
 	// Initialise EPP control outputs, enable eppWait pull-up
-	PORTB |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE | EPP_WAIT);
+	PORTC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE | EPP_WAIT);
 	
 	// Drive EPP control outputs
-	DDRB |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
+	DDRC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
 	
 	#ifdef DEBUG
 		debugInit();
@@ -246,7 +246,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			statusBuffer[2] = 'M';
 			statusBuffer[3] = 'I';
 			statusBuffer[4] = 0x00;                    // Last operation diagnostic code
-			statusBuffer[5] = (PINB & EPP_WAIT)?0x00:0x01;                    // Flags
+			statusBuffer[5] = (PINC & EPP_WAIT)?0x00:0x01;                    // Flags
 			statusBuffer[6] = 0x24;                    // NeroJTAG endpoints
 			statusBuffer[7] = 0x24;                    // CommFPGA endpoints
 			statusBuffer[8] = 0x00;                    // Reserved
