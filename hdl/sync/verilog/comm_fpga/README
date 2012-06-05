@@ -1,30 +1,18 @@
---------------------------- VERILOG COMMFPGA MODULE ----------------------------
+------------------------ VERILOG FX2LP COMMFPGA MODULE -------------------------
 
 INTRODUCTION
 
-The CommFPGA module has one external-facing port and two internal-facing ports:
+The CommFPGA module has an external-facing port which more or less connects
+directly to a Cypress FX2LP chip, and an internal port consisting of a shared
+address bus and a pair of FIFO interfaces (data, valid, ready), one conveying
+data written by the host and another conveying data to be read by the host.
 
-External port:
-    fx2Clk_in        : FX2-driven 48MHz clock
-    fx2FifoSel_out   : FPGA drives low to select EP6OUT, high for EP8IN
-    fx2Data_io[7:0]  : Bidirectional eight-bit databus
-    fx2Read_out      : FPGA asserts (low) in order to clock data in from FX2
-    fx2GotData_in    : FX2 asserts (high) when it has data ready for reading
-    fx2Write_out     : FPGA asserts (low) in order to clock data out to FX2
-    fx2GotRoom_in    : FX2 asserts (high) when it has room for more FPGA data
-    fx2PktEnd_out    : FPGA asserts (low) to signal premature end to a packet
+You can see two examples of instantiating the CommFPGA module in your own VHDL
+by looking in the ex_fifo and ex_cksum directories, alongside this one.
 
-Read Channel (i,e host reading from FPGA channel):
-    chanAddr_out     : The channel (0-127) to read data from (shared)
-    chanData_in      : The channel input data (valid before each clock)
-    chanRead_out     : CommFPGA asserts (high) when it wants a byte from channel
-    chanGotData_in   : Can be deasserted to signal empty channel to CommFPGA
 
-Write Channel (i.e, host writing to FPGA channel):
-    chanAddr_out     : The channel (0-127) to write data to (shared)
-    chanData_out     : The channel output data (valid before each clock)
-    chanWrite_out    : CommFPGA asserts (high) to write a byte into the channel
-    chanGotRoom_in   : Can be deasserted to signal full channel to CommFPGA
+SIMULATION
 
-You can see two examples of instantiating the CommFPGA module in your own
-Verilog by looking in the ex_fifo and ex_cksum directories, alongside this one.
+The CommFPGA module may be simulated using GHDL, and the resulting waves
+displayed with GTKWave. Just type "make waves". You will need GHDL and GTKWave
+installed.

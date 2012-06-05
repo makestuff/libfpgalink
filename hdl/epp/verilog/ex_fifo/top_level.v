@@ -16,20 +16,13 @@
 //
 module
 	top_level(
-		// FX2 interface -----------------------------------------------------------------------------
-		input  wire      fx2Clk_in,     // 48MHz clock from FX2
-		output wire[1:0] fx2Addr_out,   // select FIFO: "10" for EP6OUT, "11" for EP8IN
-		inout  wire[7:0] fx2Data_io,    // 8-bit data to/from FX2
-
-		// When EP6OUT selected:
-		output wire      fx2Read_out,   // asserted (active-low) when reading from FX2
-		output wire      fx2OE_out,     // asserted (active-low) to tell FX2 to drive bus
-		input  wire      fx2GotData_in, // asserted (active-high) when FX2 has data for us
-
-		// When EP8IN selected:
-		output wire      fx2Write_out,  // asserted (active-low) when writing to FX2
-		input  wire      fx2GotRoom_in, // asserted (active-high) when FX2 has room for more data from us
-		output wire      fx2PktEnd_out, // asserted (active-low) when a host read needs to be committed early
+		// EPP interface -----------------------------------------------------------------------------
+		input  wire      eppClk_in,
+		inout  wire[7:0] eppData_io,
+		input  wire      eppAddrStb_in,
+		input  wire      eppDataStb_in,
+		input  wire      eppWrite_in,
+		output wire      eppWait_out,
 
 		// Onboard peripherals -----------------------------------------------------------------------
 		output wire[7:0] sseg_out,      // seven-segment display cathodes (one for each segment)
@@ -52,9 +45,6 @@ module
 	wire       f2hReady;  // '1' means "on the next clock rising edge, put your next byte of data on f2hData_in"
 	// ----------------------------------------------------------------------------------------------
 	
-	// Needed so that the comm_fpga module can drive both fx2Read_out and fx2OE_out
-	wire       fx2Read;
-
 	// Flags for display on the 7-seg decimal points
 	wire[3:0]  flags;
 
@@ -82,7 +72,7 @@ module
 	wire[7:0]  count_next;
 	
 	// Infer registers
-	always @(posedge fx2Clk_in)
+	always @(posedge eppClk_in)
 		count <= count_next;
 
 	// Wire up write FIFO to channel 0 writes:
@@ -109,19 +99,14 @@ module
 		8'h00;
 	
 	// CommFPGA module
-	assign fx2Read_out = fx2Read;
-	assign fx2OE_out = fx2Read;
-	assign fx2Addr_out[1] = 1'b1;  // Use EP6OUT/EP8IN, not EP2OUT/EP4IN.
 	comm_fpga comm_fpga(
-		// FX2 interface
-		.fx2Clk_in(fx2Clk_in),
-		.fx2FifoSel_out(fx2Addr_out[0]),
-		.fx2Data_io(fx2Data_io),
-		.fx2Read_out(fx2Read),
-		.fx2GotData_in(fx2GotData_in),
-		.fx2Write_out(fx2Write_out),
-		.fx2GotRoom_in(fx2GotRoom_in),
-		.fx2PktEnd_out(fx2PktEnd_out),
+		// EPP interface
+		.eppClk_in(eppClk_in),
+		.eppData_io(eppData_io),
+		.eppAddrStb_in(eppAddrStb_in),
+		.eppDataStb_in(eppDataStb_in),
+		.eppWrite_in(eppWrite_in),
+		.eppWait_out(eppWait_out),
 
 		// Channel read/write interface
 		.chanAddr_out(chanAddr),
@@ -135,7 +120,7 @@ module
 
 	// Write FIFO: written by host, read by LEDs
 	fifo_wrapper write_fifo(
-		.clk_in(fx2Clk_in),
+		.clk_in(eppClk_in),
 		.depth_out(fifoCount[15:8]),
 
 		// Production end
@@ -151,7 +136,7 @@ module
 	
 	// Read FIFO: written by counter, read by host
 	fifo_wrapper read_fifo(
-		.clk_in(fx2Clk_in),
+		.clk_in(eppClk_in),
 		.depth_out(fifoCount[7:0]),
 
 		// Production end
@@ -167,14 +152,14 @@ module
 
 	// Producer timer: how fast stuff is put into the read FIFO
 	timer producer_timer(
-		.clk_in(fx2Clk_in),
+		.clk_in(eppClk_in),
 		.ceiling_in(sw_in[3:0]),
 		.tick_out(readFifoInputValid)
 	);
 
 	// Consumer timer: how fast stuff is drained from the write FIFO
 	timer consumer_timer(
-		.clk_in(fx2Clk_in),
+		.clk_in(eppClk_in),
 		.ceiling_in(sw_in[7:4]),
 		.tick_out(writeFifoOutputReady)
 	);
@@ -183,7 +168,7 @@ module
 	assign led_out = writeFifoOutputData;
 	assign flags = {1'b0, writeFifoOutputValid, 1'b0, readFifoInputReady};
 	seven_seg seven_seg(
-		.clk_in(fx2Clk_in),
+		.clk_in(eppClk_in),
 		.data_in(fifoCount),
 		.dots_in(flags),
 		.segs_out(sseg_out),

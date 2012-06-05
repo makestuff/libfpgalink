@@ -57,20 +57,20 @@ architecture behavioural of top_level is
 
 	-- Registers implementing the channels
 	signal checksum, checksum_next : std_logic_vector(15 downto 0) := x"0000";
-	signal r0, r0_next             : std_logic_vector(7 downto 0) := x"00";
-	signal r1, r1_next             : std_logic_vector(7 downto 0) := x"00";
-	signal r2, r2_next             : std_logic_vector(7 downto 0) := x"00";
-	signal r3, r3_next             : std_logic_vector(7 downto 0) := x"00";
+	signal reg0, reg0_next         : std_logic_vector(7 downto 0)  := x"00";
+	signal reg1, reg1_next         : std_logic_vector(7 downto 0)  := x"00";
+	signal reg2, reg2_next         : std_logic_vector(7 downto 0)  := x"00";
+	signal reg3, reg3_next         : std_logic_vector(7 downto 0)  := x"00";
 begin
 	-- Infer registers
 	process(eppClk_in)
 	begin
 		if ( rising_edge(eppClk_in) ) then
 			checksum <= checksum_next;
-			r0 <= r0_next;
-			r1 <= r1_next;
-			r2 <= r2_next;
-			r3 <= r3_next;
+			reg0 <= reg0_next;
+			reg1 <= reg1_next;
+			reg2 <= reg2_next;
+			reg3 <= reg3_next;
 		end if;
 	end process;
 
@@ -79,17 +79,17 @@ begin
 		std_logic_vector(unsigned(checksum) + unsigned(h2fData)) when chanAddr = "0000000" and h2fValid = '1'
 		else x"0000" when chanAddr = "0000001" and h2fValid = '1' and h2fData(0) = '1'
 		else checksum;
-	r0_next <= h2fData when chanAddr = "0000000" and h2fValid = '1' else r0;
-	r1_next <= h2fData when chanAddr = "0000001" and h2fValid = '1' else r1;
-	r2_next <= h2fData when chanAddr = "0000010" and h2fValid = '1' else r2;
-	r3_next <= h2fData when chanAddr = "0000011" and h2fValid = '1' else r3;
+	reg0_next <= h2fData when chanAddr = "0000000" and h2fValid = '1' else reg0;
+	reg1_next <= h2fData when chanAddr = "0000001" and h2fValid = '1' else reg1;
+	reg2_next <= h2fData when chanAddr = "0000010" and h2fValid = '1' else reg2;
+	reg3_next <= h2fData when chanAddr = "0000011" and h2fValid = '1' else reg3;
 	
 	-- Select values to return for each channel when the host is reading
 	with chanAddr select f2hData <=
 		sw_in when "0000000",
-		r1    when "0000001",
-		r2    when "0000010",
-		r3    when "0000011",
+		reg1  when "0000001",
+		reg2  when "0000010",
+		reg3  when "0000011",
 		x"00" when others;
 
 	-- Assert that there's always data for reading, and always room for writing
@@ -109,16 +109,16 @@ begin
 
 			-- Channel read/write interface
 			chanAddr_out   => chanAddr,
-			f2hData_in     => f2hData,
-			f2hReady_out   => f2hReady,
-			f2hValid_in    => f2hValid,
 			h2fData_out    => h2fData,
 			h2fValid_out   => h2fValid,
-			h2fReady_in    => h2fReady
+			h2fReady_in    => h2fReady,
+			f2hData_in     => f2hData,
+			f2hValid_in    => f2hValid,
+			f2hReady_out   => f2hReady
 		);
 
 	-- LEDs and 7-seg display
-	led_out <= r0;
+	led_out <= reg0;
 	flags <= "000" & f2hReady;
 	seven_seg : entity work.seven_seg
 		port map(

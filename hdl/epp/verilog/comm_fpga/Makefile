@@ -16,30 +16,9 @@
 #
 MODULE := comm_fpga
 HDLS := \
-	${MODULE}.vhdl
-SIGNALS := \
-	dispClk \
-	- \
-	uut.eppData_io \
-	uut.eppAddrStb_in \
-	uut.eppDataStb_in \
-	uut.eppWrite_in \
-	uut.eppWait_out \
-	- \
-	uut.chanAddr_out \
-	uut.h2fData_out \
-	uut.h2fValid_out \
-	uut.h2fReady_in \
-	uut.f2hData_in \
-	uut.f2hValid_in \
-	uut.f2hReady_out \
-	- \
-	uut.state \
-	uut.eppAddrStb_sync \
-	uut.eppDataStb_sync \
-	uut.eppWrite_sync
+	${MODULE}.v
 
-all: synthesis simulation
+all: synthesis
 
 synthesis: ${HDLS}
 	mkdir -p synthesis
@@ -61,24 +40,7 @@ synthesis: ${HDLS}
 	grep WARNINGS synthesis/* | grep -Eq "XST_NUMBER_OF_WARNINGS\" value=\"0\""
 	touch $@
 
-simulation: ${HDLS} ${MODULE}_tb.vhdl
-	mkdir -p simulation
-	ghdl -i --ieee=synopsys --std=93c --vital-checks --warn-binding --warn-reserved --warn-library --warn-vital-generic --warn-delayed-checks --warn-body --warn-specs --warn-unused --warn-error --workdir=simulation --work=work *.vhdl
-	ghdl -m --ieee=synopsys --std=93c --vital-checks --warn-binding --warn-reserved --warn-library --warn-vital-generic --warn-delayed-checks --warn-body --warn-specs --warn-unused --warn-error --workdir=simulation --work=work ${MODULE}_tb
-	mv ${MODULE}_tb simulation
-	./simulation/${MODULE}_tb --stop-time=2000ns --wave=simulation/${MODULE}_tb.ghw
-	touch $@
-
-waves: simulation
-	@for i in ${SIGNALS}; do if [ $$i = "-" ]; then echo "gtkwave::/Edit/Insert_Blank"; else echo "gtkwave::addSignalsFromList $$i"; fi; done > simulation/startup.tcl
-	@echo "gtkwave::setZoomFactor -26" >> simulation/startup.tcl
-	@echo "gtkwave::setMarker 600ns" >> simulation/startup.tcl
-	@echo "for { set i 0 } { \$$i <= [ gtkwave::getVisibleNumTraces ] } { incr i } { gtkwave::setTraceHighlightFromIndex \$$i off }" >> simulation/startup.tcl
-	@echo "gtkwave::setLeftJustifySigs on" >> simulation/startup.tcl
-	cat simulation/startup.tcl
-	gtkwave -T simulation/startup.tcl simulation/${MODULE}_tb.ghw
-
 clean: FORCE
-	rm -rf synthesis simulation results.txt
+	rm -rf synthesis
 
 FORCE:

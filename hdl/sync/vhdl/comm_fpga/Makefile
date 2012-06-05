@@ -15,37 +15,37 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 MODULE := comm_fpga
+HDLS := \
+	${MODULE}.vhdl
 SIGNALS := \
 	dispClk \
 	- \
+	uut.fx2FifoSel_out \
+	uut.fifoOp \
 	uut.fx2Data_io \
 	uut.fx2GotData_in \
 	uut.fx2GotRoom_in \
-	uut.fifoOp \
-	uut.fx2FifoSel_out \
 	uut.fx2PktEnd_out \
 	- \
-	uut.regAddr_out \
-	uut.regData_in \
-	uut.regData_out \
-	uut.regRead_out \
-	uut.regWrite_out \
-	uut.regGotData_in \
-	uut.regGotRoom_in \
+	uut.chanAddr_out \
+	uut.h2fData_out \
+	uut.h2fValid_out \
+	uut.h2fReady_in \
+	uut.f2hData_in \
+	uut.f2hValid_in \
+	uut.f2hReady_out \
 	- \
 	uut.state \
 	uut.count \
 	uut.addr \
 	uut.isWrite \
 	uut.isAligned
-VHDLS := \
-	${MODULE}.vhdl
 
 all: synthesis simulation
 
-synthesis: ${VHDLS}
+synthesis: ${HDLS}
 	mkdir -p synthesis
-	for i in $+; do echo "vhdl work \"$$i\""; done > synthesis/$(MODULE).prj
+	for i in ${HDLS}; do if [ "$${i##*.}" = "vhdl" ]; then echo "vhdl work \"$$i\""; elif [ "$${i##*.}" = "v" ]; then echo "verilog work \"$$i\""; fi; done > synthesis/$(MODULE).prj
 	echo "set -tmpdir \"xst/projnav.tmp\"" > synthesis/platform.xst
 	echo "set -xsthdpdir \"xst\"" >> synthesis/platform.xst
 	echo "run" >> synthesis/platform.xst
@@ -57,13 +57,13 @@ synthesis: ${VHDLS}
 	echo "-top ${MODULE}" >> synthesis/platform.xst
 	echo "-opt_mode Speed" >> synthesis/platform.xst
 	echo "-opt_level 1" >> synthesis/platform.xst
-	cp *.vhdl synthesis/
+	cp ${HDLS} synthesis/
 	mkdir -p synthesis/xst/projnav.tmp
 	cd synthesis && xst -intstyle ise -ifn platform.xst -ofn ${MODULE}.syr
 	grep WARNINGS synthesis/* | grep -Eq "XST_NUMBER_OF_WARNINGS\" value=\"0\""
 	touch $@
 
-simulation: ${VHDLS} ${MODULE}_tb.vhdl
+simulation: ${HDLS} ${MODULE}_tb.vhdl
 	mkdir -p simulation
 	ghdl -i --ieee=synopsys --std=93c --vital-checks --warn-binding --warn-reserved --warn-library --warn-vital-generic --warn-delayed-checks --warn-body --warn-specs --warn-unused --warn-error --workdir=simulation --work=work *.vhdl
 	ghdl -m --ieee=synopsys --std=93c --vital-checks --warn-binding --warn-reserved --warn-library --warn-vital-generic --warn-delayed-checks --warn-body --warn-specs --warn-unused --warn-error --workdir=simulation --work=work ${MODULE}_tb
@@ -82,8 +82,7 @@ waves: simulation
 	@echo "for { set i 0 } { \$$i <= [ gtkwave::getVisibleNumTraces ] } { incr i } { gtkwave::setTraceHighlightFromIndex \$$i off }" >> simulation/startup.tcl
 	@echo "gtkwave::setLeftJustifySigs on" >> simulation/startup.tcl
 	cat simulation/startup.tcl
-	/usr/local/bin/gtkwave -T simulation/startup.tcl simulation/${MODULE}_tb.ghw
-	#gtkwave -T simulation/startup.tcl simulation/${MODULE}_tb.ghw
+	gtkwave -T simulation/startup.tcl simulation/${MODULE}_tb.ghw
 
 clean: FORCE
 	rm -rf synthesis simulation results.txt

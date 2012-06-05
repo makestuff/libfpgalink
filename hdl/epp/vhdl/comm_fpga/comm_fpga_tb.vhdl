@@ -30,17 +30,12 @@ architecture behavioural of comm_fpga_tb is
 	signal dispClk    : std_logic;  -- display version of sysClk, which leads it by 4ns
 
 	-- External interface ---------------------------------------------------------------------------
-	signal fx2FifoSel : std_logic;  -- comm_fpga drives fx2FifoSel='0' to read from EP6OUT, and fx2FifoSel='1' to write to EP8IN
-	signal fx2Data    : std_logic_vector(7 downto 0);  -- data to/from the FX2
-
-	-- When EP6OUT selected:
-	signal fx2Read    : std_logic;  -- comm_fpga drives fx2Read='1' telling FX2 to commit data out of the EP6OUT FIFO
-	signal fx2GotData : std_logic;  -- FX2 drives '1' when fx2FifoSel='0' and there is some data in the EP6OUT FIFO
-
-	-- When EP8IN selected:
-	signal fx2Write   : std_logic;  -- comm_fpga drives fx2Write='1' telling FX2 to commit data into the EP8IN FIFO
-	signal fx2GotRoom : std_logic;  -- FX2 drives '1' when fx2FifoSel='1' and there is room in the EP8IN FIFO
-	signal fx2PktEnd  : std_logic;  -- comm_fpga drives fx2PktEnd='1' to commit an EP8IN packet early
+	signal eppClk     : std_logic;
+	signal eppData    : std_logic_vector(7 downto 0);
+	signal eppAddrStb : std_logic;
+	signal eppDataStb : std_logic;
+	signal eppWrite   : std_logic;
+	signal eppWait    : std_logic;
 
 	-- Channel read/write interface -----------------------------------------------------------------
 	signal chanAddr   : std_logic_vector(6 downto 0);  -- comm_fpga selects one of 128 channels to access
@@ -58,17 +53,13 @@ begin
 	-- Instantiate comm_fpga for testing
 	uut: entity work.comm_fpga
 		port map(
-			-- FX2 interface --------------------------------------------------------------------------
-			fx2Clk_in      => sysClk,      
-			fx2FifoSel_out => fx2FifoSel,  
-			fx2Data_io     => fx2Data,     
-
-			fx2Read_out    => fx2Read,		 -- when EP6OUT selected
-			fx2GotRoom_in  => fx2GotRoom,  -- /
-
-			fx2Write_out   => fx2Write,    -- \
-			fx2GotData_in  => fx2GotData,  --  when EP8IN selected
-			fx2PktEnd_out  => fx2PktEnd,	 -- /
+			-- EPP interface --------------------------------------------------------------------------
+			eppClk_in      => sysClk,
+			eppData_io     => eppData,
+			eppAddrStb_in  => eppAddrStb,
+			eppDataStb_in  => eppDataStb,
+			eppWrite_in    => eppWrite,
+			eppWait_out    => eppWait,
 
 			-- Channel read/write interface -----------------------------------------------------------
 			chanAddr_out   => chanAddr,    -- which channel to connect the pipes to
@@ -103,93 +94,150 @@ begin
 		end loop;
 	end process;
 
-	-- Drive the FX2 side
+	-- Drive the EPP side
 	process
 	begin
-		fx2Data <= (others => 'Z');
-		fx2GotData <= '0';
-		fx2GotRoom <= '1';
-		wait until sysClk = '1';
-		wait until sysClk = '0';
-		wait until sysClk = '1';
-		fx2Data <= x"55";
-		fx2GotData <= '1';
-		wait until rising_edge(sysClk);
-		fx2Data <= x"00";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"FF"; wait for 1 ps; fx2Data <= x"00";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"FF"; wait for 1 ps; fx2Data <= x"00";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"04";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"12";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"34";
-		wait until rising_edge(sysClk);
-		fx2Data <= (others => 'Z');
-		wait until rising_edge(sysClk);
-		fx2Data <= x"56";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"78";
-		wait until rising_edge(sysClk);
-		fx2Data <= (others => 'Z');
-		fx2GotData <= '0';
+		eppData <= (others => 'Z');
+		eppAddrStb <= '1';
+		eppDataStb <= '1';
+		eppWrite <= '1';
+		wait for 55 ns;
 
-		wait until rising_edge(sysClk);
-		wait until rising_edge(sysClk);
-		wait until rising_edge(sysClk);
-		wait until rising_edge(sysClk);
-		fx2Data <= x"AA";
-		fx2GotData <= '1';
-		wait until rising_edge(sysClk);
-		fx2Data <= x"00";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"FF"; wait for 1 ps; fx2Data <= x"00";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"FF"; wait for 1 ps; fx2Data <= x"00";
-		wait until rising_edge(sysClk);
-		fx2Data <= x"04";
-		wait until rising_edge(sysClk);
-		fx2GotData <= '0';
-		fx2Data <= (others => 'Z');
+		-- Do address write
+		eppData <= x"55";
+		eppWrite <= '0';
+		wait for 5 ns;
+		eppAddrStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppAddrStb <= '1';
+		wait for 5 ns;
+		eppWrite <= '1';
+		eppData <= (others => 'Z');
+		wait until eppWait = '0';
+		wait for 5 ns;
+
+		-- Do data write 1
+		eppData <= x"12";
+		eppWrite <= '0';
+		wait for 5 ns;
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait for 5 ns;
+		eppWrite <= '1';
+		eppData <= (others => 'Z');
+		wait until eppWait = '0';
+		wait for 5 ns;
+		
+		-- Do data write 2
+		eppData <= x"34";
+		eppWrite <= '0';
+		wait for 5 ns;
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait for 5 ns;
+		eppWrite <= '1';
+		eppData <= (others => 'Z');
+		wait until eppWait = '0';
+		wait for 5 ns;
+		
+		-- Do data write 3
+		eppData <= x"56";
+		eppWrite <= '0';
+		wait for 5 ns;
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait for 5 ns;
+		eppWrite <= '1';
+		eppData <= (others => 'Z');
+		wait until eppWait = '0';
+		wait for 5 ns;
+		
+		-- Do data write 4
+		eppData <= x"78";
+		eppWrite <= '0';
+		wait for 5 ns;
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait for 5 ns;
+		eppWrite <= '1';
+		eppData <= (others => 'Z');
+		wait until eppWait = '0';
+		wait for 5 ns;
+
+		-- Do data read 1
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait until eppWait = '0';
+		wait for 5 ns;
+
+		-- Do data read 2
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait until eppWait = '0';
+		wait for 5 ns;
+
+		-- Do data read 3
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait until eppWait = '0';
+		wait for 5 ns;
+
+		-- Do data read 4
+		eppDataStb <= '0';
+		wait until eppWait = '1';
+		wait for 5 ns;
+		eppDataStb <= '1';
+		wait until eppWait = '0';
+
 		wait;
 	end process;
 
 	-- Drive the internal side
 	process
 	begin
-		-- Host << FPGA data is invalid for now
-		f2hData <= (others => '0');
 		f2hValid <= '0';
-
-		-- We're ready for Host >> FPGA data
 		h2fReady <= '1';
-
-		-- Wait until some Host >> FPGA data arrives, then deassert h2fReady to test throttling
-		wait until h2fValid = '1';
-		wait for 40 ns;
-		h2fReady <= '0';
-		wait for 20 ns;
-		h2fReady <= '1';
-
-		-- Wait for the Host << FPGA pipe to become ready, then drive some data, with a hole in the
-		-- middle again to test the throttling.
-		wait until f2hReady = '1';
-		f2hData <= x"87";
-		f2hValid <= '1';
-		wait for 20 ns;
-		f2hData <= x"65";
-		wait for 20 ns;
 		f2hData <= (others => 'Z');
-		f2hValid <= '0';
-		wait for 20 ns;
-		f2hData <= x"43";
+
+		wait until h2fValid = '1';
+		wait until h2fValid = '0';
+		h2fReady <= '0';
+		wait for 120 ns;
+		h2fReady <= '1';
+
+		wait for 400 ns;
 		f2hValid <= '1';
-		wait for 20 ns;
+		f2hData <= x"87";
+		
+		wait until f2hReady = '1';
+		f2hData <= x"65";
+		wait until f2hReady = '0';
+
+		wait until f2hReady = '1';
+		f2hData <= x"43";
+		wait until f2hReady = '0';
+
+		wait until f2hReady = '1';
 		f2hData <= x"21";
-		wait for 20 ns;
-		f2hData <= (others => '0');
+		wait until f2hReady = '0';
+
+		wait until f2hReady = '1';
+		f2hData <= (others => 'Z');
 		f2hValid <= '0';
 		wait;
 	end process;

@@ -27,12 +27,12 @@ SIGNALS := \
 	uut.anodeSelect \
 	uut.nibble \
 	dot
-VHDLS := \
+HDLS := \
 	${MODULE}.vhdl
 
 all: synthesis simulation
 
-synthesis: ${VHDLS}
+synthesis: ${HDLS}
 	mkdir -p synthesis
 	for i in $+; do echo "vhdl work \"$$i\""; done > synthesis/$(MODULE).prj
 	echo "set -tmpdir \"xst/projnav.tmp\"" > synthesis/platform.xst
@@ -52,7 +52,7 @@ synthesis: ${VHDLS}
 	grep WARNINGS synthesis/* | grep -Eq "XST_NUMBER_OF_WARNINGS\" value=\"0\""
 	touch $@
 
-simulation: ${VHDLS} ${MODULE}_tb.vhdl
+simulation: ${HDLS} ${MODULE}_tb.vhdl
 	mkdir -p simulation
 	ghdl -i --ieee=synopsys --std=93c --vital-checks --warn-binding --warn-reserved --warn-library --warn-vital-generic --warn-delayed-checks --warn-body --warn-specs --warn-unused --warn-error --workdir=simulation --work=work *.vhdl
 	ghdl -m --ieee=synopsys --std=93c --vital-checks --warn-binding --warn-reserved --warn-library --warn-vital-generic --warn-delayed-checks --warn-body --warn-specs --warn-unused --warn-error --workdir=simulation --work=work ${MODULE}_tb

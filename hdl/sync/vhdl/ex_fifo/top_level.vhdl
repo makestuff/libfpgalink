@@ -60,32 +60,32 @@ architecture behavioural of top_level is
 	-- ----------------------------------------------------------------------------------------------
 
 	-- Needed so that the comm_fpga module can drive both fx2Read_out and fx2OE_out
-	signal fx2Read           : std_logic;
+	signal fx2Read                 : std_logic;
 
 	-- Flags for display on the 7-seg decimal points
-	signal flags             : std_logic_vector(3 downto 0);
+	signal flags                   : std_logic_vector(3 downto 0);
 
-	-- FIFOs
-	signal fifoCount         : std_logic_vector(15 downto 0); -- MSB=writeFifo, LSB=readFifo
+	-- FIFOs implementing the channels
+	signal fifoCount               : std_logic_vector(15 downto 0); -- MSB=writeFifo, LSB=readFifo
 
 	-- Write FIFO:
-	signal writeFifoDataIn   : std_logic_vector(7 downto 0);  -- producer: data
-	signal writeFifoWrite    : std_logic;                     -- producer: write enable
-	signal writeFifoFull     : std_logic;                     -- producer: full flag
-	signal writeFifoDataOut  : std_logic_vector(7 downto 0);  -- consumer: data
-	signal writeFifoRead     : std_logic;                     -- consumer: write enable
-	signal writeFifoEmpty    : std_logic;                     -- consumer: empty flag
+	signal writeFifoInputData      : std_logic_vector(7 downto 0);  -- producer: data
+	signal writeFifoInputValid     : std_logic;                     --           valid flag
+	signal writeFifoInputReady     : std_logic;                     --           ready flag
+	signal writeFifoOutputData     : std_logic_vector(7 downto 0);  -- consumer: data
+	signal writeFifoOutputValid    : std_logic;                     --           valid flag
+	signal writeFifoOutputReady    : std_logic;                     --           ready flag
 
 	-- Read FIFO:
-	signal readFifoDataIn    : std_logic_vector(7 downto 0);  -- producer: data
-	signal readFifoWrite     : std_logic;                     -- producer: write enable
-	signal readFifoFull      : std_logic;                     -- producer: full flag
-	signal readFifoDataOut   : std_logic_vector(7 downto 0);  -- consumer: data
-	signal readFifoRead      : std_logic;                     -- consumer: write enable
-	signal readFifoEmpty     : std_logic;                     -- consumer: empty flag
+	signal readFifoInputData       : std_logic_vector(7 downto 0);  -- producer: data
+	signal readFifoInputValid      : std_logic;                     --           valid flag
+	signal readFifoInputReady      : std_logic;                     --           ready flag
+	signal readFifoOutputData      : std_logic_vector(7 downto 0);  -- consumer: data
+	signal readFifoOutputValid     : std_logic;                     --           valid flag
+	signal readFifoOutputReady     : std_logic;                     --           ready flag
 
-	-- Counter which endlessly puts items in read FIFO for the host to read
-	signal count, count_next : std_logic_vector(7 downto 0) := (others => '0');
+	-- Counter which endlessly puts items into the read FIFO for the host to read
+	signal count, count_next       : std_logic_vector(7 downto 0) := (others => '0');
 begin
 	-- Infer registers
 	process(fx2Clk_in)
@@ -95,33 +95,38 @@ begin
 		end if;
 	end process;
 
-	-- Wire up write FIFO to channel 0:
-	writeFifoDataIn <= h2fData;
-	writeFifoWrite <=
+	-- Wire up write FIFO to channel 0 writes:
+	--   flags(2) driven by writeFifoOutputValid
+	--   writeFifoOutputReady driven by consumer_timer
+	--   LEDs driven by writeFifoOutputData
+	writeFifoInputData <= h2fData;
+	writeFifoInputValid <=
 		'1' when h2fValid = '1' and chanAddr = "0000000"
 		else '0';
 	h2fReady <=
-		'0' when writeFifoFull = '1' and chanAddr = "0000000"
+		'0' when writeFifoInputReady = '0' and chanAddr = "0000000"
 		else '1';
 
-	-- Wire up read FIFO to channel 0:
-	readFifoDataIn <= count;
-	readFifoRead <=
+	-- Wire up read FIFO to channel 0 reads:
+	--   readFifoInputValid driven by producer_timer
+	--   flags(0) driven by readFifoInputReady
+	count_next <=
+		std_logic_vector(unsigned(count) + 1) when readFifoInputValid = '1'
+		else count;
+	readFifoInputData <= count;
+	f2hValid <=
+		'0' when readFifoOutputValid = '0' and chanAddr = "0000000"
+		else '1';
+	readFifoOutputReady <=
 		'1' when f2hReady = '1' and chanAddr = "0000000"
 		else '0';
-	f2hValid <=
-		'0' when readFifoEmpty = '1' and chanAddr = "0000000"
-		else '1';
-	count_next <=
-		std_logic_vector(unsigned(count) + 1) when readFifoWrite = '1'
-		else count;
 	
 	-- Select values to return for each channel when the host is reading
 	with chanAddr select f2hData <=
-		readFifoDataOut        when "0000000",  -- get data from the read FIFO
+		readFifoOutputData     when "0000000",  -- get data from the read FIFO
 		fifoCount(15 downto 8) when "0000001",  -- read the current depth of the write FIFO
-		fifoCount(7 downto 0)  when "0000010",  -- read the current depth of the write FIFO
-		x"00" when others;
+		fifoCount(7 downto 0)  when "0000010",  -- read the current depth of the read FIFO
+		x"00"                  when others;
 	
 	-- CommFPGA module
 	fx2Read_out <= fx2Read;
@@ -141,67 +146,67 @@ begin
 
 			-- Channel read/write interface
 			chanAddr_out   => chanAddr,
-			f2hData_in    => f2hData,
-			f2hReady_out   => f2hReady,
-			f2hValid_in => f2hValid,
-			h2fData_out   => h2fData,
-			h2fValid_out  => h2fValid,
-			h2fReady_in => h2fReady
+			h2fData_out    => h2fData,
+			h2fValid_out   => h2fValid,
+			h2fReady_in    => h2fReady,
+			f2hData_in     => f2hData,
+			f2hValid_in    => f2hValid,
+			f2hReady_out   => f2hReady
 		);
 
-	-- Write FIFO: written by host, read by leds
-	write_fifo : entity work.fifo
+	-- Write FIFO: written by host, read by LEDs
+	write_fifo : entity work.fifo_wrapper
 		port map(
-			clk        => fx2Clk_in,
-			data_count => fifoCount(15 downto 8),
+			clk_in          => fx2Clk_in,
+			depth_out       => fifoCount(15 downto 8),
 
 			-- Production end
-			din        => writeFifoDataIn,
-			wr_en      => writeFifoWrite,
-			full       => writeFifoFull,
+			inputData_in    => writeFifoInputData,
+			inputValid_in   => writeFifoInputValid,
+			inputReady_out  => writeFifoInputReady,
 
 			-- Consumption end
-			dout       => writeFifoDataOut,
-			rd_en      => writeFifoRead,
-			empty      => writeFifoEmpty
+			outputData_out  => writeFifoOutputData,
+			outputValid_out => writeFifoOutputValid,
+			outputReady_in  => writeFifoOutputReady
 		);
 	
 	-- Read FIFO: written by counter, read by host
-	read_fifo : entity work.fifo
+	read_fifo : entity work.fifo_wrapper
 		port map(
-			clk        => fx2Clk_in,
-			data_count => fifoCount(7 downto 0),
+			clk_in          => fx2Clk_in,
+			depth_out       => fifoCount(7 downto 0),
 
 			-- Production end
-			din        => readFifoDataIn,
-			wr_en      => readFifoWrite,
-			full       => readFifoFull,
+			inputData_in    => readFifoInputData,
+			inputValid_in   => readFifoInputValid,
+			inputReady_out  => readFifoInputReady,
 
 			-- Consumption end
-			dout       => readFifoDataOut,
-			rd_en      => readFifoRead,
-			empty      => readFifoEmpty
+			outputData_out  => readFifoOutputData,
+			outputValid_out => readFifoOutputValid,
+			outputReady_in  => readFifoOutputReady
 		);
 
-	-- Producer timer
+	-- Producer timer: how fast stuff is put into the read FIFO
 	producer_timer : entity work.timer
 		port map(
 			clk_in     => fx2Clk_in,
 			ceiling_in => sw_in(3 downto 0),
-			tick_out   => readFifoWrite
+			tick_out   => readFifoInputValid
 		);
 
-	-- Consumer timer
+	-- Consumer timer: how fast stuff is drained from the write FIFO
 	consumer_timer : entity work.timer
 		port map(
 			clk_in     => fx2Clk_in,
 			ceiling_in => sw_in(7 downto 4),
-			tick_out   => writeFifoRead
+			tick_out   => writeFifoOutputReady
 		);
 
 	-- LEDs and 7-seg display
-	led_out <= writeFifoDataOut;
-	flags <= '0' & writeFifoEmpty & '0' & readFifoFull;
+	led_out <= writeFifoOutputData;
+	flags <= '0' & writeFifoOutputValid & '0' & readFifoInputReady;
 	seven_seg : entity work.seven_seg
 		port map(
 			clk_in     => fx2Clk_in,

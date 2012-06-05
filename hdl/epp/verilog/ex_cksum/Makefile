@@ -17,26 +17,10 @@
 TOP_LEVEL := top_level
 PLATFORM  := nexys2-1200
 COMMON    := ../../../common
-HDL       := vhdl
-EXTRAS    := fifo.ngc
+HDL       := verilog
 HDLS := \
-	$(TOP_LEVEL).vhdl \
-	$(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.vhdl \
-	$(COMMON)/$(HDL)/fifo_gen/fifo_wrapper.vhdl \
-	$(COMMON)/$(HDL)/seven_seg/seven_seg.vhdl \
-	$(COMMON)/$(HDL)/timer/timer.vhdl \
-	../comm_fpga/comm_fpga.vhdl
+	$(TOP_LEVEL).v \
+	$(COMMON)/$(HDL)/seven_seg/seven_seg.v \
+	../comm_fpga/comm_fpga.v
 
 include $(COMMON)/top.mk
-
-$(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.vhdl: $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.vhd
-	cp -p $< $@
-
-fifo.ngc: $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.ngc
-	cp -p $< $@
-
-$(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.vhd $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.ngc: $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo_gen.batch
-	cd $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM) && coregen -b fifo_gen.batch
-
-allclean: FORCE
-	cd $(COMMON)/$(HDL)/fifo_gen && for i in *; do mv $$i/fifo_gen.batch .; rm -rf $$i; mkdir $$i; mv fifo_gen.batch $$i; done

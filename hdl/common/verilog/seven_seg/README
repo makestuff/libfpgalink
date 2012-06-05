@@ -1,0 +1,3 @@
+Verilog seven-segment display driver. Accepts a 16-bit number for display on
+four multiplexed 7-seg digits, and a four-bit number for display on the four
+displays' decimal points.

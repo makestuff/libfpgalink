@@ -104,9 +104,9 @@ begin
 
 			-- Host writes a byte to the FPGA
 			when S_DATA_WRITE_EXEC =>
+				h2fData_out <= eppData_io;
+				h2fValid_out <= '1';
 				if ( h2fReady_in = '1') then
-					h2fValid_out <= '1';
-					h2fData_out <= eppData_io;
 					eppWait_next <= '1';
 					state_next <= S_DATA_WRITE_WAIT;
 				end if;
@@ -118,9 +118,9 @@ begin
 
 			-- Host reads a byte from the FPGA
 			when S_DATA_READ_EXEC =>
+				eppData_next <= f2hData_in;
+				f2hReady_out <= '1';
 				if ( f2hValid_in = '1' ) then
-					f2hReady_out <= '1';
-					eppData_next <= f2hData_in;
 					eppWait_next <= '1';
 					state_next <= S_DATA_READ_WAIT;
 				end if;

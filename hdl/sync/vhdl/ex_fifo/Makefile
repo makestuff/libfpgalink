@@ -22,6 +22,7 @@ EXTRAS    := fifo.ngc
 HDLS := \
 	$(TOP_LEVEL).vhdl \
 	$(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.vhdl \
+	$(COMMON)/$(HDL)/fifo_gen/fifo_wrapper.vhdl \
 	$(COMMON)/$(HDL)/seven_seg/seven_seg.vhdl \
 	$(COMMON)/$(HDL)/timer/timer.vhdl \
 	../comm_fpga/comm_fpga.vhdl
