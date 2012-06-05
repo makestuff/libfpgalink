@@ -1,9 +1,9 @@
-------------------- SYNCHRONOUS FIFO COMMFPGA IMPLEMENTATION -------------------
+------------------- FX2LP SLAVE-FIFO COMMFPGA IMPLEMENTATION -------------------
 
-This directory contains Verilog and VHDL code implementing CommFPGA using a pair
-of synchronous FIFOs, one for reading and one for writing. The Cypress FX2LP is
-the canonical implementation, used in most Digilent, KNJN, Trenz and Opal Kelly
-USB/FPGA devkits.
+This directory contains Verilog and VHDL code implementing CommFPGA using the
+synchronous slave FIFOs on the Cypress FX2LP, which is used in most Digilent,
+KNJN, Trenz and Opal Kelly USB/FPGA devkits (e.g Atlys, Xylo-L etc). It can be
+used with the FX2 firmware built into the FPGALink library binary.
 
 All of the code here is provided in both VHDL and Verilog. The netlist generated
 from each is pretty much identical, so it really doesn't matter which one you
