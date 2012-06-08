@@ -25,10 +25,7 @@
 #include "jtag.h"
 #include "sync.h"
 #include "../../vendorCommands.h"
-//#define DEBUG
-#ifdef DEBUG
-	#include "debug.h"
-#endif
+//#include <usart.h>
 
 #define EPP_ADDRSTB (1<<4)
 #define EPP_DATASTB (1<<5)
@@ -54,15 +51,6 @@ void doComms(void) {
 		num64 |= buf[4];
 		num64 >>= 6;
 		mod64 = buf[4] & 0x3F;
-		#ifdef DEBUG
-			debugSendFlashString(PSTR("cmd="));
-			debugSendByteHex(buf[0]);
-			debugSendFlashString(PSTR("; num64="));
-			debugSendLongHex(num64);
-			debugSendFlashString(PSTR("; mod64="));
-			debugSendByteHex(mod64);
-			debugSendByte('\r');
-		#endif
 
 		// Wait for FPGA to assert eppWait
 		while ( PINC & EPP_WAIT );
@@ -202,10 +190,8 @@ int main(void) {
 	// Drive EPP control outputs
 	DDRC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
 	
-	#ifdef DEBUG
-		debugInit();
-		debugSendFlashString(PSTR("MakeStuff NeroJTAG/AVR v0.9...\r"));
-	#endif
+	//usartInit(115200);
+	//usartSendFlashString(PSTR("MakeStuff FPGALink/AVR v1.0...\r"));
 
 	sei();
 	USB_Init();
@@ -241,6 +227,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Endpoint_ClearStatusStage();
 		} else if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
 			uint8 statusBuffer[16];
+			Endpoint_ClearSETUP();
 			statusBuffer[0] = 'N';                     // Magic bytes (my cat's name)
 			statusBuffer[1] = 'E';
 			statusBuffer[2] = 'M';
@@ -257,7 +244,6 @@ void EVENT_USB_Device_ControlRequest(void) {
 			statusBuffer[13] = 0x00;                   // Reserved
 			statusBuffer[14] = 0x00;                   // Reserved
 			statusBuffer[15] = 0x00;                   // Reserved
-			Endpoint_ClearSETUP();
 			Endpoint_Write_Control_Stream_LE(statusBuffer, 16);
 			Endpoint_ClearStatusStage();
 		}
@@ -300,16 +286,10 @@ void EVENT_USB_Device_ControlRequest(void) {
 
 void EVENT_USB_Device_Connect(void) {
 	// Connected
-	#ifdef DEBUG
-		debugSendFlashString(PSTR("EVENT_USB_Device_Connect()\r"));
-	#endif
 }
 
 void EVENT_USB_Device_Disconnect(void) {
 	// Disconnected
-	#ifdef DEBUG
-		debugSendFlashString(PSTR("EVENT_USB_Device_Disconnect()\r"));
-	#endif
 }
 
 void EVENT_USB_Device_ConfigurationChanged(void) {
@@ -319,9 +299,6 @@ void EVENT_USB_Device_ConfigurationChanged(void) {
 	                                  ENDPOINT_SIZE,
 	                                  ENDPOINT_BANK_SINGLE)) )
 	{
-		#ifdef DEBUG
-			debugSendFlashString(PSTR("Failed to configure EP2OUT!\r"));
-		#endif
 	}
 	if ( !(Endpoint_ConfigureEndpoint(IN_ENDPOINT_ADDR,
 	                                  EP_TYPE_BULK,
@@ -329,8 +306,5 @@ void EVENT_USB_Device_ConfigurationChanged(void) {
 	                                  ENDPOINT_SIZE,
 	                                  ENDPOINT_BANK_SINGLE)) )
 	{
-		#ifdef DEBUG
-			debugSendFlashString(PSTR("Failed to configure EP4IN!\r"));
-		#endif
 	}
 }

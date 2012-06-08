@@ -25,6 +25,7 @@
 // Play an XSVF file into the JTAG chain.
 //
 DLLEXPORT(FLStatus) flPlayXSVF(struct FLContext *handle, const char *jtagFile, const char **error) {
+	// TODO: honour handle->jtagOutEP & handle->jtagInEP
 	FLStatus returnCode, fStatus;
 	struct NeroHandle nero = {0,};
 	struct Buffer csvfBuf = {0,};

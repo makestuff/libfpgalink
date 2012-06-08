@@ -17,6 +17,7 @@
 #include <avr/io.h>
 #include "jtag.h"
 #include "desc.h"
+//#include <usart.h>
 
 static uint32 m_numBits = 0UL;
 static uint8 m_flagByte = 0x00;
@@ -163,18 +164,18 @@ void jtagShiftExecute(void) {
 				Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
 				Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
 				m_numBits -= bitsRead;
+				Endpoint_ClearIN();
+				Endpoint_ClearOUT();
 			}
-			Endpoint_ClearIN();
-			Endpoint_ClearOUT();
 		} else {
 			// The host is giving us data, but does not need a response
-			uint8 buf[ENDPOINT_SIZE], *ptr, bytesRead, bytesRemaining;
+			uint8 buf[ENDPOINT_SIZE], *ptr, bytesRead, bytesRemaining, foo;
 			uint16 bitsRead, bitsRemaining;
 			Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
 			while ( m_numBits ) {
 				bitsRead = (m_numBits >= (ENDPOINT_SIZE<<3)) ? ENDPOINT_SIZE<<3 : m_numBits;
 				bytesRead = bitsToBytes(bitsRead);
-				Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
+				foo = Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
 				ptr = buf;
 				if ( bitsRead == m_numBits ) {
 					// This is the last chunk
@@ -186,6 +187,7 @@ void jtagShiftExecute(void) {
 						shiftOut(*ptr++);
 					}
 					tdiByte = *ptr;  // Now do the bits in the final byte
+					
 					i = 1;
 					while ( i && leftOver ) {
 						leftOver--;
@@ -206,7 +208,7 @@ void jtagShiftExecute(void) {
 					}
 				}
 				m_numBits -= bitsRead;
-			}			
+			}
 			Endpoint_ClearOUT();
 		}
 	} else {

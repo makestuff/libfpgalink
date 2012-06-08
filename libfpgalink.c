@@ -155,7 +155,7 @@ FLStatus flWrite(
 	struct FLContext *handle, const uint8 *bytes, uint32 count, uint32 timeout, const char **error)
 {
 	int returnCode = usb_bulk_write(
-		handle->device, USB_ENDPOINT_OUT | 6, (char*)bytes, count, timeout);
+		handle->device, USB_ENDPOINT_OUT | handle->commOutEP, (char*)bytes, count, timeout);
 	if ( returnCode < 0 ) {
 		errRender(
 			error,
@@ -176,7 +176,7 @@ FLStatus flRead(
 	struct FLContext *handle, uint8 *buffer, uint32 count, uint32 timeout, const char **error)
 {
 	int returnCode = usb_bulk_read(
-		handle->device, USB_ENDPOINT_IN | 8, (char*)buffer, count, timeout);
+		handle->device, USB_ENDPOINT_IN | handle->commInEP, (char*)buffer, count, timeout);
 	if ( returnCode < 0 ) {
 		errRender(
 			error,
@@ -369,17 +369,51 @@ cleanup:
 
 static FLStatus trySync(struct FLContext *newCxt, const uint8 *statusBuffer) {
 	FLStatus returnCode;
-	if ( statusBuffer[6] ) {
-		// TODO: actually honour the endpoints specified by the device. For now assume 2&4.
-		newCxt->isNeroCapable = true;
-		if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
+	const uint8 jtagEndpoints = statusBuffer[6];
+	const uint8 commEndpoints = statusBuffer[7];
+	newCxt->jtagOutEP = 0;
+	newCxt->jtagInEP = 0;
+	newCxt->commOutEP = 0;
+	newCxt->commInEP = 0;
+	if ( jtagEndpoints ) {
+		if ( jtagEndpoints == 0x24 ) {
+			newCxt->isNeroCapable = true;
+			if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
+				FAIL(FL_SYNC_ERR);
+			}
+			newCxt->jtagOutEP = 2;
+			newCxt->jtagInEP = 4;
+		} else if ( jtagEndpoints == 0x68 ) {
+			newCxt->isNeroCapable = true;
+			if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
+				FAIL(FL_SYNC_ERR);
+			}
+			newCxt->jtagOutEP = 6;
+			newCxt->jtagInEP = 8;
+		} else {
 			FAIL(FL_SYNC_ERR);
 		}
 	}
-	if ( statusBuffer[7] ) {
-		// TODO: actually honour the endpoints specified by the device. For now assume 6&8.
-		newCxt->isCommCapable = true;
-		if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
+	if ( commEndpoints ) {
+		if ( commEndpoints == 0x24 ) {
+			newCxt->isCommCapable = true;
+			if ( commEndpoints != jtagEndpoints ) {
+				if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
+					FAIL(FL_SYNC_ERR);
+				}
+			}
+			newCxt->commOutEP = 2;
+			newCxt->commInEP = 4;
+		} else if ( commEndpoints == 0x68 ) {
+			newCxt->isCommCapable = true;
+			if ( commEndpoints != jtagEndpoints ) {
+				if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
+					FAIL(FL_SYNC_ERR);
+				}
+			}
+			newCxt->commOutEP = 6;
+			newCxt->commInEP = 8;
+		} else {
 			FAIL(FL_SYNC_ERR);
 		}
 	}

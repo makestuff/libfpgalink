@@ -33,6 +33,10 @@ extern "C" {
 		struct Buffer writeBuffer;
 		bool isNeroCapable;
 		bool isCommCapable;
+		uint8 jtagOutEP;
+		uint8 jtagInEP;
+		uint8 commOutEP;
+		uint8 commInEP;
 	};
 
 	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will
