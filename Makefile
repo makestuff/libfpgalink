@@ -21,8 +21,8 @@ SUBDIRS          := tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 POST_BUILD       := tools gen_csvf
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
-EXTRA_CLEAN      := gen_svf gen_svf gen_csvf gen_fw
-EXTRA_CLEAN_DIRS := mkfw firmware/fx2 firmware/avr xsvf2csvf dump
+EXTRA_CLEAN      := gen_svf gen_csvf gen_fw
+EXTRA_CLEAN_DIRS := mkfw firmware/fx2 xsvf2csvf dump
 
 -include $(ROOT)/common/top.mk
 
