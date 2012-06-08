@@ -36,4 +36,4 @@ $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.v $(COMMON)/$(HDL)/fifo_gen/$(PLATFOR
 	cd $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM) && coregen -b fifo_gen.batch
 
 allclean: FORCE
-	cd $(COMMON)/$(HDL)/fifo_gen && for i in *; do mv $$i/fifo_gen.batch .; rm -rf $$i; mkdir $$i; mv fifo_gen.batch $$i; done
+	cd $(COMMON)/$(HDL)/fifo_gen && for i in $$(find . -maxdepth 1 -mindepth 1 -type d); do mv $$i/fifo_gen.batch .; rm -rf $$i; mkdir $$i; mv fifo_gen.batch $$i; done

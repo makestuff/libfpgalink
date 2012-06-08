@@ -13,22 +13,43 @@ echo HDL build starting at $(date)...
 rm -rf ../gen_xsvf ../gen_csvf
 mkdir ../gen_xsvf ../gen_csvf
 for p in atlys lx9 nexys2-1200 nexys2-500 nexys3 s3board xylo-l; do
-	echo Building for platform: ${p}...
+	echo Building for FX2 platform: ${p}...
 	for l in vhdl verilog; do
 		# cksum example
-		cd ${HDL}/sync/${l}/ex_cksum
+		cd ${HDL}/fx2/${l}/ex_cksum
 		make clean
 		make PLATFORM=${p}
-		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_cksum_${p}_${l}.xsvf
-		${X2C} ${HDL}/../gen_xsvf/ex_cksum_${p}_${l}.xsvf ${HDL}/../gen_csvf/ex_cksum_${p}_${l}.csvf
+		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_cksum_${p}_fx2_${l}.xsvf
+		${X2C} ${HDL}/../gen_xsvf/ex_cksum_${p}_fx2_${l}.xsvf ${HDL}/../gen_csvf/ex_cksum_${p}_fx2_${l}.csvf
 		make clean
 
 		# fifo example
-		cd ${HDL}/sync/${l}/ex_fifo
+		cd ${HDL}/fx2/${l}/ex_fifo
 		make clean allclean
 		make PLATFORM=${p}
-		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_fifo_${p}_${l}.xsvf
-		${X2C} ${HDL}/../gen_xsvf/ex_fifo_${p}_${l}.xsvf ${HDL}/../gen_csvf/ex_fifo_${p}_${l}.csvf
+		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_fifo_${p}_fx2_${l}.xsvf
+		${X2C} ${HDL}/../gen_xsvf/ex_fifo_${p}_fx2_${l}.xsvf ${HDL}/../gen_csvf/ex_fifo_${p}_fx2_${l}.csvf
+		make clean allclean
+	done
+done
+
+for p in nexys2-1200; do
+	echo Building for EPP platform: ${p}...
+	for l in vhdl verilog; do
+		# cksum example
+		cd ${HDL}/epp/${l}/ex_cksum
+		make clean
+		make PLATFORM=${p}
+		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_cksum_${p}_epp_${l}.xsvf
+		${X2C} ${HDL}/../gen_xsvf/ex_cksum_${p}_epp_${l}.xsvf ${HDL}/../gen_csvf/ex_cksum_${p}_epp_${l}.csvf
+		make clean
+
+		# fifo example
+		cd ${HDL}/epp/${l}/ex_fifo
+		make clean allclean
+		make PLATFORM=${p}
+		cp top_level.xsvf ${HDL}/../gen_xsvf/ex_fifo_${p}_epp_${l}.xsvf
+		${X2C} ${HDL}/../gen_xsvf/ex_fifo_${p}_epp_${l}.xsvf ${HDL}/../gen_csvf/ex_fifo_${p}_epp_${l}.csvf
 		make clean allclean
 	done
 done

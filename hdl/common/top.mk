@@ -50,6 +50,8 @@ else ifeq ($(PLATFORM),lx9)
 	FPGA     := xc6slx9-tqg144-2
 	MAPFLAGS :=
 	PARFLAGS :=
+else ifeq ($(PLATFORM),ep2c5)
+	VENDOR   := altera
 endif
 
 include $(THISDIR)/$(VENDOR).mk
