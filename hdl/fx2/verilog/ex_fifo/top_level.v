@@ -80,6 +80,10 @@ module
 	// Counter which endlessly puts items into the read FIFO for the host to read
 	reg[7:0]   count = 8'h00;
 	wire[7:0]  count_next;
+
+	// Producer and consumer timers
+	wire[3:0]  producerSpeed;
+	wire[3:0]  consumerSpeed;
 	
 	// Infer registers
 	always @(posedge fx2Clk_in)
@@ -166,16 +170,18 @@ module
 	);
 
 	// Producer timer: how fast stuff is put into the read FIFO
+	assign producerSpeed = ~(sw_in[3:0]);
 	timer producer_timer(
 		.clk_in(fx2Clk_in),
-		.ceiling_in(sw_in[3:0]),
+		.ceiling_in(producerSpeed),
 		.tick_out(readFifoInputValid)
 	);
 
 	// Consumer timer: how fast stuff is drained from the write FIFO
+	assign consumerSpeed = ~(sw_in[7:4]);
 	timer consumer_timer(
 		.clk_in(fx2Clk_in),
-		.ceiling_in(sw_in[7:4]),
+		.ceiling_in(consumerSpeed),
 		.tick_out(writeFifoOutputReady)
 	);
 

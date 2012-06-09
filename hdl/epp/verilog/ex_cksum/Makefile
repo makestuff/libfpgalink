@@ -18,7 +18,7 @@ TOP_LEVEL := top_level
 PLATFORM  := nexys2-1200
 COMMON    := ../../../common
 HDL       := verilog
-HDLS := \
+HDLS      := \
 	$(TOP_LEVEL).v \
 	$(COMMON)/$(HDL)/seven_seg/seven_seg.v \
 	../comm_fpga/comm_fpga.v
