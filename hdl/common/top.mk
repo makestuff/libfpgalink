@@ -14,6 +14,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+X2C := xsvf2csvf
+
+all: $(EXTRAS) $(TOP_LEVEL).svf
+
+csvf: $(TOP_LEVEL).svf
+	$(X2C) $(TOP_LEVEL).svf $(TOP_LEVEL).csvf
+
 THISDIR := $(dir $(lastword $(MAKEFILE_LIST)))
 ifeq ($(PLATFORM),s3board)
 	VENDOR   := xilinx
@@ -54,11 +61,11 @@ else ifeq ($(PLATFORM),ep2c5)
 	VENDOR   := altera
 endif
 
-include $(THISDIR)/$(VENDOR).mk
-
-X2C := xsvf2csvf
-
-$(TOP_LEVEL).csvf: $(TOP_LEVEL).xsvf
-	$(X2C) $(TOP_LEVEL).xsvf $(TOP_LEVEL).csvf
+clean: FORCE
+	rm -rf \
+		*.qsf *.svf db incremental_db *.rpt *.summary *.pin *.qpf *.dpf *.smsg *.jdi *.pof *.sof *.done *.bak *.sdc *.srf \
+		*.edif *.xsvf *.csvf _ngo *.bgn *.drc *.ncd *.ntrc_log *.prj *.twr *.csv *.html fx2fpga_xdb _xmsgs *.bit *.gise \
+		*.ngc *.pad *.ptwx *.twx *.ngm *.txt *.xml *.xrpt *.bld *.ise *.ngd *.par *.stx *.map *.twr auto_project_xdb *.cmd_log \
+		*.lso *.ngr *.pcf *.syr *.unroutes *.xpi *.mrp xst *.log *.cmd *.xwbt iseconfig xlnx_auto_0_xdb
 
 FORCE:

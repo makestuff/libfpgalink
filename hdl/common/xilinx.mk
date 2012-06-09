@@ -14,12 +14,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-all: $(EXTRAS) $(TOP_LEVEL).xsvf
-
 report: $(TOP_LEVEL).twr
 
 # This assumes that the "XILINX" environment variable is set 
-$(TOP_LEVEL).xsvf: ../../platforms/$(PLATFORM)/platform.batch $(TOP_LEVEL).bit
+$(TOP_LEVEL).svf: ../../platforms/$(PLATFORM)/platform.batch $(TOP_LEVEL).bit
 	echo "setPreference -pref KeepSVF:True" > temp.batch
 	cat $< | sed s#\$${XILINX}#$(subst \,/,$(XILINX))#g >> temp.batch
 	impact -batch temp.batch
@@ -49,7 +47,4 @@ $(TOP_LEVEL).ngc: ../../platforms/$(PLATFORM)/platform.xst $(TOP_LEVEL).prj
 	xst -intstyle ise -ifn $< -ofn $(TOP_LEVEL).syr
 
 $(TOP_LEVEL).prj: $(HDLS)
-	for i in $+; do if [ "$${i##*.}" = "vhdl" ]; then echo "vhdl work \"$$i\""; elif [ "$${i##*.}" = "v" ]; then echo "verilog work \"$$i\""; fi; done > $@
-
-clean: FORCE
-	rm -rf *.edif *.svf *.xsvf *.csvf _ngo *.bgn *.drc *.ncd *.ntrc_log *.prj *.twr *.csv *.html fx2fpga_xdb _xmsgs *.bit *.gise *.ngc *.pad *.ptwx *.twx *.ngm *.txt *.xml *.xrpt *.bld *.ise *.ngd *.par *.stx *.map *.twr auto_project_xdb *.cmd_log *.lso *.ngr *.pcf *.syr *.unroutes *.xpi *.mrp xst *.log *.cmd *.xwbt iseconfig xlnx_auto_0_xdb
+	for i in $(HDLS); do if [ "$${i##*.}" = "vhdl" ]; then echo "vhdl work \"$$i\""; elif [ "$${i##*.}" = "v" ]; then echo "verilog work \"$$i\""; fi; done > $@

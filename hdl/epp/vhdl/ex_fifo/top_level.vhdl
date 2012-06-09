@@ -76,6 +76,10 @@ architecture behavioural of top_level is
 
 	-- Counter which endlessly puts items into the read FIFO for the host to read
 	signal count, count_next       : std_logic_vector(7 downto 0) := (others => '0');
+
+	-- Producer and consumer timers
+	signal producerSpeed           : std_logic_vector(3 downto 0);
+	signal consumerSpeed           : std_logic_vector(3 downto 0);
 begin
 	-- Infer registers
 	process(eppClk_in)
@@ -174,18 +178,20 @@ begin
 		);
 
 	-- Producer timer: how fast stuff is put into the read FIFO
+	producerSpeed <= not(sw_in(3 downto 0));
 	producer_timer : entity work.timer
 		port map(
 			clk_in     => eppClk_in,
-			ceiling_in => sw_in(3 downto 0),
+			ceiling_in => producerSpeed,
 			tick_out   => readFifoInputValid
 		);
 
 	-- Consumer timer: how fast stuff is drained from the write FIFO
+	consumerSpeed <= not(sw_in(7 downto 4));
 	consumer_timer : entity work.timer
 		port map(
 			clk_in     => eppClk_in,
-			ceiling_in => sw_in(7 downto 4),
+			ceiling_in => consumerSpeed,
 			tick_out   => writeFifoOutputReady
 		);
 

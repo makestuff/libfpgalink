@@ -24,3 +24,4 @@ HDLS := \
 	../comm_fpga/comm_fpga.vhdl
 
 include $(COMMON)/top.mk
+include $(COMMON)/$(VENDOR).mk
