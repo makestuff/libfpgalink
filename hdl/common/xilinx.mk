@@ -47,4 +47,4 @@ $(TOP_LEVEL).ngc: ../../platforms/$(PLATFORM)/platform.xst $(TOP_LEVEL).prj
 	xst -intstyle ise -ifn $< -ofn $(TOP_LEVEL).syr
 
 $(TOP_LEVEL).prj: $(HDLS)
-	for i in $(HDLS); do if [ "$${i##*.}" = "vhdl" ]; then echo "vhdl work \"$$i\""; elif [ "$${i##*.}" = "v" ]; then echo "verilog work \"$$i\""; fi; done > $@
+	for i in $+; do if [ "$${i##*.}" = "vhdl" ]; then echo "vhdl work \"$$i\""; elif [ "$${i##*.}" = "v" ]; then echo "verilog work \"$$i\""; fi; done > $@

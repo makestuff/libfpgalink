@@ -14,7 +14,6 @@ set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 set_global_assignment -name GENERATE_SVF_FILE ON
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED WITH WEAK PULL-UP"
 set_global_assignment -name SDC_FILE top_level.sdc
-set_global_assignment -name VHDL_FILE top_level.vhdl
 set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
 set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "USE AS REGULAR IO"
 set_global_assignment -name OUTPUT_PIN_LOAD 10 -section_id "3.3-V LVTTL"

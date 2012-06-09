@@ -14,14 +14,14 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-TOP_LEVEL := top_level
-PLATFORM  := nexys2-1200
-COMMON    := ../../../common
-HDL       := verilog
-HDLS := \
-	$(TOP_LEVEL).v \
-	$(COMMON)/$(HDL)/seven_seg/seven_seg.v \
-	../comm_fpga/comm_fpga.v
+EXTRAS := fifo.ngc $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.v
+HDLS += $(COMMON)/$(HDL)/fifo_gen/fifo_wrapper_xilinx.v $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.v
 
-include $(COMMON)/top.mk
-include $(COMMON)/$(VENDOR).mk
+fifo.ngc: $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.ngc
+	cp -p $< $@
+
+$(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.v $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo.ngc: $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM)/fifo_gen.batch
+	cd $(COMMON)/$(HDL)/fifo_gen/$(PLATFORM) && coregen -b fifo_gen.batch
+
+fifoclean: FORCE
+	cd $(COMMON)/$(HDL)/fifo_gen && for i in $$(find . -maxdepth 1 -mindepth 1 -type d); do mv $$i/fifo_gen.batch .; rm -rf $$i; mkdir $$i; mv fifo_gen.batch $$i; done
