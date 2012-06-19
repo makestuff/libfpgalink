@@ -1,0 +1,16 @@
+wotan$ ¬./<PLATFORM>/rel/flcli -v <VID:PID> -c
+Attempting to open connection to FPGALink device 04B4:8613...
+
+Entering CommFPGA command-line mode:
+> ¬w1 12;w2 34;w3 abcdef56;r1;r2;r3 04
+         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+00000000 12 34 56 56 56 56                               .4VVVV
+> ¬w0 01
+> ¬w0 02
+> ¬w0 04
+> ¬w0 08
+> ¬r0 10
+         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+00000000 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 5555555555555555
+> ¬q
+wotan$

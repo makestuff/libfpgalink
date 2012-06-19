@@ -1,0 +1,99 @@
+% Stop LaTeX defaulting to US Letter
+\documentclass[english,a4paper,12pt]{article}
+
+% The Makefile substitutes MAKESTUFF_GEOMETRY to select parameters for print
+% version or the mobile device version (Kindle, iPad, etc).
+\usepackage[width=15.3cm, height=23cmMAKESTUFF_GEOMETRY]{geometry}
+
+% Packages to use
+\usepackage[colorlinks=true,linkcolor=black,urlcolor={[rgb]{0.00,0.00,0.40}},linktoc=all]{hyperref}
+\usepackage{graphicx}
+\usepackage[compact]{titlesec}
+\usepackage{alltt}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[num]{isodate}
+
+% Enable bold monospace
+\renewcommand{\ttdefault}{txtt}
+
+% Spacing...
+\parindent=0pt
+\parskip=2ex
+
+% Settings for section headings: large, bold, centred
+\titleformat{\section}[hang]{\Large\sffamily\bfseries\filcenter}{\thesection}{1em}{}
+
+% Settings for subsection headings: smaller, bold, left-justified
+\titleformat{\subsection}[hang]{\large\sffamily\bfseries}{\thesubsection}{1em}{}
+\titlespacing{\subsection}{0pt}{5ex}{0ex}
+
+% Settings for subsubsection headings: normal size but still bold
+\titleformat{\subsubsection}[hang]{\sffamily\bfseries}{\thesubsubsection}{1em}{}
+\titlespacing{\subsubsection}{0pt}{2ex}{0ex}
+
+% List macro
+\newenvironment{blobs}
+{\begin{itemize}
+  \setlength{\itemsep}{1ex}
+  \setlength{\parskip}{1ex}
+  \setlength{\parsep}{0pt}}
+{\end{itemize}}
+
+% Description macro
+\newenvironment{desc}
+{\begin{description}
+  \setlength{\itemsep}{2ex}
+  \setlength{\parskip}{2ex}
+  \setlength{\parsep}{0pt}}
+{\end{description}}
+
+% Image macros
+\newcommand{\imgcap}[2]{%
+  \begin{figure}[h]%
+  \centerline{\includegraphics[width=\linewidth]{images/#1}}%
+  \caption{#2}%
+  \end{figure}}
+
+\newcommand{\img}[1]{%
+  \centerline{\includegraphics[width=\linewidth]{images/#1}}}
+
+% Code snippet macros
+\newcommand{\codecap}[2]{%
+  \begin{figure}[h]%
+  {\footnotesize \input{tmp/#1}}%
+  \caption{#2}%
+  \end{figure}}
+
+% Code snippet macro
+\newcommand{\code}[2]{%
+  {\footnotesize \input{tmp/#1}}}
+
+% Settings for code snippets
+\input{tmp/pygments}
+
+% DocTitle macro
+\newcommand{\doctitle}[4]{%
+  \img{#1}
+  \vspace*{1cm}%
+  {\Huge\sffamily\bfseries\centerline{#2}}%
+  \vspace*{0.25cm}%
+  {\Large\sffamily\bfseries\centerline{#3}}%
+  \vspace*{0.5cm}%
+  {\footnotesize\sffamily\centerline{{\copyright\the\year}{ }{#4}}}%
+  \vfill%
+  \centerline{\includegraphics[width=2cm]{images/by-sa}}%
+  \vspace*{0.25cm}%
+  {\scriptsize\sffamily\centerline{\href{http://creativecommons.org/licenses/by-sa/3.0/}{This work is licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported License}}}%
+}
+
+% ISO date
+\newcommand{\isotoday}[1]{%
+  {\isodash{}\isodate\today}}
+
+\newcommand*\justify{%
+  \fontdimen2\font=0.4em% interword space
+  \fontdimen3\font=0.2em% interword stretch
+  \fontdimen4\font=0.1em% interword shrink
+  \fontdimen7\font=0.1em% extra space
+  \hyphenchar\font=`\-% allowing hyphenation
+}

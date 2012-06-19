@@ -1,0 +1,6 @@
+chris@wotan ¬echo $XILINX
+/opt/Xilinx/13.2/ISE\_DS/ISE
+chris@wotan$ ¬cd hdl/fx2/verilog/ex_cksum
+chris@wotan$ ¬ls ../../platforms
+atlys  lx9  nexys2-1200  nexys2-500  nexys3  s3board  xylo-l
+chris@wotan$ ¬make PLATFORM=atlys

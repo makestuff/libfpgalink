@@ -1,0 +1,6 @@
+wotan$ ¬sudo tee -a /etc/udev/rules.d/10-local.rules > /dev/null <<EOF
+> ¬ACTION=="add", SUBSYSTEM=="usb", \
+> ¬ATTR{idVendor}=="1443", ATTR{idProduct}=="0005", \
+> ¬GROUP="users", MODE="0660"
+> ¬EOF
+wotan$ 
