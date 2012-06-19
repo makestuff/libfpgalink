@@ -44,7 +44,7 @@ It provides a host-side API, firmware for several USB interface microcontrollers
 
 Everything is licensed under the GNU Lesser General Public Licence\footnote{\url{http://www.gnu.org/copyleft/lesser.html}}; you are therefore free to distribute unmodified copies of FPGALink with your products. The library has no commercial or hardware platform usage restrictions, so you can prototype your design with an inexpensive devkit, and then use the same software tools on your custom-built PCBs. In this way you can easily distribute updated FPGA designs to your customers just as you would with regular firmware updates, with no special programming cables required, making your FPGA truly ``field-programmable''.
 
-\subsection{Typographical Conventions}
+\subsection{Document Conventions}
 Whilst describing interactive console sessions, I will use {\bf\textcolor[rgb]{0.00,0.00,0.00}{\texttt{monospace bold}}} for characters entered by a human and {\textcolor[rgb]{0.20,0.20,0.20}{\texttt{monospace regular}}} for the computer's responses.
 
 Remember:
@@ -125,7 +125,7 @@ First, download the FPGALink binary distribution. This manual assumes you're usi
 \subsection{Supported Boards}
 By providing multiple ``board support packages'' (BSPs), FPGALink is able to support several different FPGA development kits, based on Xilinx or Altera FPGAs and Atmel AVR or Cypress FX2LP USB microcontrollers\footnote{Porting to other boards based on these components is usually fairly trivial; if you have such a board, ask on the \href{http://groups.google.com/group/fpgalink-users}{mailing list}.}.
 
-A pair of fully-functional examples is provided, with ready-to-go programming files for each of the seven supported FPGA boards. The first example is \texttt{ex\_cksum}, which we will play with in the next section, and the second is \texttt{ex\_fifo}. Both use various bits of board I/O to provide some interaction and visual feedback:
+A pair of fully-functional examples is provided, with ready-to-go programming files for each of the supported FPGA boards. The first example is \texttt{ex\_cksum}, which we will play with in the next section, and the second is \texttt{ex\_fifo}. Both use various bits of board I/O to provide some interaction and visual feedback:
 
 \begin{blobs}
   \item
@@ -211,7 +211,7 @@ The \texttt{--cli} and \texttt{--action=<actionString>} options support three co
 \end{desc}
 \end{quote}
 
-If you don't specify a fileName, the FPGA's data is printed to stdout as a hex dump.
+If you don't specify a \texttt{fileName}, the FPGA's data is printed to stdout as a hex dump.
 
 The syntax of the write command is as follows:
 
@@ -319,7 +319,7 @@ In the previous section, we used the \texttt{flcli} utility to read and write si
 
 \code{cli/prog_fifo_verilog}
 
-Now, channel 0 is connected to a pair of FIFOs inside the FPGA, a read FIFO and a write FIFO. Separate producer and consumer processes periodically insert upcount data into the read FIFO and drain data from the write FIFO, respectively. The speed at which these processes work is selectable by setting different values on the eight switches: \texttt{sw[7:4]} controls the speed of the consumer and \texttt{sw[3:0]} controls the speed of the producer.
+Now, channel 0 is connected to a pair of FIFOs inside the FPGA, a read FIFO and a write FIFO. Separate producer and consumer processes periodically insert upcount data into the read FIFO and drain data from the write FIFO, respectively. The speed at which these processes work is selectable by setting different values on the eight switches: \texttt{sw[7:4]} control the speed of the consumer and \texttt{sw[3:0]} control the speed of the producer.
 
 Here's the code\footnote{See \texttt{hdl/\{fx2,epp\}/verilog/ex\_fifo/top\_level.v} for the complete Verilog module.}:
 
@@ -480,7 +480,7 @@ The internal port is common to both \texttt{fx2} and \texttt{epp} implementation
 
 \img{commFpgaAppInterface}
 
-The \texttt{comm\_fpga} modules provide:
+The \texttt{comm\_fpga\_*} modules provide:
 
 \begin{blobs}
   \item A host-to-FPGA data pipe (\texttt{h2fData\_out}, \texttt{h2fValid\_out} \& \texttt{h2fReady\_in})

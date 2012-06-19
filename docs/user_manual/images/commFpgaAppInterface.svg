@@ -2426,8 +2426,8 @@
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
-     inkscape:window-width="1499"
-     inkscape:window-height="993"
+     inkscape:window-width="2134"
+     inkscape:window-height="1473"
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="0"
@@ -2499,14 +2499,14 @@
     <text
        xml:space="preserve"
        style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Bitstream Charter Bold"
-       x="275"
+       x="300"
        y="852.36218"
        id="text6016-5-2-5-9"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         x="275"
+         x="300"
          y="852.36218"
-         id="tspan6629">comm_fpga module</tspan></text>
+         id="tspan6629">comm_fpga_* modules</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:url(#Arrow2Mstart-3);marker-end:none"
        d="M 542.3429,952.36221 415,952.3622"
