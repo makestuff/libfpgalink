@@ -98,6 +98,14 @@ cd ../..
 cp -rp examples ${LIB}-${DATE}/
 rm -f ${LIB}-${DATE}/examples/c/Makefile
 
+# User Manual
+cd docs/user_manual
+./build.sh
+cd ../..
+mkdir -p ${LIB}-${DATE}/docs
+cp -rp docs/*.pdf ${LIB}-${DATE}/docs/
+cp -p docs/*.pdf /mnt/ukfsn/docs/
+
 cp -p COPYING ${LIB}-${DATE}/
 cp -p COPYING.LESSER ${LIB}-${DATE}/
 cat > ${LIB}-${DATE}/README <<EOF
