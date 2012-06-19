@@ -71,7 +71,7 @@ architecture behavioural of top_level is
 	signal reg1, reg1_next         : std_logic_vector(7 downto 0)  := x"00";
 	signal reg2, reg2_next         : std_logic_vector(7 downto 0)  := x"00";
 	signal reg3, reg3_next         : std_logic_vector(7 downto 0)  := x"00";
-begin
+begin                                                                     --BEGIN_SNIPPET(registers)
 	-- Infer registers
 	process(fx2Clk_in)
 	begin
@@ -86,8 +86,10 @@ begin
 
 	-- Drive register inputs for each channel when the host is writing
 	checksum_next <=
-		std_logic_vector(unsigned(checksum) + unsigned(h2fData)) when chanAddr = "0000000" and h2fValid = '1'
-		else x"0000" when chanAddr = "0000001" and h2fValid = '1' and h2fData(0) = '1'
+		std_logic_vector(unsigned(checksum) + unsigned(h2fData))
+			when chanAddr = "0000000" and h2fValid = '1'
+		else x"0000"
+			when chanAddr = "0000001" and h2fValid = '1' and h2fData(0) = '1'
 		else checksum;
 	reg0_next <= h2fData when chanAddr = "0000000" and h2fValid = '1' else reg0;
 	reg1_next <= h2fData when chanAddr = "0000001" and h2fValid = '1' else reg1;
@@ -104,7 +106,7 @@ begin
 
 	-- Assert that there's always data for reading, and always room for writing
 	f2hValid <= '1';
-	h2fReady <= '1';
+	h2fReady <= '1';                                                         --END_SNIPPET(registers)
 
 	-- CommFPGA module
 	fx2Read_out <= fx2Read;

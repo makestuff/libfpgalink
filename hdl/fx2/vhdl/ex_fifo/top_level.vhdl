@@ -90,7 +90,7 @@ architecture behavioural of top_level is
 	-- Producer and consumer timers
 	signal producerSpeed           : std_logic_vector(3 downto 0);
 	signal consumerSpeed           : std_logic_vector(3 downto 0);
-begin
+begin                                                                     --BEGIN_SNIPPET(fifos)
 	-- Infer registers
 	process(fx2Clk_in)
 	begin
@@ -127,10 +127,10 @@ begin
 	
 	-- Select values to return for each channel when the host is reading
 	with chanAddr select f2hData <=
-		readFifoOutputData     when "0000000",  -- get data from the read FIFO
-		fifoCount(15 downto 8) when "0000001",  -- read the current depth of the write FIFO
-		fifoCount(7 downto 0)  when "0000010",  -- read the current depth of the read FIFO
-		x"00"                  when others;
+		readFifoOutputData     when "0000000",  -- get data from read FIFO
+		fifoCount(15 downto 8) when "0000001",  -- read the depth of the write FIFO
+		fifoCount(7 downto 0)  when "0000010",  -- read the depth of the read FIFO
+		x"00"                  when others;                                   --END_SNIPPET(fifos)
 	
 	-- CommFPGA module
 	fx2Read_out <= fx2Read;
