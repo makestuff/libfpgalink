@@ -103,7 +103,7 @@ module
 		8'h00;
 	
 	// CommFPGA module
-	comm_fpga comm_fpga(
+	comm_fpga_epp comm_fpga_epp(
 		// EPP interface
 		.eppClk_in(eppClk_in),
 		.eppData_io(eppData_io),

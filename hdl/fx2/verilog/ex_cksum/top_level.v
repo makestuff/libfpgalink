@@ -52,7 +52,7 @@ module
 	wire       f2hReady;  // '1' means "on the next clock rising edge, put your next byte of data on f2hData_in"
 	// ----------------------------------------------------------------------------------------------
 
-	// Needed so that the comm_fpga module can drive both fx2Read_out and fx2OE_out
+	// Needed so that the comm_fpga_fx2 module can drive both fx2Read_out and fx2OE_out
 	wire       fx2Read;
 
 	// Flags for display on the 7-seg decimal points
@@ -69,7 +69,7 @@ module
 	wire[7:0]  reg2_next;
 	reg[7:0]   reg3              = 8'h00;
 	wire[7:0]  reg3_next;
-                                                                          --BEGIN_SNIPPET(registers)
+                                                                          //BEGIN_SNIPPET(registers)
 	// Infer registers
 	always @(posedge fx2Clk_in)
 	begin
@@ -106,13 +106,13 @@ module
 
 	// Assert that there's always data for reading, and always room for writing
 	assign f2hValid = 1'b1;
-	assign h2fReady = 1'b1;                                                  --END_SNIPPET(registers)
+	assign h2fReady = 1'b1;                                                  //END_SNIPPET(registers)
 	
 	// CommFPGA module
 	assign fx2Read_out = fx2Read;
 	assign fx2OE_out = fx2Read;
 	assign fx2Addr_out[1] = 1'b1;  // Use EP6OUT/EP8IN, not EP2OUT/EP4IN.
-	comm_fpga comm_fpga(
+	comm_fpga_fx2 comm_fpga_fx2(
 		// FX2 interface
 		.fx2Clk_in(fx2Clk_in),
 		.fx2FifoSel_out(fx2Addr_out[0]),

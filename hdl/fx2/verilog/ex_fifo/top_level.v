@@ -52,7 +52,7 @@ module
 	wire       f2hReady;  // '1' means "on the next clock rising edge, put your next byte of data on f2hData_in"
 	// ----------------------------------------------------------------------------------------------
 	
-	// Needed so that the comm_fpga module can drive both fx2Read_out and fx2OE_out
+	// Needed so that the comm_fpga_fx2 module can drive both fx2Read_out and fx2OE_out
 	wire       fx2Read;
 
 	// Flags for display on the 7-seg decimal points
@@ -84,7 +84,7 @@ module
 	// Producer and consumer timers
 	wire[3:0]  producerSpeed;
 	wire[3:0]  consumerSpeed;
-                                                                              --BEGIN_SNIPPET(fifos)
+                                                                              //BEGIN_SNIPPET(fifos)
 	// Infer registers
 	always @(posedge fx2Clk_in)
 		count <= count_next;
@@ -114,13 +114,13 @@ module
 		(chanAddr == 7'b0000000) ? readFifoOutputData :  // get data from read FIFO
 		(chanAddr == 7'b0000001) ? fifoCount[15:8] :  // read depth of the write FIFO
 		(chanAddr == 7'b0000010) ? fifoCount[7:0]  :  // read depth of the write FIFO
-		8'h00;                                                                    --END_SNIPPET(fifos)
+		8'h00;                                                                    //END_SNIPPET(fifos)
 	
 	// CommFPGA module
 	assign fx2Read_out = fx2Read;
 	assign fx2OE_out = fx2Read;
 	assign fx2Addr_out[1] = 1'b1;  // Use EP6OUT/EP8IN, not EP2OUT/EP4IN.
-	comm_fpga comm_fpga(
+	comm_fpga_fx2 comm_fpga_fx2(
 		// FX2 interface
 		.fx2Clk_in(fx2Clk_in),
 		.fx2FifoSel_out(fx2Addr_out[0]),

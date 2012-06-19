@@ -97,7 +97,7 @@ begin
 	h2fReady <= '1';
 
 	-- CommFPGA module
-	comm_fpga : entity work.comm_fpga
+	comm_fpga_epp : entity work.comm_fpga_epp
 		port map(
 			-- EPP interface
 			eppClk_in      => eppClk_in,

@@ -21,7 +21,7 @@ HDL       := vhdl
 HDLS      := \
 	$(TOP_LEVEL).vhdl \
 	$(COMMON)/$(HDL)/seven_seg/seven_seg.vhdl \
-	../comm_fpga/comm_fpga.vhdl
+	../comm_fpga/comm_fpga_epp.vhdl
 
 include $(COMMON)/top.mk
 include $(COMMON)/$(VENDOR).mk

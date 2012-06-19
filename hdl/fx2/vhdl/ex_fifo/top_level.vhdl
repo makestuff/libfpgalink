@@ -59,7 +59,7 @@ architecture behavioural of top_level is
 	signal f2hReady  : std_logic;                     -- '1' means "on the next clock rising edge, put your next byte of data on f2hData"
 	-- ----------------------------------------------------------------------------------------------
 
-	-- Needed so that the comm_fpga module can drive both fx2Read_out and fx2OE_out
+	-- Needed so that the comm_fpga_fx2 module can drive both fx2Read_out and fx2OE_out
 	signal fx2Read                 : std_logic;
 
 	-- Flags for display on the 7-seg decimal points
@@ -136,7 +136,7 @@ begin                                                                     --BEGI
 	fx2Read_out <= fx2Read;
 	fx2OE_out <= fx2Read;
 	fx2Addr_out(1) <= '1';  -- Use EP6OUT/EP8IN, not EP2OUT/EP4IN.
-	comm_fpga : entity work.comm_fpga
+	comm_fpga_fx2 : entity work.comm_fpga_fx2
 		port map(
 			-- FX2 interface
 			fx2Clk_in      => fx2Clk_in,

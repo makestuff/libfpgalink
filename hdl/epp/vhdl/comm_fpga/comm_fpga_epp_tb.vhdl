@@ -21,10 +21,10 @@ use ieee.numeric_std.all;
 use ieee.std_logic_textio.all;
 use std.textio.all;
 
-entity comm_fpga_tb is
-end comm_fpga_tb;
+entity comm_fpga_epp_tb is
+end comm_fpga_epp_tb;
 
-architecture behavioural of comm_fpga_tb is
+architecture behavioural of comm_fpga_epp_tb is
 	-- Clocks
 	signal sysClk     : std_logic;  -- main system clock
 	signal dispClk    : std_logic;  -- display version of sysClk, which leads it by 4ns
@@ -38,20 +38,20 @@ architecture behavioural of comm_fpga_tb is
 	signal eppWait    : std_logic;
 
 	-- Channel read/write interface -----------------------------------------------------------------
-	signal chanAddr   : std_logic_vector(6 downto 0);  -- comm_fpga selects one of 128 channels to access
+	signal chanAddr   : std_logic_vector(6 downto 0);  -- comm_fpga_epp selects one of 128 channels to access
 
 	-- Host >> FPGA pipe:
 	signal h2fData    : std_logic_vector(7 downto 0);  -- data to be read from the selected channel
-	signal h2fValid   : std_logic;  -- comm_fpga drives h2fValid='1' when it wants to write to the selected channel
+	signal h2fValid   : std_logic;  -- comm_fpga_epp drives h2fValid='1' when it wants to write to the selected channel
 	signal h2fReady   : std_logic;  -- this must be driven high if the selected channel has room for data to be written to it
 
 	-- Host << FPGA pipe:
 	signal f2hData    : std_logic_vector(7 downto 0);  -- data to be written to the selected channel
 	signal f2hValid   : std_logic;  -- this must be asserted if the selected channel has data available for reading
-	signal f2hReady   : std_logic;  -- comm_fpga drives f2hReady='1' when it wants to read from the selected channel
+	signal f2hReady   : std_logic;  -- comm_fpga_epp drives f2hReady='1' when it wants to read from the selected channel
 begin
-	-- Instantiate comm_fpga for testing
-	uut: entity work.comm_fpga
+	-- Instantiate comm_fpga_epp for testing
+	uut: entity work.comm_fpga_epp
 		port map(
 			-- EPP interface --------------------------------------------------------------------------
 			eppClk_in      => sysClk,

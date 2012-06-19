@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 module
-	comm_fpga(
+	comm_fpga_epp(
 		// EPP interface -----------------------------------------------------------------------------
 		input wire eppClk_in,
 		inout wire[7:0] eppData_io,

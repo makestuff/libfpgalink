@@ -22,7 +22,7 @@ HDLS      := \
 	$(TOP_LEVEL).vhdl \
 	$(COMMON)/$(HDL)/seven_seg/seven_seg.vhdl \
 	$(COMMON)/$(HDL)/timer/timer.vhdl \
-	../comm_fpga/comm_fpga.vhdl
+	../comm_fpga/comm_fpga_epp.vhdl
 
 include $(COMMON)/top.mk
 include $(COMMON)/$(HDL)/fifo_gen/$(VENDOR).mk

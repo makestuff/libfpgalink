@@ -21,42 +21,42 @@ use ieee.numeric_std.all;
 use ieee.std_logic_textio.all;
 use std.textio.all;
 
-entity comm_fpga_tb is
-end comm_fpga_tb;
+entity comm_fpga_fx2_tb is
+end comm_fpga_fx2_tb;
 
-architecture behavioural of comm_fpga_tb is
+architecture behavioural of comm_fpga_fx2_tb is
 	-- Clocks
 	signal sysClk     : std_logic;  -- main system clock
 	signal dispClk    : std_logic;  -- display version of sysClk, which leads it by 4ns
 
 	-- External interface ---------------------------------------------------------------------------
-	signal fx2FifoSel : std_logic;  -- comm_fpga drives fx2FifoSel='0' to read from EP6OUT, and fx2FifoSel='1' to write to EP8IN
+	signal fx2FifoSel : std_logic;  -- comm_fpga_fx2 drives fx2FifoSel='0' to read from EP6OUT, and fx2FifoSel='1' to write to EP8IN
 	signal fx2Data    : std_logic_vector(7 downto 0);  -- data to/from the FX2
 
 	-- When EP6OUT selected:
-	signal fx2Read    : std_logic;  -- comm_fpga drives fx2Read='1' telling FX2 to commit data out of the EP6OUT FIFO
+	signal fx2Read    : std_logic;  -- comm_fpga_fx2 drives fx2Read='1' telling FX2 to commit data out of the EP6OUT FIFO
 	signal fx2GotData : std_logic;  -- FX2 drives '1' when fx2FifoSel='0' and there is some data in the EP6OUT FIFO
 
 	-- When EP8IN selected:
-	signal fx2Write   : std_logic;  -- comm_fpga drives fx2Write='1' telling FX2 to commit data into the EP8IN FIFO
+	signal fx2Write   : std_logic;  -- comm_fpga_fx2 drives fx2Write='1' telling FX2 to commit data into the EP8IN FIFO
 	signal fx2GotRoom : std_logic;  -- FX2 drives '1' when fx2FifoSel='1' and there is room in the EP8IN FIFO
-	signal fx2PktEnd  : std_logic;  -- comm_fpga drives fx2PktEnd='1' to commit an EP8IN packet early
+	signal fx2PktEnd  : std_logic;  -- comm_fpga_fx2 drives fx2PktEnd='1' to commit an EP8IN packet early
 
 	-- Channel read/write interface -----------------------------------------------------------------
-	signal chanAddr   : std_logic_vector(6 downto 0);  -- comm_fpga selects one of 128 channels to access
+	signal chanAddr   : std_logic_vector(6 downto 0);  -- comm_fpga_fx2 selects one of 128 channels to access
 
 	-- Host >> FPGA pipe:
 	signal h2fData    : std_logic_vector(7 downto 0);  -- data to be read from the selected channel
-	signal h2fValid   : std_logic;  -- comm_fpga drives h2fValid='1' when it wants to write to the selected channel
+	signal h2fValid   : std_logic;  -- comm_fpga_fx2 drives h2fValid='1' when it wants to write to the selected channel
 	signal h2fReady   : std_logic;  -- this must be driven high if the selected channel has room for data to be written to it
 
 	-- Host << FPGA pipe:
 	signal f2hData    : std_logic_vector(7 downto 0);  -- data to be written to the selected channel
 	signal f2hValid   : std_logic;  -- this must be asserted if the selected channel has data available for reading
-	signal f2hReady   : std_logic;  -- comm_fpga drives f2hReady='1' when it wants to read from the selected channel
+	signal f2hReady   : std_logic;  -- comm_fpga_fx2 drives f2hReady='1' when it wants to read from the selected channel
 begin
-	-- Instantiate comm_fpga for testing
-	uut: entity work.comm_fpga
+	-- Instantiate comm_fpga_fx2 for testing
+	uut: entity work.comm_fpga_fx2
 		port map(
 			-- FX2 interface --------------------------------------------------------------------------
 			fx2Clk_in      => sysClk,      

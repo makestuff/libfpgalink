@@ -93,7 +93,7 @@ module
 	assign h2fReady = 1'b1;
 	
 	// CommFPGA module
-	comm_fpga comm_fpga(
+	comm_fpga_epp comm_fpga_epp(
 		// EPP interface
 		.eppClk_in(eppClk_in),
 		.eppData_io(eppData_io),

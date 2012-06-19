@@ -19,7 +19,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity comm_fpga is
+entity comm_fpga_fx2 is
 	port(
 		-- FX2 interface -----------------------------------------------------------------------------
 		fx2Clk_in      : in    std_logic;                     -- 48MHz clock from FX2
@@ -48,9 +48,9 @@ entity comm_fpga is
 		f2hValid_in    : in    std_logic;                     -- channel logic can drive this low to say "I don't have data ready for you"
 		f2hReady_out   : out   std_logic                      -- '1' means "on the next clock rising edge, put your next byte of data on f2hData_in"
 	);
-end comm_fpga;
+end comm_fpga_fx2;
 
-architecture behavioural of comm_fpga is
+architecture behavioural of comm_fpga_fx2 is
 	-- The read/write nomenclature here refers to the FPGA reading and writing the FX2 FIFOs, and is therefore
 	-- of the opposite sense to the host's read and write. So host reads are fulfilled in the S_WRITE state, and
 	-- vice-versa. Apologies for the confusion.
