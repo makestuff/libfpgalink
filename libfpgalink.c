@@ -204,7 +204,7 @@ DLLEXPORT(FLStatus) flWriteChannel(
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	flWriteLong(count, command+1);
-	fStatus = flWrite(handle, command, 5, 100, error);
+	fStatus = flWrite(handle, command, 5, 1000, error);
 	CHECK_STATUS(fStatus, "flWriteChannel()", fStatus);
 	fStatus = flWrite(handle, data, count, timeout, error);
 	CHECK_STATUS(fStatus, "flWriteChannel()", fStatus);
@@ -269,7 +269,7 @@ DLLEXPORT(FLStatus) flReadChannel(
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	flWriteLong(count, command+1);
-	fStatus = flWrite(handle, command, 5, 100, error);
+	fStatus = flWrite(handle, command, 5, 1000, error);
 	CHECK_STATUS(fStatus, "flReadChannel()", fStatus);
 	fStatus = flRead(handle, buf, count, timeout, error);
 	CHECK_STATUS(fStatus, "flReadChannel()", fStatus);
@@ -295,7 +295,7 @@ DLLEXPORT(FLStatus) flPortAccess(
 		ddr,                      // wIndex
 		(char*)u.bytes,
 		2,                        // wLength
-		100                       // timeout (ms)
+		1000                      // timeout (ms)
 	);
 	if ( uStatus < 0 ) {
 		errRender(
@@ -355,7 +355,7 @@ static FLStatus getStatus(struct FLContext *handle, uint8 *statusBuffer, const c
 		0x0000,                   // wMask
 		(char*)statusBuffer,
 		16,                       // wLength
-		100                       // timeout (ms)
+		1000                      // timeout (ms)
 	);
 	if ( uStatus < 0 ) {
 		errRender(
