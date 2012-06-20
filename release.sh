@@ -99,21 +99,30 @@ cp -rp examples ${LIB}-${DATE}/
 rm -f ${LIB}-${DATE}/examples/c/Makefile
 
 # User Manual
-cd docs/user_manual
-./build.sh
-cd ../..
-mkdir -p ${LIB}-${DATE}/docs
-cp -rp docs/*.pdf ${LIB}-${DATE}/docs/
-cp -p docs/*.pdf /mnt/ukfsn/docs/
+cp -p docs/*.pdf /mnt/ukfsn/docs/fpgalink/
 
+# AVR firmware
+mkdir -p ${LIB}-${DATE}/firmware
+cat > ${LIB}-${DATE}/firmware/README <<EOF
+This is the Atmel AVR firmware. It is suitable for loading into an AT90USB162 with Atmel FLIP or
+dfu-programmer. The Cypress FX2LP firmware is embedded into the FPGALink library.
+EOF
+cp -rp firmware/avr/firmware.hex ${LIB}-${DATE}/firmware/at90usb162.hex
+
+# Licenses
 cp -p COPYING ${LIB}-${DATE}/
 cp -p COPYING.LESSER ${LIB}-${DATE}/
 cat > ${LIB}-${DATE}/README <<EOF
 FPGALink Binary Distribution
 
+Consult the User Manual:
+  VHDL Paper Edition: http://www.swaton.ukfsn.org/docs/fpgalink/vhdl_paper.pdf
+  VHDL Kindle Edition: http://www.swaton.ukfsn.org/docs/fpgalink/vhdl_mobile.pdf
+  Verilog Paper Edition: http://www.swaton.ukfsn.org/docs/fpgalink/verilog_paper.pdf
+  Verilog Kindle Edition: http://www.swaton.ukfsn.org/docs/fpgalink/verilog_mobile.pdf
+
 FPGALink is a library for JTAG-programming and subsequently interacting with an FPGA over USB using
-a microcontroller (primarily the Cypress FX2LP, but with limited support for the USB AVR8s with
-suitable firmware: http://bit.ly/nero-avr).
+a microcontroller (Cypress FX2LP USB Atmel AVR8s).
 
 It allows you to:
    * Load and save Cypress FX2LP firmware

@@ -36,3 +36,9 @@ patch Makefile <<EOF
 +POST_BUILD       := tools #gen_csvf
 EOF
 make MACHINE=i686 deps
+
+# User Manual
+cd docs/user_manual
+./build.sh
+cd ../../firmware/avr
+make
