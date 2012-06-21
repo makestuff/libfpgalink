@@ -34,7 +34,7 @@ handle = flOpen("04B4:8613")
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
-flFlashStandardFirmware(handle, "04B4:8613", "${JTAG_PORT}", 512, "../../gen_csvf/ex_cksum_s3board_vhdl.csvf")
+flFlashStandardFirmware(handle, "04B4:8613", "${JTAG_PORT}", 512, "../../gen_csvf/ex_cksum_s3board_fx2_vhdl.csvf")
 flClose(handle)
 quit()
 EOF
