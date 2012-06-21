@@ -37,7 +37,7 @@ It provides a host-side API, firmware for several USB interface microcontrollers
   \item
     For the USB interface there are firmwares for the Cypress FX2LP (used on most Digilent, KNJN, ZTEX and Opal Kelly boards) and Atmel AVR (used by some AVNet and Digilent boards). Support for the FTDI chips is planned.
   \item
-    The Cypress FX2LP firmware supports a synchronous FIFO interface with a sustained bandwidth of around 25MiB/s. The Atmel AVR firmware supports an asynchronous interface\footnote{Actually IEEE 1284 in Enhanced Parallel Port mode.} with a sustained bandwidth of around 1.2MiB/s. Other microcontroller-to-FPGA protocols such as SPI would be straightforward to implement.
+    The Cypress FX2LP firmware supports a synchronous FIFO interface with a sustained bandwidth of around 26MiB/s. The Atmel AVR firmware supports an asynchronous interface\footnote{Actually IEEE 1284 in Enhanced Parallel Port mode.} with a sustained bandwidth of around 1.2MiB/s. Other microcontroller-to-FPGA protocols such as SPI would be straightforward to implement.
   \item
     For the FPGA there is a simple interface module which when instantiated in your design gives the host a FIFO-style read/write interface, supporting up to 128 separate logical ``channels'' into your design. A couple of fully-functional example designs are provided to get you started.
 \end{blobs}
@@ -140,7 +140,7 @@ Obviously, not all of the supported FPGA boards include all of these I/O feature
 
 \subsubsection{Cypress FX2LP-Based Boards}
 
-The Cypress FX2LP is a HiSpeed (480Mb/s) USB interface. It is capable of transferring data between an FPGA and the host at 25MiB/s, using an eight-bit synchronous FIFO interface. Although fast and fairly cheap, it has a rather eccentric internal architecture, so custom firmware development is not recommended.
+The Cypress FX2LP is a Hi-Speed (480Mb/s) USB interface. It is capable of transferring data between an FPGA and the host at 26MiB/s, using an eight-bit synchronous FIFO interface. Although fast and fairly cheap, it has a rather eccentric internal architecture, so custom firmware development is not recommended.
 
 \begin{desc}
   \item[\sffamily{\href{http://www.digilentinc.com/Products/Detail.cfm?Prod=Nexys3}{Digilent Nexys3}:}] \hfill \\
@@ -160,7 +160,7 @@ The Cypress FX2LP is a HiSpeed (480Mb/s) USB interface. It is capable of transfe
 \newpage
 \subsubsection{Atmel AVR-Based Boards}
 
-The USB-capable Atmel AVR8 microcontrollers (AT90USB* \& ATmega*U*) are very cheap, and they incorporate a FullSpeed (12Mib/s) USB interface. They are capable of transferring data between an FPGA and the host at between 330KiB/s and about 1.2MiB/s, using an eight-bit asynchronous EPP-style interface. Although slower than the FX2LP, they are much more popular as general-purpose microcontrollers, and much easier to program, making custom firmware development fairly straightforward.
+The USB-capable Atmel AVR8 microcontrollers (AT90USB* \& ATmega*U*) are very cheap, and they incorporate a Full-Speed (12Mb/s) USB interface. They are capable of transferring data between an FPGA and the host at between 330KiB/s and about 1.2MiB/s, using an eight-bit asynchronous EPP-style interface. Although slower than the FX2LP, they are much more popular as general-purpose microcontrollers, and much easier to program, making custom firmware development fairly straightforward.
 
 \begin{desc}
   \item[\sffamily{Minimus/EP2C5 Board:}] \hfill \\
