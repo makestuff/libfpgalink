@@ -1,5 +1,5 @@
 chris@win7 ¬echo $XILINX
-C:/Xilinx/13.2/ISE\_DS/ISE
+C:/Xilinx/13.2/ISE_DS/ISE
 chris@win7$ ¬cd hdl/fx2/verilog/ex_cksum
 chris@win7$ ¬ls ../../platforms
 atlys  lx9  nexys2-1200  nexys2-500  nexys3  s3board  xylo-l
