@@ -18,7 +18,7 @@ SNIPPETS := \
 	tmp/c/check_macro.tex
 PDFS := \
 	images/by-sa.pdf \
-	images/highLevel.pdf \
+	images/fpgalinkOverview.pdf \
 	images/comm.pdf \
 	images/jtag.pdf \
 	images/commFpgaAppInterface.pdf \
