@@ -27,8 +27,8 @@ extern "C" {
 		const uint8 *const data;
 		const uint16 length;
 		const uint16 vp;
-		const uint16 d0A;  // offset to change to 08 when JTAG on port C
-		const uint16 d0B;  // offset to change to 09 when JTAG on port C
+		const uint16 d0E;  // 0x08 when on A, 0x0C when on C, 0x0E when on D
+		const uint16 d0F;  // 0x09 when on A, 0x0D when on C, 0x0F when on D
 		const uint16 outBits;
 		const uint16 outBitsComp;
 		const uint16 *oeRegs;

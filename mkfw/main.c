@@ -28,22 +28,22 @@
 		FAIL(retCode); \
 	}
 
-#define JTAG_PORT_1 1
+#define JTAG_PORT_1 3
 #define TDO_BIT_1   0
 #define TDI_BIT_1   1
 #define TMS_BIT_1   2
 #define TCK_BIT_1   3
 
-#define JTAG_PORT_2 0
+#define JTAG_PORT_2 2
 #define TDO_BIT_2   7
 #define TDI_BIT_2   6
 #define TMS_BIT_2   5
 #define TCK_BIT_2   4
 
-#define TDO_ADDR_1 (0xA0 + 16*JTAG_PORT_1 + TDO_BIT_1)
-#define TDI_ADDR_1 (0xA0 + 16*JTAG_PORT_1 + TDI_BIT_1)
-#define TMS_ADDR_1 (0xA0 + 16*JTAG_PORT_1 + TMS_BIT_1)
-#define TCK_ADDR_1 (0xA0 + 16*JTAG_PORT_1 + TCK_BIT_1)
+#define TDO_ADDR_1 (0x80 + 16*JTAG_PORT_1 + TDO_BIT_1)
+#define TDI_ADDR_1 (0x80 + 16*JTAG_PORT_1 + TDI_BIT_1)
+#define TMS_ADDR_1 (0x80 + 16*JTAG_PORT_1 + TMS_BIT_1)
+#define TCK_ADDR_1 (0x80 + 16*JTAG_PORT_1 + TCK_BIT_1)
 
 #define bmTDO_1 (1<<TDO_BIT_1)
 #define bmTDI_1 (1<<TDI_BIT_1)
@@ -55,10 +55,10 @@
 #define OUTBITS_1      (bmTDI_1|bmTMS_1|bmTCK_1)
 #define OUTBITS_COMP_1 ((uint8)~OUTBITS_1)
 
-#define TDO_ADDR_2 (0xA0 + 16*JTAG_PORT_2 + TDO_BIT_2)
-#define TDI_ADDR_2 (0xA0 + 16*JTAG_PORT_2 + TDI_BIT_2)
-#define TMS_ADDR_2 (0xA0 + 16*JTAG_PORT_2 + TMS_BIT_2)
-#define TCK_ADDR_2 (0xA0 + 16*JTAG_PORT_2 + TCK_BIT_2)
+#define TDO_ADDR_2 (0x80 + 16*JTAG_PORT_2 + TDO_BIT_2)
+#define TDI_ADDR_2 (0x80 + 16*JTAG_PORT_2 + TDI_BIT_2)
+#define TMS_ADDR_2 (0x80 + 16*JTAG_PORT_2 + TMS_BIT_2)
+#define TCK_ADDR_2 (0x80 + 16*JTAG_PORT_2 + TCK_BIT_2)
 
 #define bmTDO_2 (1<<TDO_BIT_2)
 #define bmTDI_2 (1<<TDI_BIT_2)
@@ -106,8 +106,8 @@ int dumpCode(
 {
 	int returnCode = 0;
 	uint16 i;
-	uint16 d0A = 0;
-	uint16 d0B = 0;
+	uint16 d0E = 0;
+	uint16 d0F = 0;
 	uint16 vp = 0;
 	uint16 outBits = 0;
 	uint16 outBitsComp = 0;
@@ -150,18 +150,18 @@ int dumpCode(
 			vp = i;
 			i += 3;
 		} else if ( buf1->data[i] != buf2->data[i] ) {
-			if ( buf1->data[i] == 0x0A && buf2->data[i] == 0x08 ) {
-				if ( d0A ) {
-					fprintf(stderr, "%s: Refusing to override 0A->08@%04X with %04X\n", progName, d0A, i);
+			if ( buf1->data[i] == 0x0E && buf2->data[i] == 0x0C ) {
+				if ( d0E ) {
+					fprintf(stderr, "%s: Refusing to override 0E->0C@%04X with %04X\n", progName, d0E, i);
 					FAIL(23);
 				}
-				d0A = i;
-			} else if ( buf1->data[i] == 0x0B && buf2->data[i] == 0x09 ) {
-				if ( d0B ) {
-					fprintf(stderr, "%s: Refusing to override 0B->09@%04X with %04X\n", progName, d0B, i);
+				d0E = i;
+			} else if ( buf1->data[i] == 0x0F && buf2->data[i] == 0x0D ) {
+				if ( d0F ) {
+					fprintf(stderr, "%s: Refusing to override 0F->0D@%04X with %04X\n", progName, d0F, i);
 					FAIL(24);
 				}
-				d0B = i;
+				d0F = i;
 			} else if ( buf1->data[i] == OUTBITS_1 && buf2->data[i] == OUTBITS_2 ) {
 				if ( outBits ) {
 					fprintf(stderr, "%s: Refusing to override outBits@%04X with %04X\n", progName, outBits, i);
@@ -250,12 +250,12 @@ int dumpCode(
 		fprintf(stderr, "%s: Not enough occurrances of tckBit\n", progName);
 		FAIL(41);
 	}
-	if ( !d0A ) {
-		fprintf(stderr, "%s: Not enough occurrances of d0A\n", progName);
+	if ( !d0E ) {
+		fprintf(stderr, "%s: Not enough occurrances of d0E\n", progName);
 		FAIL(42);
 	}
-	if ( !d0B ) {
-		fprintf(stderr, "%s: Not enough occurrances of d0B\n", progName);
+	if ( !d0F ) {
+		fprintf(stderr, "%s: Not enough occurrances of d0F\n", progName);
 		FAIL(43);
 	}
 	if ( !vp ) {
@@ -307,7 +307,7 @@ int dumpCode(
 	printf("};\n");
 	printf("const struct FirmwareInfo %sFirmware = {\n", name);
 	printf("\tdata, %d,\n", buf1->length);
-	printf("\t0x%04X, 0x%04X, 0x%04X,\n", vp, d0A, d0B);
+	printf("\t0x%04X, 0x%04X, 0x%04X,\n", vp, d0E, d0F);
 	printf("\t0x%04X, 0x%04X,\n", outBits, outBitsComp);
 	printf("\toeRegs,\n");
 	printf("\tallBits, allBitsComp,\n");

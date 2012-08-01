@@ -34,6 +34,11 @@ static FLStatus convertJtagFileToCsvf(
 	struct Buffer *dest, const char *xsvfFile, const char **error
 ) WARN_UNUSED_RESULT;
 
+// On port A, only bits 0, 1, 3 & 7 are available. The other bits are used by the slave FIFOs.
+static bool isInvalidPortABit(uint8 bit) {
+	return (bit == 2 || bit == 4 || bit == 5 || bit == 6);
+}
+
 // Load the standard FPGALink firmware into the FX2 at currentVid/currentPid.
 DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	const char *curVidPid, const char *newVidPid, const char *jtagPort, const char **error)
@@ -62,22 +67,32 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
 	}
-	if ( (jtagPort[0] & 0xDF) == 'C' ) {
+	if ( (jtagPort[0] & 0xDF) == 'A' ) {
 		port = 0;
+	} else if ( (jtagPort[0] & 0xDF) == 'C' ) {
+		port = 2;
 	} else if ( (jtagPort[0] & 0xDF) == 'D' ) {
-		port = 1;
+		port = 3;
 	} else {
-		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
+		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
 	}
 	if  (jtagPort[1] < '0' || jtagPort[1] > '7' || jtagPort[2] < '0' || jtagPort[2] > '7' || jtagPort[3] < '0' || jtagPort[3] > '7' || jtagPort[4] < '0' || jtagPort[4] > '7' ) {
-		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
+		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
 	}
 	tdoBit = jtagPort[1] - '0';
 	tdiBit = jtagPort[2] - '0';
 	tmsBit = jtagPort[3] - '0';
 	tckBit = jtagPort[4] - '0';
+	if (
+		port == 0 &&
+		(isInvalidPortABit(tdoBit) || isInvalidPortABit(tdiBit) ||
+		 isInvalidPortABit(tmsBit) || isInvalidPortABit(tckBit))
+	) {
+		errRender(error, "flFlashStandardFirmware(): Only bits 0, 1, 3 & 7 are available for JTAG use on port A");
+		FAIL(FL_FX2_ERR);
+	}		
 	uStatus = usbOpenDevice(currentVid, currentPid, 1, 0, 0, &device, error);
 	CHECK_STATUS(uStatus, "flLoadStandardFirmware()", FL_USB_ERR);
 	bStatus = bufInitialise(&ramBuf, 0x4000, 0x00, error);
@@ -120,22 +135,33 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
 	}
-	if ( (jtagPort[0] & 0xDF) == 'C' ) {
+	if ( (jtagPort[0] & 0xDF) == 'A' ) {
 		port = 0;
+	} else if ( (jtagPort[0] & 0xDF) == 'C' ) {
+		port = 2;
 	} else if ( (jtagPort[0] & 0xDF) == 'D' ) {
-		port = 1;
+		port = 3;
 	} else {
-		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
+		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
 	}
 	if  (jtagPort[1] < '0' || jtagPort[1] > '7' || jtagPort[2] < '0' || jtagPort[2] > '7' || jtagPort[3] < '0' || jtagPort[3] > '7' || jtagPort[4] < '0' || jtagPort[4] > '7' ) {
-		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
+		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
 	}
 	tdoBit = jtagPort[1] - '0';
 	tdiBit = jtagPort[2] - '0';
 	tmsBit = jtagPort[3] - '0';
 	tckBit = jtagPort[4] - '0';
+	if (
+		port == 0 &&
+		(isInvalidPortABit(tdoBit) || isInvalidPortABit(tdiBit) ||
+		 isInvalidPortABit(tmsBit) || isInvalidPortABit(tckBit))
+	) {
+		errRender(error, "flFlashStandardFirmware(): Only bits 0, 1, 3 & 7 are available for JTAG use on port A");
+		FAIL(FL_FX2_ERR);
+	}		
+		
 	bStatus = bufInitialise(&i2cBuf, 0x4000, 0x00, error);
 	CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 	if ( xsvfFile ) {
@@ -338,14 +364,19 @@ FLStatus copyFirmwareAndRewriteIDs(
 	dest->data[fwInfo->vp + 3] = (uint8)(pid >> 8);
 
 	if ( port == 0 ) {
+		// Use port A for JTAG operations
+		dest->data[fwInfo->d0E] = 0x08;
+		dest->data[fwInfo->d0F] = 0x09;
+		reg = 0xB2;
+	} else if ( port == 2 ) {
 		// Use port C for JTAG operations
-		dest->data[fwInfo->d0A] = 0x08;
-		dest->data[fwInfo->d0B] = 0x09;
+		dest->data[fwInfo->d0E] = 0x0C;
+		dest->data[fwInfo->d0F] = 0x0D;
 		reg = 0xB4;
-	} else if ( port == 1 ) {
+	} else if ( port == 3 ) {
 		// Use port D for JTAG operations
-		dest->data[fwInfo->d0A] = 0x0A;
-		dest->data[fwInfo->d0B] = 0x0B;
+		dest->data[fwInfo->d0E] = 0x0E;
+		dest->data[fwInfo->d0F] = 0x0F;
 		reg = 0xB5;
 	} else {
 		errRender(
@@ -369,19 +400,19 @@ FLStatus copyFirmwareAndRewriteIDs(
 	}
 	i = NUM_TDO_BIT;
 	while ( i-- ) {
-		dest->data[fwInfo->tdoBit[i]] = (0xA0 + (port<<4) + tdoBit);
+		dest->data[fwInfo->tdoBit[i]] = (0x80 + (port<<4) + tdoBit);
 	}
 	i = NUM_TDI_BIT;
 	while ( i-- ) {
-		dest->data[fwInfo->tdiBit[i]] = (0xA0 + (port<<4) + tdiBit);
+		dest->data[fwInfo->tdiBit[i]] = (0x80 + (port<<4) + tdiBit);
 	}
 	i = NUM_TMS_BIT;
 	while ( i-- ) {
-		dest->data[fwInfo->tmsBit[i]] = (0xA0 + (port<<4) + tmsBit);
+		dest->data[fwInfo->tmsBit[i]] = (0x80 + (port<<4) + tmsBit);
 	}
 	i = NUM_TCK_BIT;
 	while ( i-- ) {
-		dest->data[fwInfo->tckBit[i]] = (0xA0 + (port<<4) + tckBit);
+		dest->data[fwInfo->tckBit[i]] = (0x80 + (port<<4) + tckBit);
 	}
 	returnCode = FL_SUCCESS;
 cleanup:

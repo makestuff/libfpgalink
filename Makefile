@@ -19,7 +19,7 @@ DEPS             := error usbwrap fx2loader nero sync buffer
 TYPE             := dll
 SUBDIRS          := tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-POST_BUILD       := tools gen_csvf
+POST_BUILD       := tools #gen_csvf
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
 EXTRA_CLEAN      := gen_svf gen_xsvf gen_csvf gen_fw
 EXTRA_CLEAN_DIRS := mkfw firmware/fx2 xsvf2csvf dump
@@ -39,22 +39,22 @@ tools:
 gen_fw: $(MKFW)
 	mkdir -p gen_fw
 	make -C firmware/fx2 clean
-	make -C firmware/fx2 FLAGS="-DJTAG_PORT=1 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3"
+	make -C firmware/fx2 FLAGS="-DJTAG_PORT=3 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3"
 	cp firmware/fx2/firmware.hex gen_fw/ramFirmware1.hex
 	make -C firmware/fx2 clean
-	make -C firmware/fx2 FLAGS="-DJTAG_PORT=0 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4"
+	make -C firmware/fx2 FLAGS="-DJTAG_PORT=2 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4"
 	cp firmware/fx2/firmware.hex gen_fw/ramFirmware2.hex
 	make -C firmware/fx2 clean
-	make -C firmware/fx2 FLAGS="-DJTAG_PORT=1 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3 -DEEPROM -DBOOT"
+	make -C firmware/fx2 FLAGS="-DJTAG_PORT=3 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3 -DEEPROM -DBOOT"
 	cp firmware/fx2/firmware.hex gen_fw/eepromWithBootFirmware1.hex
 	make -C firmware/fx2 clean
-	make -C firmware/fx2 FLAGS="-DJTAG_PORT=0 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4 -DEEPROM -DBOOT"
+	make -C firmware/fx2 FLAGS="-DJTAG_PORT=2 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4 -DEEPROM -DBOOT"
 	cp firmware/fx2/firmware.hex gen_fw/eepromWithBootFirmware2.hex
 	make -C firmware/fx2 clean
-	make -C firmware/fx2 FLAGS="-DJTAG_PORT=1 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3 -DEEPROM"
+	make -C firmware/fx2 FLAGS="-DJTAG_PORT=3 -DTDO_BIT=0 -DTDI_BIT=1 -DTMS_BIT=2 -DTCK_BIT=3 -DEEPROM"
 	cp firmware/fx2/firmware.hex gen_fw/eepromNoBootFirmware1.hex
 	make -C firmware/fx2 clean
-	make -C firmware/fx2 FLAGS="-DJTAG_PORT=0 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4 -DEEPROM"
+	make -C firmware/fx2 FLAGS="-DJTAG_PORT=2 -DTDO_BIT=7 -DTDI_BIT=6 -DTMS_BIT=5 -DTCK_BIT=4 -DEEPROM"
 	cp firmware/fx2/firmware.hex gen_fw/eepromNoBootFirmware2.hex
 	make -C firmware/fx2 clean
 	$(MKFW) gen_fw/ramFirmware1.hex gen_fw/ramFirmware2.hex ram bix > gen_fw/ramFirmware.c

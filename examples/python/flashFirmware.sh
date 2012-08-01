@@ -16,7 +16,7 @@
 #
 #!/bin/bash
 export PYTHON_VERSION=2
-export JTAG_PORT=D0234
+export JTAG_PORT=A7031
 echo
 echo "WARNING: this will erase any firmware currently in your FX2FPGA EEPROM!!!"
 echo
@@ -26,7 +26,7 @@ echo "3) Press any key"
 read -n 1 -s
 echo
 echo "Writing firmware to EEPROM now..."
-sudo LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
+LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
 from fpgalink${PYTHON_VERSION} import *
 flLoadStandardFirmware("04B4:8613", "04B4:8613", "${JTAG_PORT}")
 flAwaitDevice("04B4:8613", 600)
@@ -46,7 +46,7 @@ echo "5) Wait for the display to show 0030"
 echo "6) Press any key"
 read -n 1 -s
 
-sudo LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
+LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
 from fpgalink${PYTHON_VERSION} import *
 handle = flOpen("04B4:8613")
 flWriteChannel(handle, 1000, 0x00, 0x10)
