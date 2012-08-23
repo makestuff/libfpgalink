@@ -23,7 +23,6 @@
 #include "makestuff.h"
 #include "desc.h"
 #include "jtag.h"
-#include "sync.h"
 #include "../../vendorCommands.h"
 //#include <usart.h>
 
@@ -199,8 +198,6 @@ int main(void) {
 		USB_USBTask();
 		if ( jtagIsShiftPending() ) {
 			jtagShiftExecute();
-		} else if ( syncIsEnabled() ) {
-			syncExecute();
 		} else if ( !jtagIsEnabled() ) {
 			doComms();
 		}
@@ -213,14 +210,11 @@ void EVENT_USB_Device_ControlRequest(void) {
 	switch ( USB_ControlRequest.bRequest ) {
 	case CMD_MODE_STATUS:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
-			// Enable sync mode if wValue is nonzero
+			// Enable/disable JTAG mode
 			uint16 wBits = USB_ControlRequest.wValue;
 			uint16 wMask = USB_ControlRequest.wIndex;
 			Endpoint_ClearSETUP();
-			if ( wMask & MODE_SYNC ) {
-				// Sync mode does a loopback, so endpoints can be sync'd with the host software
-				syncSetEnabled(wBits & MODE_SYNC ? true : false);
-			} else if ( wMask & MODE_JTAG ) {
+			if ( wMask & MODE_JTAG ) {
 				// When in JTAG mode, the JTAG lines are driven; tristate otherwise
 				jtagSetEnabled(wBits & MODE_JTAG ? true : false);
 			}

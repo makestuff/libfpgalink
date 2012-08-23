@@ -21,7 +21,6 @@
 #else
 	#include <usb.h>
 #endif
-#include <libsync.h>
 #include <liberror.h>
 #include <libbuffer.h>
 #include "vendorCommands.h"
@@ -375,19 +374,23 @@ static FLStatus trySync(struct FLContext *newCxt, const uint8 *statusBuffer) {
 	newCxt->jtagInEP = 0;
 	newCxt->commOutEP = 0;
 	newCxt->commInEP = 0;
+	//usb_clear_halt(newCxt->device, 2);
+	//usb_clear_halt(newCxt->device, 0x84);
+	//usb_clear_halt(newCxt->device, 6);
+	//usb_clear_halt(newCxt->device, 0x88);
 	if ( jtagEndpoints ) {
 		if ( jtagEndpoints == 0x24 ) {
 			newCxt->isNeroCapable = true;
-			if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
-				FAIL(FL_SYNC_ERR);
-			}
+			//if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
+			//	FAIL(FL_SYNC_ERR);
+			//}
 			newCxt->jtagOutEP = 2;
 			newCxt->jtagInEP = 4;
 		} else if ( jtagEndpoints == 0x68 ) {
 			newCxt->isNeroCapable = true;
-			if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
-				FAIL(FL_SYNC_ERR);
-			}
+			//if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
+			//	FAIL(FL_SYNC_ERR);
+			//}
 			newCxt->jtagOutEP = 6;
 			newCxt->jtagInEP = 8;
 		} else {
@@ -398,18 +401,18 @@ static FLStatus trySync(struct FLContext *newCxt, const uint8 *statusBuffer) {
 		if ( commEndpoints == 0x24 ) {
 			newCxt->isCommCapable = true;
 			if ( commEndpoints != jtagEndpoints ) {
-				if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
-					FAIL(FL_SYNC_ERR);
-				}
+				//if ( syncBulkEndpoints(newCxt->device, SYNC_24, NULL) ) {
+				//	FAIL(FL_SYNC_ERR);
+				//}
 			}
 			newCxt->commOutEP = 2;
 			newCxt->commInEP = 4;
 		} else if ( commEndpoints == 0x68 ) {
 			newCxt->isCommCapable = true;
 			if ( commEndpoints != jtagEndpoints ) {
-				if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
-					FAIL(FL_SYNC_ERR);
-				}
+				//if ( syncBulkEndpoints(newCxt->device, SYNC_68, NULL) ) {
+				//	FAIL(FL_SYNC_ERR);
+				//}
 			}
 			newCxt->commOutEP = 6;
 			newCxt->commInEP = 8;

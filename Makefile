@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ROOT             := $(realpath ../..)
-DEPS             := error usbwrap fx2loader nero sync buffer
+DEPS             := error usbwrap fx2loader nero buffer
 TYPE             := dll
 SUBDIRS          := tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
