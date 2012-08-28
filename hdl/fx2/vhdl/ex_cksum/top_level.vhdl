@@ -111,12 +111,12 @@ begin                                                                     --BEGI
 	-- CommFPGA module
 	fx2Read_out <= fx2Read;
 	fx2OE_out <= fx2Read;
-	fx2Addr_out(1) <= '1';  -- Use EP6OUT/EP8IN, not EP2OUT/EP4IN.
+	fx2Addr_out(0) <= '0';  -- Use EP2OUT/EP6IN, not EP4OUT/EP8IN.
 	comm_fpga_fx2 : entity work.comm_fpga_fx2
 		port map(
 			-- FX2 interface
 			fx2Clk_in      => fx2Clk_in,
-			fx2FifoSel_out => fx2Addr_out(0),
+			fx2FifoSel_out => fx2Addr_out(1),
 			fx2Data_io     => fx2Data_io,
 			fx2Read_out    => fx2Read,
 			fx2GotData_in  => fx2GotData_in,

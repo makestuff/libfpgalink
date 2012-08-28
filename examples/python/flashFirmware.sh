@@ -16,7 +16,10 @@
 #
 #!/bin/bash
 export PYTHON_VERSION=2
-export JTAG_PORT=A7031
+export JTAG_PORT=D0234
+#export JTAG_PORT=A7031
+export CSVF_FILE=../../gen_csvf/ex_cksum_s3board_fx2_vhdl.csvf
+#export CSVF_FILE=../../hdl/fx2/vhdl/ex_cksum/top_level.xsvf
 echo
 echo "WARNING: this will erase any firmware currently in your FX2FPGA EEPROM!!!"
 echo
@@ -34,7 +37,7 @@ handle = flOpen("04B4:8613")
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
-flFlashStandardFirmware(handle, "04B4:8613", "${JTAG_PORT}", 512, "../../gen_csvf/ex_cksum_s3board_fx2_vhdl.csvf")
+flFlashStandardFirmware(handle, "04B4:8613", "${JTAG_PORT}", 512, "${CSVF_FILE}")
 flClose(handle)
 quit()
 EOF

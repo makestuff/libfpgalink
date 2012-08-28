@@ -57,7 +57,7 @@ DLLEXPORT(FLStatus) flPlayXSVF(struct FLContext *handle, const char *jtagFile, c
 		errRender(error, "flPlayXSVF(): Filename should have .svf, .xsvf or .csvf extension");
 		FAIL(FL_FILE_ERR);
 	}
-	nStatus = neroInitialise(handle->device, &nero, error);
+	nStatus = neroInitialise(handle->device, &nero, handle->jtagOutEP, handle->jtagInEP, error);
 	CHECK_STATUS(nStatus, "flPlayXSVF()", FL_JTAG_ERR);
 	cStatus = csvfPlay(csvfBuf.data, isCompressed, &nero, error);
 	CHECK_STATUS(cStatus, "flPlayXSVF()", FL_JTAG_ERR);
@@ -96,7 +96,7 @@ DLLEXPORT(FLStatus) flScanChain(
 		uint32 idCode;
 		uint8 bytes[4];
 	} u;
-	nStatus = neroInitialise(handle->device, &nero, error);
+	nStatus = neroInitialise(handle->device, &nero, handle->jtagOutEP, handle->jtagInEP, error);
 	CHECK_STATUS(nStatus, "flScanChain()", FL_JTAG_ERR);
 	nStatus = neroClockFSM(&nero, 0x0000005F, 9, error);  // Reset TAP, goto Shift-DR
 	CHECK_STATUS(nStatus, "flScanChain()", FL_JTAG_ERR);
