@@ -235,19 +235,19 @@ int dumpCode(
 		FAIL(37);
 	}
 	if ( tdoBitLen != NUM_TDO_BIT ) {
-		fprintf(stderr, "%s: Not enough occurrances of tdoBit\n", progName);
+		fprintf(stderr, "%s: Not enough occurrances of tdoBit (expected %d, got %d)\n", progName, NUM_TDO_BIT, tdoBitLen);
 		FAIL(38);
 	}
 	if ( tdiBitLen != NUM_TDI_BIT ) {
-		fprintf(stderr, "%s: Not enough occurrances of tdiBit\n", progName);
+		fprintf(stderr, "%s: Not enough occurrances of tdiBit (expected %d, got %d)\n", progName, NUM_TDI_BIT, tdiBitLen);
 		FAIL(39);
 	}
 	if ( tmsBitLen != NUM_TMS_BIT ) {
-		fprintf(stderr, "%s: Not enough occurrances of tmsBit\n", progName);
+		fprintf(stderr, "%s: Not enough occurrances of tmsBit (expected %d, got %d)\n", progName, NUM_TMS_BIT, tmsBitLen);
 		FAIL(40);
 	}
 	if ( tckBitLen != NUM_TCK_BIT ) {
-		fprintf(stderr, "%s: Not enough occurrances of tckBit\n", progName);
+		fprintf(stderr, "%s: Not enough occurrances of tckBit (expected %d, got %d)\n", progName, NUM_TCK_BIT, tckBitLen);
 		FAIL(41);
 	}
 	if ( !d0E ) {

@@ -47,9 +47,9 @@ extern "C" {
 	#define NUM_OE_BITS  2
 	#define NUM_ALL_BITS 4
 	#define NUM_TDO_BIT  11
-	#define NUM_TDI_BIT  38
+	#define NUM_TDI_BIT  30
 	#define NUM_TMS_BIT  7
-	#define NUM_TCK_BIT  81
+	#define NUM_TCK_BIT  66
 
 #ifdef __cplusplus
 }
