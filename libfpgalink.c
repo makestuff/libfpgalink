@@ -28,7 +28,6 @@
 #include "private.h"
 
 static FLStatus getStatus(struct FLContext *handle, uint8 *statusBuffer, const char **error);
-static FLStatus trySync(struct FLContext *newCxt, const uint8 *statusBuffer);
 
 DLLEXPORT(void) flInitialise(void) {
 	usbInitialise();
@@ -42,7 +41,7 @@ DLLEXPORT(FLStatus) flIsDeviceAvailable(
 	const char *vp, bool *isAvailable, const char **error)
 {
 	FLStatus returnCode;
-	USBStatus uStatus;
+	int uStatus;
 	uint16 vid, pid;
 	if ( !usbValidateVidPid(vp) ) {
 		errRender(error, "The supplied VID:PID \"%s\" is invalid; it should look like 04B4:8613", vp);
@@ -63,6 +62,7 @@ DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char
 	uint8 statusBuffer[16];
 	struct FLContext *newCxt = (struct FLContext *)calloc(sizeof(struct FLContext), 1);
 	uint16 vid, pid;
+	uint8 jtagEndpoints, commEndpoints;
 	if ( !usbValidateVidPid(vp) ) {
 		errRender(error, "The supplied VID:PID \"%s\" is invalid; it should look like 04B4:8613", vp);
 		FAIL(FL_USB_ERR);
@@ -90,10 +90,21 @@ DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char
 			vid, pid);
 		FAIL(FL_PROTOCOL_ERR);
 	}
-	fStatus = trySync(newCxt, statusBuffer);
-	if ( fStatus != FL_SUCCESS ) {
-		errRender(error, "flOpen(): Unable to sync device at %04X:%04X", vid, pid);
-		FAIL(FL_PROTOCOL_ERR);
+	jtagEndpoints = statusBuffer[6];
+	commEndpoints = statusBuffer[7];
+	newCxt->jtagOutEP = 0;
+	newCxt->jtagInEP = 0;
+	newCxt->commOutEP = 0;
+	newCxt->commInEP = 0;
+	if ( jtagEndpoints ) {
+		newCxt->isNeroCapable = true;
+		newCxt->jtagOutEP = (jtagEndpoints >> 4);
+		newCxt->jtagInEP = (jtagEndpoints & 0x0F);
+	}
+	if ( commEndpoints ) {
+		newCxt->isCommCapable = true;
+		newCxt->commOutEP = (commEndpoints >> 4);
+		newCxt->commInEP = (commEndpoints & 0x0F);
 	}
 	*handle = newCxt;
 	return FL_SUCCESS;
@@ -360,29 +371,6 @@ static FLStatus getStatus(struct FLContext *handle, uint8 *statusBuffer, const c
 		errRender(
 			error, "getStatus(): Unable to get status: %s", usb_strerror());
 		FAIL(FL_PROTOCOL_ERR);
-	}
-	return FL_SUCCESS;
-cleanup:
-	return returnCode;
-}
-
-static FLStatus trySync(struct FLContext *newCxt, const uint8 *statusBuffer) {
-	FLStatus returnCode;
-	const uint8 jtagEndpoints = statusBuffer[6];
-	const uint8 commEndpoints = statusBuffer[7];
-	newCxt->jtagOutEP = 0;
-	newCxt->jtagInEP = 0;
-	newCxt->commOutEP = 0;
-	newCxt->commInEP = 0;
-	if ( jtagEndpoints ) {
-		newCxt->isNeroCapable = true;
-		newCxt->jtagOutEP = (jtagEndpoints >> 4);
-		newCxt->jtagInEP = (jtagEndpoints & 0x0F);
-	}
-	if ( commEndpoints ) {
-		newCxt->isCommCapable = true;
-		newCxt->commOutEP = (commEndpoints >> 4);
-		newCxt->commInEP = (commEndpoints & 0x0F);
 	}
 	return FL_SUCCESS;
 cleanup:

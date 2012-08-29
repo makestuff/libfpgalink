@@ -756,6 +756,7 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 						// There have only been non-shift commands (XSDRSIZE,XTDOMASK) since last time,
 						// so we can do some deduplication.
 						bStatus = bufWriteLongBE(buf, runTestOffset + 1, readLongBE(src), error);
+						CHECK_STATUS(bStatus, "postProcess()", FL_BUF_APPEND_ERR);
 						src += 4;
 					}
 				} else {
