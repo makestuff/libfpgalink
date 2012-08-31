@@ -14,17 +14,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-//#include <stdlib.h>
+#include <stdlib.h>
 #include <string.h>
 #include <makestuff.h>
 #include <libfx2loader.h>
 #include <liberror.h>
 #include <libusbwrap.h>
-#ifdef WIN32
-	#include <lusb0_usb.h>
-#else
-	#include <usb.h>
-#endif
 #include "firmware/defs.h"
 #include "libfpgalink.h"
 #include "private.h"
@@ -49,18 +44,12 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	FX2Status fxStatus;
 	struct usb_dev_handle *device = NULL;
 	int uStatus;
-	uint16 currentVid, currentPid, newVid, newPid;
+	uint16 newVid, newPid;
 	uint8 port, tdoBit, tdiBit, tmsBit, tckBit;
-	if ( !usbValidateVidPid(curVidPid) ) {
-		errRender(error, "flLoadStandardFirmware(): The supplied current VID:PID \"%s\" is invalid; it should look like 04B4:8613", curVidPid);
-		FAIL(FL_USB_ERR);
-	}
 	if ( !usbValidateVidPid(newVidPid) ) {
 		errRender(error, "flLoadStandardFirmware(): The supplied new VID:PID \"%s\" is invalid; it should look like 04B4:8613", newVidPid);
 		FAIL(FL_USB_ERR);
 	}
-	currentVid = (uint16)strtoul(curVidPid, NULL, 16);
-	currentPid = (uint16)strtoul(curVidPid+5, NULL, 16);
 	newVid = (uint16)strtoul(newVidPid, NULL, 16);
 	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
 	if ( strlen(jtagPort) != 5 ) {
@@ -93,7 +82,7 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 		errRender(error, "flFlashStandardFirmware(): Only bits 0, 1, 3 & 7 are available for JTAG use on port A");
 		FAIL(FL_FX2_ERR);
 	}		
-	uStatus = usbOpenDevice(currentVid, currentPid, 1, 0, 0, &device, error);
+	uStatus = usbOpenDevice(curVidPid, 1, 0, 0, &device, error);
 	CHECK_STATUS(uStatus, "flLoadStandardFirmware()", FL_USB_ERR);
 	bStatus = bufInitialise(&ramBuf, 0x4000, 0x00, error);
 	CHECK_STATUS(bStatus, "flLoadStandardFirmware()", FL_ALLOC_ERR);
@@ -108,8 +97,7 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 cleanup:
 	bufDestroy(&ramBuf);
 	if ( device ) {
-		usb_release_interface(device, 0);
-		usb_close(device);
+		usbCloseDevice(device, 0);
 	}
 	return returnCode;
 }
@@ -241,18 +229,11 @@ DLLEXPORT(FLStatus) flLoadCustomFirmware(
 	struct usb_dev_handle *device = NULL;
 	int uStatus;
 	const char *const ext = fwFile + strlen(fwFile) - 4;
-	uint16 vid, pid;
-	if ( !usbValidateVidPid(curVidPid) ) {
-		errRender(error, "flLoadCustomFirmware(): The supplied current VID:PID \"%s\" is invalid; it should look like 04B4:8613", curVidPid);
-		FAIL(FL_USB_ERR);
-	}
-	vid = (uint16)strtoul(curVidPid, NULL, 16);
-	pid = (uint16)strtoul(curVidPid+5, NULL, 16);	
 	if ( strcmp(".hex", ext) ) {
 		errRender(error, "flLoadCustomFirmware(): Filename should have .hex extension");
 		FAIL(FL_FILE_ERR);
 	}
-	uStatus = usbOpenDevice(vid, pid, 1, 0, 0, &device, error);
+	uStatus = usbOpenDevice(curVidPid, 1, 0, 0, &device, error);
 	CHECK_STATUS(uStatus, "flLoadCustomFirmware()", FL_USB_ERR);
 	bStatus = bufInitialise(&fwBuf, 8192, 0x00, error);
 	CHECK_STATUS(bStatus, "flLoadCustomFirmware()", FL_ALLOC_ERR);
@@ -264,8 +245,7 @@ DLLEXPORT(FLStatus) flLoadCustomFirmware(
 cleanup:
 	bufDestroy(&fwBuf);
 	if ( device ) {
-		usb_release_interface(device, 0);
-		usb_close(device);
+		usbCloseDevice(device, 0);
 	}
 	return returnCode;
 }
