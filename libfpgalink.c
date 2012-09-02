@@ -171,11 +171,12 @@ DLLEXPORT(FLStatus) flWriteChannel(
 	const char **error)
 {
 	FLStatus returnCode = FL_SUCCESS, fStatus;
-	uint8 command[] = {chan & 0x7F, 0x00, 0x00, 0x00, 0x00};
+	uint8 command[5];
 	if ( !handle->isCommCapable ) {
 		errRender(error, "flWriteChannel(): This device does not support CommFPGA");
 		FAIL(FL_PROTOCOL_ERR);
 	}
+	command[0] = chan & 0x7F;
 	flWriteLong(count, command+1);
 	fStatus = flWrite(handle, command, 5, 1000, error);
 	CHECK_STATUS(fStatus, "flWriteChannel()", fStatus);
@@ -191,11 +192,12 @@ DLLEXPORT(FLStatus) flAppendWriteChannelCommand(
 {
 	FLStatus returnCode = FL_SUCCESS;
 	BufferStatus bStatus;
-	uint8 command[] = {chan & 0x7F, 0x00, 0x00, 0x00, 0x00};
+	uint8 command[5];
 	if ( !handle->writeBuffer.data ) {
 		bStatus = bufInitialise(&handle->writeBuffer, 1024, 0x00, error);
 		CHECK_STATUS(bStatus, "flAppendWriteChannelCommand()", FL_ALLOC_ERR);
 	}
+	command[0] = chan & 0x7F;
 	flWriteLong(count, command+1);
 	bStatus = bufAppendBlock(&handle->writeBuffer, command, 5, error);
 	CHECK_STATUS(bStatus, "flAppendWriteChannelCommand()", FL_ALLOC_ERR);
@@ -233,11 +235,12 @@ DLLEXPORT(FLStatus) flReadChannel(
 	const char **error)
 {
 	FLStatus returnCode = FL_SUCCESS, fStatus;
-	uint8 command[] = {chan | 0x80, 0x00, 0x00, 0x00, 0x00};
+	uint8 command[5];
 	if ( !handle->isCommCapable ) {
 		errRender(error, "flReadChannel(): This device does not support CommFPGA");
 		FAIL(FL_PROTOCOL_ERR);
 	}
+	command[0] = chan | 0x80;
 	flWriteLong(count, command+1);
 	fStatus = flWrite(handle, command, 5, 1000, error);
 	CHECK_STATUS(fStatus, "flReadChannel()", fStatus);
