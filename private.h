@@ -27,9 +27,9 @@ extern "C" {
 #endif
 
 	// Struct used to maintain context for most of the FPGALink operations
-	struct usb_dev_handle;
+	struct USBDevice;
 	struct FLContext {
-		struct usb_dev_handle *device;
+		struct USBDevice *device;
 		struct Buffer writeBuffer;
 		bool isNeroCapable;
 		bool isCommCapable;

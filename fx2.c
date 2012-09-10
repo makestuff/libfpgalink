@@ -42,7 +42,7 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	struct Buffer ramBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
-	struct usb_dev_handle *device = NULL;
+	struct USBDevice *device = NULL;
 	int uStatus;
 	uint16 newVid, newPid;
 	uint8 port, tdoBit, tdiBit, tmsBit, tckBit;
@@ -226,7 +226,7 @@ DLLEXPORT(FLStatus) flLoadCustomFirmware(
 	struct Buffer fwBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
-	struct usb_dev_handle *device = NULL;
+	struct USBDevice *device = NULL;
 	int uStatus;
 	const char *const ext = fwFile + strlen(fwFile) - 4;
 	if ( strcmp(".hex", ext) ) {

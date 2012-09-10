@@ -59,6 +59,8 @@ else ifeq ($(PLATFORM),lx9)
 	PARFLAGS :=
 else ifeq ($(PLATFORM),ep2c5)
 	VENDOR   := altera
+else ifeq ($(PLATFORM),pcs)
+	VENDOR   := altera
 endif
 
 clean: FORCE
