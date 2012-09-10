@@ -104,7 +104,7 @@ static USBStringDescriptor PROGMEM productString = {
 		.Size = USB_STRING_LEN(17),
 		.Type = DTYPE_String
 	},
-	.UnicodeString          = L"NeroJTAG/AVR v1.0"
+	.UnicodeString          = L"FPGALink/AVR v1.1"
 };
 
 uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue, const uint8_t wIndex, const void** const descriptorAddress) {
