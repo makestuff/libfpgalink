@@ -87,7 +87,7 @@ fpgalink.flReadChannel.restype = FLStatus
 fpgalink.flPlayXSVF.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
 fpgalink.flPlayXSVF.restype = FLStatus
 
-# FX2 Firmware Operations
+# FX2LP Firmware Operations
 fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, c_char_p, POINTER(ErrorString)]
 fpgalink.flLoadStandardFirmware.restype = FLStatus
 fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, c_char_p, uint32, c_char_p, POINTER(ErrorString)]
@@ -244,7 +244,7 @@ def flPlayXSVF(handle, xsvfFile):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Load standard firmware into the FX2 chip
+# Load standard firmware into the FX2LP chip
 def flLoadStandardFirmware(curVidPid, newVidPid, jtagPort):
     error = ErrorString()
     status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), jtagPort.encode('ascii'), byref(error))
@@ -273,10 +273,11 @@ def flAppendWriteChannelCommand(handle, chan, values):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Flash standard firmware into the FX2's EEPROM
+# Flash standard firmware into the FX2LP's EEPROM
 def flFlashStandardFirmware(handle, newVidPid, jtagPort, eepromSize, xsvfFile = None):
     error = ErrorString()
-    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), jtagPort.encode('ascii'), eepromSize, xsvfFile.encode('ascii'), byref(error))
+    xsvfFile = None if ( xsvfFile == None ) else xsvfFile.encode('ascii')
+    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), jtagPort.encode('ascii'), eepromSize, xsvfFile, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -288,7 +289,7 @@ fpgalink.flInitialise()
 # Main function if we're not loaded as a module
 if __name__ == "__main__":
     print "FPGALink Python Example Copyright (C) 2011-2012 Chris McClelland\n"
-    parser = argparse.ArgumentParser(description='Load FX2 firmware, load the FPGA, interact with the FPGA.')
+    parser = argparse.ArgumentParser(description='Load FX2LP firmware, load the FPGA, interact with the FPGA.')
     parser.add_argument('-p', action="store_true", default=False, help="FPGA is powered from USB (Nexys2 only!)")
     parser.add_argument('-s', action="store_true", default=False, help="scan the JTAG chain")
     parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="renumerated vendor and product ID of the FPGALink device")
