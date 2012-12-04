@@ -17,6 +17,9 @@
 #ifndef VENDORCOMMANDS_H
 #define VENDORCOMMANDS_H
 
+// The buffer available on the FX2LP firmware side
+#define CSVF_BUF_SIZE 128
+
 // Vendor commands
 #define CMD_MODE_STATUS       0x80
 #define CMD_JTAG_CLOCK_DATA   0x81
@@ -27,7 +30,6 @@
 #define CMD_READ_WRITE_EEPROM 0xA2
 
 // Bits in the mode word
-#define MODE_SYNC      (1<<0)
-#define MODE_JTAG      (1<<1)
+#define MODE_JTAG      (1<<0)
 
 #endif

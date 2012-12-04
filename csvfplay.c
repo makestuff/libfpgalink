@@ -18,7 +18,7 @@
 #include <makestuff.h>
 #include <liberror.h>
 #include <libnero.h>
-#include "firmware/defs.h"
+#include "vendorCommands.h"
 #include "xsvf.h"
 #include "csvfplay.h"
 #include "csvfreader.h"
@@ -46,10 +46,10 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 	uint8 i;
 	uint32 xsdrSize = 0;
 	uint32 xruntest = 0;
-	uint8 tdoMask[128];
-	uint8 tdiData[128];
-	uint8 tdoData[128];
-	uint8 tdoExpected[128];
+	uint8 tdoMask[CSVF_BUF_SIZE];
+	uint8 tdiData[CSVF_BUF_SIZE];
+	uint8 tdoData[CSVF_BUF_SIZE];
+	uint8 tdoExpected[CSVF_BUF_SIZE];
 	uint8 *tdiAll;
 	struct Context cp;
 
