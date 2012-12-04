@@ -651,7 +651,7 @@ extern "C" {
 	 *     - \c FL_USB_ERR if the micro failed to respond to the port access command.
 	 */
 	DLLEXPORT(FLStatus) flPortAccess(
-		struct FLContext *handle, uint16 portWrite, uint16 ddr, uint16 *portRead, const char **error
+		struct FLContext *handle, uint8 portSelect, uint8 mask, uint8 ddrWrite, uint8 portWrite, uint8 *portRead, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
 

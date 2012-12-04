@@ -58,7 +58,7 @@ fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
 fpgalink.flScanChain.argtypes = [FLHandle, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
 fpgalink.flScanChain.restype = FLStatus
-fpgalink.flPortAccess.argtypes = [FLHandle, uint16, uint16, POINTER(uint16), POINTER(ErrorString)]
+fpgalink.flPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flPortAccess.restype = FLStatus
 
 # Connection Lifecycle
@@ -163,10 +163,10 @@ def flScanChain(handle):
     return chain
 
 # Access the I/O ports on the micro
-def flPortAccess(handle, portWrite, ddr):
+def flPortAccess(handle, portSelect, mask, ddrWrite, portWrite):
     error = ErrorString()
-    portRead = uint16()
-    status = fpgalink.flPortAccess(handle, portWrite, ddr, byref(portRead), byref(error))
+    portRead = uint8()
+    status = fpgalink.flPortAccess(handle, portSelect, mask, ddrWrite, portWrite, byref(portRead), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -327,7 +327,7 @@ if __name__ == "__main__":
         
         if ( argList.p ):
             print "Connecting USB power to FPGA..."
-            flPortAccess(handle, 0x0080, 0x0080);
+            flPortAccess(handle, 3, 0x80, 0x80, 0x80);
             fpgalink.flSleep(100)
 
         isNeroCapable = flIsNeroCapable(handle)

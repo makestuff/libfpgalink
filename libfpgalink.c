@@ -251,27 +251,32 @@ cleanup:
 }
 
 DLLEXPORT(FLStatus) flPortAccess(
-	struct FLContext *handle, uint16 portWrite, uint16 ddr, uint16 *portRead, const char **error)
+	struct FLContext *handle, uint8 portSelect, uint8 mask, uint8 ddrWrite, uint8 portWrite, uint8 *portRead, const char **error)
 {
 	FLStatus returnCode = FL_SUCCESS;
 	int uStatus;
+	uint8 byte;
 	union {
 		uint16 word;
 		uint8 bytes[2];
-	} u;
+	} index, value;
+	index.bytes[0] = portSelect;
+	index.bytes[1] = mask;
+	value.bytes[0] = ddrWrite;
+	value.bytes[1] = portWrite;
 	uStatus = usbControlRead(
 		handle->device,
 		CMD_PORT_IO,     // bRequest
-		portWrite,       // wValue
-		ddr,             // wIndex
-		u.bytes,         // buffer to receive current state of ports
-		2,               // wLength
+		value.word,      // wValue
+		index.word,      // wIndex
+		&byte,           // buffer to receive current state of ports
+		1,               // wLength
 		1000,            // timeout (ms)
 		error
 	);
 	CHECK_STATUS(uStatus, "flPortAccess()", FL_USB_ERR);
 	if ( portRead ) {
-		*portRead = u.word;
+		*portRead = byte;
 	}
 cleanup:
 	return returnCode;
