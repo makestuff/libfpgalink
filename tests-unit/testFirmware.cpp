@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//#include <iostream>
 #include <cstdio>
 #include <UnitTest++.h>
 #include <makestuff.h>
@@ -26,12 +27,15 @@ void testPatchRamFirmware(const char *expFile, uint8 port, uint8 tdo, uint8 tdi,
 	Buffer actual, expected;
 	FLStatus fStatus;
 	BufferStatus bStatus;
+	const uint8 *x, *y;
+	uint32 len;
 	bStatus = bufInitialise(&actual, 1024, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
 	fStatus = copyFirmwareAndRewriteIDs(
 		&ramFirmware, 0x04B4, 0x8613,
 		port, tdo, tdi, tms, tck,
 		&actual, NULL);
+	CHECK(fStatus == FL_SUCCESS);
 
 	bStatus = bufInitialise(&expected, 0x4000, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
@@ -40,6 +44,11 @@ void testPatchRamFirmware(const char *expFile, uint8 port, uint8 tdo, uint8 tdi,
 	CHECK_EQUAL(expected.length, actual.length);
 
 	CHECK_ARRAY_EQUAL(expected.data, actual.data, actual.length);
+
+	//bStatus = bufWriteBinaryFile(&actual, "actual.dat", 0, actual.length, NULL);
+	//CHECK(bStatus == BUF_SUCCESS);
+	//bStatus = bufWriteBinaryFile(&expected, "expected.dat", 0, expected.length, NULL);
+	//CHECK(bStatus == BUF_SUCCESS);
 
 	bufDestroy(&expected);
 	bufDestroy(&actual);
@@ -56,6 +65,7 @@ void testPatchPromFirmware(const char *expFile, const FirmwareInfo *fwInfo, uint
 		fwInfo, 0x04B4, 0x8613,
 		port, tdo, tdi, tms, tck,
 		&actual, NULL);
+	CHECK(fStatus == FL_SUCCESS);
 
 	bStatus = bufInitialise(&expected, 0x4000, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
@@ -88,12 +98,12 @@ void testPatchPromFirmware(const char *expFile, const FirmwareInfo *fwInfo, uint
 
 TEST(FPGALink_testPatchFirmware) {
 	// TDO=PD0, TDI=PD1, TMS=PD2, TCK=PD3
-	testPatchRamFirmware("../gen_fw/ramFirmware1.hex", 1, 0, 1, 2, 3);
-	testPatchPromFirmware("../gen_fw/eepromWithBootFirmware1.hex", &eepromWithBootFirmware, 1, 0, 1, 2, 3);
-	testPatchPromFirmware("../gen_fw/eepromNoBootFirmware1.hex", &eepromNoBootFirmware, 1, 0, 1, 2, 3);
+	testPatchRamFirmware("../gen_fw/ramFirmware1.hex", 3, 0, 1, 2, 3);
+	testPatchPromFirmware("../gen_fw/eepromWithBootFirmware1.hex", &eepromWithBootFirmware, 3, 0, 1, 2, 3);
+	testPatchPromFirmware("../gen_fw/eepromNoBootFirmware1.hex", &eepromNoBootFirmware, 3, 0, 1, 2, 3);
 
 	// TDO=PC7, TDI=PC6, TMS=PC5, TCK=PC4
-	testPatchRamFirmware("../gen_fw/ramFirmware2.hex", 0, 7, 6, 5, 4);
-	testPatchPromFirmware("../gen_fw/eepromWithBootFirmware2.hex", &eepromWithBootFirmware, 0, 7, 6, 5, 4);
-	testPatchPromFirmware("../gen_fw/eepromNoBootFirmware2.hex", &eepromNoBootFirmware, 0, 7, 6, 5, 4);
+	testPatchRamFirmware("../gen_fw/ramFirmware2.hex", 2, 7, 6, 5, 4);
+	testPatchPromFirmware("../gen_fw/eepromWithBootFirmware2.hex", &eepromWithBootFirmware, 2, 7, 6, 5, 4);
+	testPatchPromFirmware("../gen_fw/eepromNoBootFirmware2.hex", &eepromNoBootFirmware, 2, 7, 6, 5, 4);
 }
