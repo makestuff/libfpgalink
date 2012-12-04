@@ -20,7 +20,7 @@
 #include <libfx2loader.h>
 #include <liberror.h>
 #include <libusbwrap.h>
-#include "firmware/defs.h"
+#include "vendorCommands.h"
 #include "libfpgalink.h"
 #include "private.h"
 #include "firmware.h"
