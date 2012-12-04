@@ -27,8 +27,6 @@ void testPatchRamFirmware(const char *expFile, uint8 port, uint8 tdo, uint8 tdi,
 	Buffer actual, expected;
 	FLStatus fStatus;
 	BufferStatus bStatus;
-	const uint8 *x, *y;
-	uint32 len;
 	bStatus = bufInitialise(&actual, 1024, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
 	fStatus = copyFirmwareAndRewriteIDs(
@@ -42,7 +40,6 @@ void testPatchRamFirmware(const char *expFile, uint8 port, uint8 tdo, uint8 tdi,
 	bStatus = bufReadFromIntelHexFile(&expected, NULL, expFile, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
 	CHECK_EQUAL(expected.length, actual.length);
-
 	CHECK_ARRAY_EQUAL(expected.data, actual.data, actual.length);
 
 	//bStatus = bufWriteBinaryFile(&actual, "actual.dat", 0, actual.length, NULL);
