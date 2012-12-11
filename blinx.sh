@@ -25,20 +25,16 @@
 #!/bin/bash -x
 make deps
 patch Makefile <<EOF
---- Makefile.old	2012-02-19 15:38:16.241498564 +0000
-+++ Makefile.new	2012-02-19 15:38:41.913503081 +0000
-@@ -20,3 +20,3 @@
--SUBDIRS          := tests-unit
--PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
--POST_BUILD       := tools gen_csvf
-+#SUBDIRS          := tests-unit
-+#PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-+POST_BUILD       := tools #gen_csvf
+--- Makefile.old	2012-12-11 15:15:48.197138743 +0000
++++ Makefile.new	2012-12-11 15:16:06.053138618 +0000
+@@ -21 +21 @@
+-PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
++#PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 EOF
 make MACHINE=i686 deps
 
-# User Manual
-cd docs/user_manual
-./build.sh
-cd ../../firmware/avr
-make
+# TODO: User Manual & AVR
+#cd docs/user_manual
+#./build.sh
+#cd ../../firmware/avr
+#make
