@@ -31,7 +31,7 @@ patch Makefile <<EOF
 -PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 +#PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 EOF
-make MACHINE=i686 deps
+make MACHINE=x86 deps
 
 # TODO: User Manual & AVR
 #cd docs/user_manual
