@@ -28,8 +28,8 @@ patch Makefile <<EOF
 --- Makefile.old	2012-12-11 15:15:48.197138743 +0000
 +++ Makefile.new	2012-12-11 15:16:06.053138618 +0000
 @@ -21 +21 @@
--PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-+#PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
+-PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
++#PRE_BUILD        := \$(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
 EOF
 make MACHINE=x86 deps
 
