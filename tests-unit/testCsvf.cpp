@@ -74,32 +74,37 @@ static void testRoundTrip(const char *xsvfFile, uint32 expectedMaxBufSize) {
 }
 
 TEST(FPGALink_testRoundTrip) {
-	testRoundTrip("../gen_xsvf/ex_cksum_atlys_fx2_verilog.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_cksum_atlys_fx2_vhdl.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_cksum_lx9_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_lx9_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-1200_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-1200_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-500_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_nexys2-500_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_nexys3_fx2_verilog.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_cksum_nexys3_fx2_vhdl.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_cksum_s3board_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_s3board_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_cksum_xylo-l_fx2_verilog.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_cksum_xylo-l_fx2_vhdl.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_fifo_atlys_fx2_verilog.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_fifo_atlys_fx2_vhdl.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_fifo_lx9_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_lx9_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-1200_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-1200_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-500_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_nexys2-500_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_nexys3_fx2_verilog.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_fifo_nexys3_fx2_vhdl.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_fifo_s3board_fx2_verilog.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_s3board_fx2_vhdl.xsvf", 5U);
-	testRoundTrip("../gen_xsvf/ex_fifo_xylo-l_fx2_verilog.xsvf", 4U);
-	testRoundTrip("../gen_xsvf/ex_fifo_xylo-l_fx2_vhdl.xsvf", 4U);
+	// for i in $(find ../hdl/ -name "*.xsvf"); do export DEPTH=$(../xsvf2csvf/linux.x86_64/rel/xsvf2csvf $i /tmp/foo.csvf | awk '{print $NF}'); printf "\ttestRoundTrip(\"$i\", ${DEPTH}U);\n"; done >> testCsvf.cpp
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/fx2all-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/fx2all-xylo-l.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/epp-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/fx2all-nexys3.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/fx2all-atlys.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/fx2min-lx9.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/fx2all-s3board.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/verilog/xsvf/fx2all-nexys2-500.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/fx2all-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/fx2all-xylo-l.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/epp-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/fx2all-nexys3.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/fx2all-atlys.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/fx2min-lx9.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/fx2all-s3board.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/cksum/vhdl/xsvf/fx2all-nexys2-500.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/fx2all-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/fx2all-xylo-l.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/epp-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/fx2all-nexys3.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/fx2all-atlys.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/fx2min-lx9.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/fx2all-s3board.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/verilog/xsvf/fx2all-nexys2-500.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/fx2all-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/fx2all-xylo-l.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/epp-nexys2-1200.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/fx2all-nexys3.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/fx2all-atlys.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/fx2min-lx9.xsvf", 4U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/fx2all-s3board.xsvf", 5U);
+	testRoundTrip("../hdl/apps/makestuff/swled/fifo/vhdl/xsvf/fx2all-nexys2-500.xsvf", 5U);
 }

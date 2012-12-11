@@ -17,11 +17,11 @@
 ROOT             := $(realpath ../..)
 DEPS             := error usbwrap fx2loader nero buffer
 TYPE             := dll
-SUBDIRS          := tests-unit
+#SUBDIRS          := tests-unit
 PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-POST_BUILD       := tools gen_csvf
+POST_BUILD       := tools
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromWithBootFirmware.c gen_fw/eepromNoBootFirmware.c
-EXTRA_CLEAN      := gen_svf gen_xsvf gen_csvf gen_fw
+EXTRA_CLEAN      := gen_fw #gen_svf gen_xsvf gen_csvf
 EXTRA_CLEAN_DIRS := mkfw firmware/fx2 xsvf2csvf dump
 
 -include $(ROOT)/common/top.mk
@@ -61,11 +61,12 @@ gen_fw: $(MKFW)
 	$(MKFW) gen_fw/eepromWithBootFirmware1.hex gen_fw/eepromWithBootFirmware2.hex eepromWithBoot iic > gen_fw/eepromWithBootFirmware.c
 	$(MKFW) gen_fw/eepromNoBootFirmware1.hex gen_fw/eepromNoBootFirmware2.hex eepromNoBoot iic > gen_fw/eepromNoBootFirmware.c
 
-gen_csvf:
-	cd hdl && ./build.sh $(X2C)
+hdl:
+	./hdlbuild.sh $(X2C)
 
 $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
 	make -C $<
 
 tests: FORCE
-	make -C tests rel
+	make -C tests-unit rel
+	make -C tests-integration rel

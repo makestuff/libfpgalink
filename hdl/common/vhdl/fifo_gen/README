@@ -1,4 +1,0 @@
---------------------------- VHDL COREGEN FIFO MODULE ---------------------------
-
-A COREgen project which generates a FIFO for use by the ex_fifo examples. There
-is also a wrapper which follows the more usual {data,valid,ready} convention.

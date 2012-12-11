@@ -1,4 +1,0 @@
-11 nop
-10 read
-01 write
-00 ill

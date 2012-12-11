@@ -1,5 +1,0 @@
----------------------- VHDL SEVEN-SEGMENT DISPLAY MODULE -----------------------
-
-VHDL seven-segment display driver. Accepts a 16-bit number for display in hex on
-four multiplexed 7-seg digits, and a four-bit number for display in binary on
-the four decimal points.

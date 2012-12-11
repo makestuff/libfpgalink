@@ -1,11 +1,8 @@
------------------ COMMFPGA HARDWARE DESCRIPTION LANGUAGE CODE ------------------
+---------------- BUILD AND TEST HDL APPLICATIONS AND LIBRARIES -----------------
 
-In this directory you will find Hardware Description Language code which
-implements the FPGA side of the CommFPGA protocol used by FPGALink devices. The
-design is modular, vendor-neutral and implementations are provided in both VHDL
-and Verilog.
-
-Subdirectories:
-  common - Makefiles needed to build the HDL code for Xilinx or Altera tools.
-  fx2 - A CommFPGA implementation using Cypress FX2LP synchronous slave FIFOs.
-  epp - A CommFPGA implementation using the asynchronous EPP protocol.
+The hdlmake.py script automates the process of HDL validation, simulation and
+synthesis. It works by reading simple YAML config files from your working dirs
+and generating from them the files necessary to correctly invoke the
+simulation and synthesis tools. It supports synthesis tools from Altera and
+Xilinx, and simulation with GHDL and GTKWave. Support for Icarus Verilog and
+ModelSim is planned.
