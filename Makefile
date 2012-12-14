@@ -26,8 +26,8 @@ EXTRA_CLEAN_DIRS := mkfw firmware/fx2 xsvf2csvf dump
 
 -include $(ROOT)/common/top.mk
 
-MKFW := mkfw/$(PLATFORM)/rel/mkfw$(EXE)
-X2C := xsvf2csvf/$(PLATFORM)/rel/xsvf2csvf$(EXE)
+MKFW := mkfw/$(PM)/rel/mkfw$(EXE)
+X2C := xsvf2csvf/$(PM)/rel/xsvf2csvf$(EXE)
 
 $(MKFW):
 	make -C mkfw rel

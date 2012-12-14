@@ -76,9 +76,21 @@ extern "C" {
 	 * @{
 	 */
 	/**
-	 * @brief Initialise the library.
+	 * @brief Initialise the library with the given log level.
+	 *
+	 * This may fail if LibUSB cannot talk to the USB host controllers through its kernel driver.
+	 *
+	 * @param debugLevel 0->none, 1, 2, 3->lots.
+	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c usbFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if there were problems initialising LibUSB.
 	 */
-	DLLEXPORT(void) flInitialise(void);
+	DLLEXPORT(FLStatus) flInitialise(int debugLevel, const char **error);
 
 	/**
 	 * @brief Free an error allocated when one of the other functions fails.

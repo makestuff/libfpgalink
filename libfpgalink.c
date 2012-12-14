@@ -25,8 +25,12 @@
 
 static FLStatus getStatus(struct FLContext *handle, uint8 *statusBuffer, const char **error);
 
-DLLEXPORT(void) flInitialise(void) {
-	usbInitialise();
+DLLEXPORT(FLStatus) flInitialise(int logLevel, const char **error) {
+	FLStatus returnCode = FL_SUCCESS, uStatus;
+	uStatus = usbInitialise(logLevel, error);
+	CHECK_STATUS(uStatus, "flInitialise()", FL_USB_ERR);
+cleanup:
+	return returnCode;
 }
 
 DLLEXPORT(void) flFreeError(const char *err) {
@@ -44,7 +48,7 @@ cleanup:
 }
 
 DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char **error) {
-	FLStatus returnCode, fStatus;
+	FLStatus returnCode = FL_SUCCESS, fStatus;
 	int uStatus;
 	uint8 statusBuffer[16];
 	struct FLContext *newCxt = (struct FLContext *)calloc(sizeof(struct FLContext), 1);
