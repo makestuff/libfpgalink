@@ -133,7 +133,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	FLStatus copyFirmwareAndRewriteIDs(
-		const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid,
+		const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid, uint16 did,
 		uint8 port, uint8 tdoBit, uint8 tdiBit, uint8 tmsBit, uint8 tckBit,
 		struct Buffer *dest, const char **error
 	) WARN_UNUSED_RESULT;

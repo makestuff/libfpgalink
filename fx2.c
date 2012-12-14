@@ -44,14 +44,15 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	FX2Status fxStatus;
 	struct USBDevice *device = NULL;
 	int uStatus;
-	uint16 newVid, newPid;
+	uint16 newVid, newPid, newDid;
 	uint8 port, tdoBit, tdiBit, tmsBit, tckBit;
 	if ( !usbValidateVidPid(newVidPid) ) {
-		errRender(error, "flLoadStandardFirmware(): The supplied new VID:PID \"%s\" is invalid; it should look like 04B4:8613", newVidPid);
+		errRender(error, "flLoadStandardFirmware(): The supplied VID:PID:DID \"%s\" is invalid; it should look like 1D50:602B or 1D50:602B:0001", newVidPid);
 		FAIL(FL_USB_ERR);
 	}
 	newVid = (uint16)strtoul(newVidPid, NULL, 16);
 	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
+	newDid = (strlen(newVidPid) == 14) ? (uint16)strtoul(newVidPid+10, NULL, 16) : 0x0000;
 	if ( strlen(jtagPort) != 5 ) {
 		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
@@ -87,7 +88,7 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	bStatus = bufInitialise(&ramBuf, 0x4000, 0x00, error);
 	CHECK_STATUS(bStatus, "flLoadStandardFirmware()", FL_ALLOC_ERR);
 	flStatus = copyFirmwareAndRewriteIDs(
-		&ramFirmware, newVid, newPid,
+		&ramFirmware, newVid, newPid, newDid,
 		port, tdoBit, tdiBit, tmsBit, tckBit,
 		&ramBuf, error);
 	CHECK_STATUS(flStatus, "flLoadStandardFirmware()", flStatus);
@@ -111,14 +112,15 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 	BufferStatus bStatus;
 	FX2Status fxStatus;
 	uint32 fwSize, xsvfSize, initSize;
-	uint16 newVid, newPid;
+	uint16 newVid, newPid, newDid;
 	uint8 port, tdoBit, tdiBit, tmsBit, tckBit;
 	if ( !usbValidateVidPid(newVidPid) ) {
 		errRender(error, "flFlashStandardFirmware(): The supplied new VID:PID \"%s\" is invalid; it should look like 04B4:8613", newVidPid);
 		FAIL(FL_USB_ERR);
 	}
 	newVid = (uint16)strtoul(newVidPid, NULL, 16);
-	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);	
+	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
+	newDid = (strlen(newVidPid) == 14) ? (uint16)strtoul(newVidPid+10, NULL, 16) : 0x0000;
 	if ( strlen(jtagPort) != 5 ) {
 		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
 		FAIL(FL_FX2_ERR);
@@ -154,7 +156,7 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 	CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 	if ( xsvfFile ) {
 		flStatus = copyFirmwareAndRewriteIDs(
-			&eepromWithBootFirmware, newVid, newPid,
+			&eepromWithBootFirmware, newVid, newPid, newDid,
 			port, tdoBit, tdiBit, tmsBit, tckBit,
 			&i2cBuf, error);
 		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
@@ -189,7 +191,7 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 		}
 	} else {
 		flStatus = copyFirmwareAndRewriteIDs(
-			&eepromNoBootFirmware, newVid, newPid,
+			&eepromNoBootFirmware, newVid, newPid, newDid,
 			port, tdoBit, tdiBit, tmsBit, tckBit,
 			&i2cBuf, error);
 		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
@@ -327,7 +329,7 @@ cleanup:
 }
 
 FLStatus copyFirmwareAndRewriteIDs(
-	const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid,
+	const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid, uint16 did,
 	uint8 port, uint8 tdoBit, uint8 tdiBit, uint8 tmsBit, uint8 tckBit,
 	struct Buffer *dest, const char **error)
 {
@@ -342,6 +344,8 @@ FLStatus copyFirmwareAndRewriteIDs(
 	dest->data[fwInfo->vp + 1] = (uint8)(vid >> 8);
 	dest->data[fwInfo->vp + 2] = (uint8)(pid & 0xFF);
 	dest->data[fwInfo->vp + 3] = (uint8)(pid >> 8);
+	dest->data[fwInfo->vp + 4] = (uint8)(did & 0xFF);
+	dest->data[fwInfo->vp + 5] = (uint8)(did >> 8);
 
 	if ( port == 0 ) {
 		// Use port A for JTAG operations
