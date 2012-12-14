@@ -63,4 +63,10 @@ for j in cksum/vhdl cksum/verilog fifo/vhdl fifo/verilog; do
 	cd ../..
 done
 
+for i in $(find . -name "fifo.batch"); do
+	cd $(dirname $i)
+	hdlmake.py -z -f
+	cd -
+done
+
 echo HDL build finished at $(date)

@@ -52,10 +52,10 @@ mkdir -p ${LIB}-${DATE}/lin.armhf/dbg
 cp -rp lin.armhf/dbg/*.so ${LIB}-${DATE}/lin.armhf/dbg/
 
 # Linux ppc binaries
-#mkdir -p ${LIB}-${DATE}/lin.ppc/rel
-#cp -rp lin.ppc/rel/*.so xsvf2csvf/lin.ppc/rel/xsvf2csvf dump/lin.ppc/rel/dump ${LIB}-${DATE}/lin.ppc/rel/
-#mkdir -p ${LIB}-${DATE}/lin.ppc/dbg
-#cp -rp lin.ppc/dbg/*.so ${LIB}-${DATE}/lin.ppc/dbg/
+mkdir -p ${LIB}-${DATE}/lin.ppc/rel
+cp -rp lin.ppc/rel/*.so xsvf2csvf/lin.ppc/rel/xsvf2csvf dump/lin.ppc/rel/dump ${LIB}-${DATE}/lin.ppc/rel/
+mkdir -p ${LIB}-${DATE}/lin.ppc/dbg
+cp -rp lin.ppc/dbg/*.so ${LIB}-${DATE}/lin.ppc/dbg/
 
 # MacOSX x86/x64 binaries
 mkdir -p ${LIB}-${DATE}/osx/rel
@@ -85,8 +85,8 @@ cp -rp ${FLCLI}/lin.armel/rel/flcli ${FLCLI}/lin.armel/rel/libargtable2.so ${LIB
 cp -rp ${FLCLI}/lin.armel/dbg/flcli ${FLCLI}/lin.armel/dbg/libargtable2.so ${LIB}-${DATE}/lin.armel/dbg/
 cp -rp ${FLCLI}/lin.armhf/rel/flcli ${FLCLI}/lin.armhf/rel/libargtable2.so ${LIB}-${DATE}/lin.armhf/rel/
 cp -rp ${FLCLI}/lin.armhf/dbg/flcli ${FLCLI}/lin.armhf/dbg/libargtable2.so ${LIB}-${DATE}/lin.armhf/dbg/
-#cp -rp ${FLCLI}/lin.ppc/rel/flcli ${FLCLI}/lin.ppc/rel/libargtable2.so ${LIB}-${DATE}/lin.ppc/rel/
-#cp -rp ${FLCLI}/lin.ppc/dbg/flcli ${FLCLI}/lin.ppc/dbg/libargtable2.so ${LIB}-${DATE}/lin.ppc/dbg/
+cp -rp ${FLCLI}/lin.ppc/rel/flcli ${FLCLI}/lin.ppc/rel/libargtable2.so ${LIB}-${DATE}/lin.ppc/rel/
+cp -rp ${FLCLI}/lin.ppc/dbg/flcli ${FLCLI}/lin.ppc/dbg/libargtable2.so ${LIB}-${DATE}/lin.ppc/dbg/
 cp -rp ${FLCLI}/osx/rel/flcli ${FLCLI}/osx/rel/libargtable2.dylib ${LIB}-${DATE}/osx/rel/
 cp -rp ${FLCLI}/osx/dbg/flcli ${FLCLI}/osx/dbg/libargtable2.dylib ${LIB}-${DATE}/osx/dbg/
 cp -rp ${FLCLI}/win.x64/rel/flcli.exe ${FLCLI}/win.x64/rel/libargtable2.dll ${FLCLI}/win.x64/rel/libreadline.dll ${LIB}-${DATE}/win.x64/rel/
@@ -120,10 +120,20 @@ rm -f ${LIB}-${DATE}/examples/c/Makefile
 # AVR firmware
 mkdir -p ${LIB}-${DATE}/firmware
 cat > ${LIB}-${DATE}/firmware/README <<EOF
-This is the Atmel AVR firmware. It is suitable for loading into an AT90USB162 with Atmel FLIP or
-dfu-programmer. The Cypress FX2LP firmware is embedded into the FPGALink library.
+This is the Atmel AVR firmware. It is suitable for loading into an AT90USB162 (e.g Minimus) or
+ATMEGA32U2 (Minimus32) with Atmel FLIP or dfu-programmer.
+
+There is no Cypress FX2LP firmware here because it is embedded into the FPGALink library binary.
 EOF
-cp -rp firmware/avr/firmware.hex ${LIB}-${DATE}/firmware/at90usb162.hex
+cd firmware/avr
+make clean
+make MCU=atmega32u2
+cp firmware.hex ../../${LIB}-${DATE}/firmware/atmega32u2.hex
+make clean
+make MCU=at90usb162
+cp firmware.hex ../../${LIB}-${DATE}/firmware/at90usb162.hex
+make clean
+cd ../..
 
 # Licenses
 cp -p COPYING ${LIB}-${DATE}/
@@ -132,10 +142,10 @@ cat > ${LIB}-${DATE}/README <<EOF
 FPGALink Binary Distribution
 
 Consult the User Manual:
-  VHDL Paper Edition: http://www.swaton.ukfsn.org/docs/fpgalink/vhdl_paper.pdf
-  VHDL Kindle Edition: http://www.swaton.ukfsn.org/docs/fpgalink/vhdl_mobile.pdf
-  Verilog Paper Edition: http://www.swaton.ukfsn.org/docs/fpgalink/verilog_paper.pdf
-  Verilog Kindle Edition: http://www.swaton.ukfsn.org/docs/fpgalink/verilog_mobile.pdf
+  VHDL Paper Edition: http://www.swaton.ukfsn.org/bin/fpgalink-${DATE}/vhdl_paper.pdf
+  VHDL Kindle Edition: http://www.swaton.ukfsn.org/bin/fpgalink-${DATE}/vhdl_mobile.pdf
+  Verilog Paper Edition: http://www.swaton.ukfsn.org/bin/fpgalink-${DATE}/verilog_paper.pdf
+  Verilog Kindle Edition: http://www.swaton.ukfsn.org/bin/fpgalink-${DATE}/verilog_mobile.pdf
 
 FPGALink is a library for JTAG-programming and subsequently interacting with an FPGA over USB using
 a microcontroller (Cypress FX2LP USB Atmel AVR8s).
@@ -161,7 +171,7 @@ Example code here: http://bit.ly/fpgalnk-ex
 There is a command-line utility called "flcli", which offers many of the library's features, which
 is useful for testing, etc. Unlike the rest of FPGALink, flcli is GPLv3-licensed.
 
-chris@armel$ flcli --help
+chris@x64$ flcli --help
 FPGALink Command-Line Interface Copyright (C) 2012 Chris McClelland
 
 Usage: flcli [-psch] [-i <VID:PID>] -v <VID:PID> [-j <portSpec>] [-x <fileName>] [-a <actionString>]
@@ -178,10 +188,17 @@ Interact with an FPGALink device.
   -c, --cli                    start up an interactive CommFPGA session
   -h, --help                   print this help and exit
 
-So assuming you're using a Digilent Nexys2 connected to an ARM Linux machine, you can load one of
-the supplied example FPGA designs:
+So assuming you're using a 1200K Digilent Nexys2 and an x64 Linux machine, you can load one of the
+supplied example FPGA designs.
 
-chris@armel$ sudo linux.armel/rel/flcli -i 1443:0005 -v 1443:0005 -x gen_csvf/ex_cksum_nexys2-1200_fx2_vhdl.csvf -p -s
+chris@x64$ # First make sure the udev rules are set up so normal users can access USB device 1443:0005:
+chris@x64$ groups
+users
+chris@x64$ cat /etc/udev/rules.d/10-local.rules
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1443", ATTR{idProduct}=="0005", GROUP="users", MODE="0660"
+
+chris@x64$ # Now connect the Nexys2 and load the appropriate pre-built CSVF file:
+chris@x64$ ./lin.x64/rel/flcli -i 1443:0005 -v 1443:0005 -x hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2all-nexys2-1200.csvf -p -s
 Attempting to open connection to FPGALink device 1443:0005...
 Loading firmware into 1443:0005...
 Awaiting renumeration............
@@ -190,16 +207,15 @@ Connecting USB power to FPGA...
 The FPGALink device at 1443:0005 scanned its JTAG chain, yielding:
   0x21C2E093
   0xF5046093
-Playing "gen_csvf/ex_cksum_nexys2-1200_fx2_vhdl.csvf" into the JTAG chain on FPGALink device 1443:0005...
-chris@armel$
+Playing "hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2all-nexys2-1200.csvf" into the JTAG chain on FPGALink device 1443:0005...
 
-You can then connect to the device with a simple command-line interface:
+chris@x64$ # You can then connect to the device with a simple command-line interface:
 
-chris@armel$ dd if=/dev/urandom of=input.dat bs=1024 count=64
+chris@x64$ dd if=/dev/urandom of=input.dat bs=1024 count=64
 64+0 records in
 64+0 records out
 65536 bytes (66 kB) copied, 0.056143 s, 1.2 MB/s
-chris@armel$ sudo ./linux.armel/rel/flcli -v 1443:0005 -c
+chris@x64$ ./lin.x64/rel/flcli -v 1443:0005 -c
 Attempting to open connection to FPGALink device 1443:0005...
 
 Entering CommFPGA command-line mode:
@@ -217,10 +233,10 @@ Entering CommFPGA command-line mode:
 > w0 123456
 > w0 "input.dat"
 > q
-chris@armel$ od -t x1 output.dat 
+chris@x64$ od -t x1 output.dat 
 0000000 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7 b7
 0000020
-chris@armel$
+chris@x64$
 
 The syntax of the read ("r") command is as follows:
 
@@ -249,12 +265,12 @@ of digits. Filenames must be quoted using double-quotes (""). You may put severa
 commands on one line, separated by semicolons (";"). If you don't want an interactive session, you
 can specify a command sequence on the command-line:
 
-chris@armel$ sudo ./linux.armel/rel/flcli -v 1443:0005 -a 'w0 "input.dat";r1;r2 4'
+chris@x64$ ./lin.x64/rel/flcli -v 1443:0005 -a 'w0 "input.dat";r1;r2 4'
 Attempting to open connection to FPGALink device 1443:0005...
 Executing CommFPGA actions on FPGALink device 1443:0005...
          00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
 00000000 12 34 34 34 34                                  .4444
-chris@armel$
+chris@x64$
 
 If you want to incorporate the FPGALink dynamic-link library into your own software, I have supplied
 example code for how to do this from C, Python and Excel/VBA.
@@ -262,18 +278,19 @@ example code for how to do this from C, Python and Excel/VBA.
 On the FPGA side, there is a simple module provided in both VHDL and Verilog for you to instantiate
 in your FPGA designs. You are free to choose the actual implementation of the channels themselves
 (Perhaps simple registers? Perhaps FIFOs?). I have supplied a couple of examples of how to
-instantiate the module in your FPGA designs:
+instantiate the module in your VHDL designs:
 
-  hdl/sync/vhdl/ex_cksum
-  hdl/sync/vhdl/ex_fifo
+  hdl/apps/makestuff/swled/cksum/vhdl
+  hdl/apps/makestuff/swled/fifo/vhdl
 
 or if you prefer Verilog:
 
-  hdl/sync/verilog/ex_cksum
-  hdl/sync/verilog/ex_fifo
+  hdl/apps/makestuff/swled/cksum/verilog
+  hdl/apps/makestuff/swled/fifo/verilog
 EOF
 
 # Package it up
-tar zcf ${LIB}-${DATE}.tar.gz ${LIB}-${DATE}
+tar zcf fpgalink-bin.tar.gz ${LIB}-${DATE}
 rm -rf ${LIB}-${DATE}
-cp -p ${LIB}-${DATE}.tar.gz /mnt/ukfsn/bin/
+mkdir -p /mnt/ukfsn/bin/fpgalink-${DATE}
+cp -p fpgalink-bin.tar.gz /mnt/ukfsn/bin/fpgalink-${DATE}/
