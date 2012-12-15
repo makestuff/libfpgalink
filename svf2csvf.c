@@ -85,7 +85,7 @@ FLStatus readBytes(
 	struct Buffer *buffer, const char *hexDigits, const char **error)
 {
 	FLStatus returnCode = FL_SUCCESS;
-	uint32 length = strlen(hexDigits);
+	uint32 length = (uint32)strlen(hexDigits);
 	uint8 *p = buffer->data;
 	BufferStatus bStatus;
 	if ( length & 1 ) {
@@ -755,7 +755,7 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 					} else {
 						// There have only been non-shift commands (XSDRSIZE,XTDOMASK) since last time,
 						// so we can do some deduplication.
-						bStatus = bufWriteLongBE(buf, runTestOffset + 1, readLongBE(src), error);
+						bStatus = bufWriteLongBE(buf, (uint32)runTestOffset + 1, readLongBE(src), error);
 						CHECK_STATUS(bStatus, "postProcess()", FL_BUF_APPEND_ERR);
 						src += 4;
 					}
@@ -800,10 +800,10 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 		}
 		if ( pass == 0 && !seenShiftCommands ) {
 			buf->data[runTestOffset] = XCOMPLETE;
-			buf->length = runTestOffset + 1;
+			buf->length = (uint32)runTestOffset + 1;
 		} else {
 			*dst++ = XCOMPLETE;
-			buf->length = dst - buf->data;
+			buf->length = (uint32)(dst - buf->data);
 		}
 	}
 cleanup:
@@ -871,7 +871,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 					p--;
 				} while ( *p == ' ' || *p == '\t' || *p == '\r' );
 				p++; // go back to first space char
-				bStatus = bufAppendBlock(&lineBuf, line, p-line, error);
+				bStatus = bufAppendBlock(&lineBuf, line, (uint32)(p - line), error);
 				CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
 				while ( p < end && *p != '\n' ) {
 					p++;

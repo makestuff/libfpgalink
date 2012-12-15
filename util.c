@@ -66,7 +66,7 @@ DLLEXPORT(uint8*) flLoadFile(const char *name, uint32 *length) {
 		if ( fileLen & 1 ) {
 			fileLen++;
 		}
-		*length = fileLen;
+		*length = (uint32)fileLen;
 	}
 	fclose(file);
 	return buffer;

@@ -329,12 +329,12 @@ static FLStatus compress(const struct Buffer *inBuf, struct Buffer *outBuf, cons
 		}
 		
 		// Get the length of this run
-		runLen = runEnd - runStart;
+		runLen = (uint32)(runEnd - runStart);
 		
 		// If this run is more than four zeros, break the chunk
 		if ( runLen > 8 || runEnd == bufEnd ) {
 			chunkEnd = runStart;
-			chunkLen = chunkEnd - chunkStart;
+			chunkLen = (uint32)(chunkEnd - chunkStart);
 
 			// There is now a chunk starting at chunkStart and ending at chunkEnd (length chunkLen),
 			// Followed by a run of zeros starting at runStart and ending at runEnd (length runLen).
