@@ -1,8 +1,0 @@
----------------- BUILD AND TEST HDL APPLICATIONS AND LIBRARIES -----------------
-
-The hdlmake.py script automates the process of HDL validation, simulation and
-synthesis. It works by reading simple YAML config files from your working dirs
-and generating from them the files necessary to correctly invoke the
-simulation and synthesis tools. It supports synthesis tools from Altera and
-Xilinx, and simulation with GHDL and GTKWave. Support for Icarus Verilog and
-ModelSim is planned.
