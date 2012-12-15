@@ -30,7 +30,7 @@ void testPatchRamFirmware(const char *expFile, uint8 port, uint8 tdo, uint8 tdi,
 	bStatus = bufInitialise(&actual, 1024, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
 	fStatus = copyFirmwareAndRewriteIDs(
-		&ramFirmware, 0x04B4, 0x8613,
+		&ramFirmware, 0x04B4, 0x8613, 0x0000,
 		port, tdo, tdi, tms, tck,
 		&actual, NULL);
 	CHECK(fStatus == FL_SUCCESS);
@@ -59,7 +59,7 @@ void testPatchPromFirmware(const char *expFile, const FirmwareInfo *fwInfo, uint
 	bStatus = bufInitialise(&actual, 1024, 0x00, NULL);
 	CHECK(bStatus == BUF_SUCCESS);
 	fStatus = copyFirmwareAndRewriteIDs(
-		fwInfo, 0x04B4, 0x8613,
+		fwInfo, 0x04B4, 0x8613, 0x0000,
 		port, tdo, tdi, tms, tck,
 		&actual, NULL);
 	CHECK(fStatus == FL_SUCCESS);
