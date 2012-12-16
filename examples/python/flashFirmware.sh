@@ -16,10 +16,15 @@
 #
 #!/bin/bash
 export PYTHON_VERSION=2
+
+# S3BOARD + FX2FPGA:
 export JTAG_PORT=D0234
+export CSVF_FILE=../../hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2all-s3board.csvf
+
+# MakeStuff LX9
 #export JTAG_PORT=A7031
-export CSVF_FILE=../../gen_csvf/ex_cksum_s3board_fx2_vhdl.csvf
-#export CSVF_FILE=../../hdl/fx2/vhdl/ex_cksum/top_level.xsvf
+#export CSVF_FILE=../../hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2min-lx9.csvf
+
 echo
 echo "WARNING: this will erase any firmware currently in your FX2FPGA EEPROM!!!"
 echo
@@ -29,15 +34,15 @@ echo "3) Press any key"
 read -n 1 -s
 echo
 echo "Writing firmware to EEPROM now..."
-LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
+LD_LIBRARY_PATH=../../lin.x64/rel python <<EOF
 from fpgalink${PYTHON_VERSION} import *
-flLoadStandardFirmware("04B4:8613", "04B4:8613", "${JTAG_PORT}")
-flAwaitDevice("04B4:8613", 600)
-handle = flOpen("04B4:8613")
+flLoadStandardFirmware("04B4:8613", "1D50:602B:0002", "${JTAG_PORT}")
+flAwaitDevice("1D50:602B:0002", 600)
+handle = flOpen("1D50:602B:0002")
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
 flAppendWriteChannelCommand(handle, 0x00, 0x10)
-flFlashStandardFirmware(handle, "04B4:8613", "${JTAG_PORT}", 512, "${CSVF_FILE}")
+flFlashStandardFirmware(handle, "1D50:602B:0002", "${JTAG_PORT}", 512, "${CSVF_FILE}")
 flClose(handle)
 quit()
 EOF
@@ -49,9 +54,9 @@ echo "5) Wait for the display to show 0030"
 echo "6) Press any key"
 read -n 1 -s
 
-LD_LIBRARY_PATH=../../linux.x86_64/rel python <<EOF
+LD_LIBRARY_PATH=../../lin.x64/rel python <<EOF
 from fpgalink${PYTHON_VERSION} import *
-handle = flOpen("04B4:8613")
+handle = flOpen("1D50:602B:0002")
 flWriteChannel(handle, 1000, 0x00, 0x10)
 flWriteChannel(handle, 1000, 0x00, 0x10)
 flWriteChannel(handle, 1000, 0x00, 0x10)
