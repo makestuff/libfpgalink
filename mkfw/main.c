@@ -336,11 +336,20 @@ int main(int argc, const char *argv[]) {
 	BufferStatus bStatus;
 	I2CStatus iStatus;
 	int dStatus;
+	uint8 configByte;
 	const char *error = NULL;
 
 	if ( argc != 5 ) { //&& argc != 6 ) {
 		usage(argv[0]);
 		FAIL(1);
+	}
+
+	if ( strstr(argv[3], "WithBoot") ) {
+		// Boot firmware explicitly connects
+		configByte = CONFIG_BYTE_400KHZ | CONFIG_BYTE_DISCON;
+	} else {
+		// NonBoot firmwares are connected automatically
+		configByte = CONFIG_BYTE_400KHZ;
 	}
 
 	bStatus = bufInitialise(&data1, 0x4000, 0x00, &error);
@@ -361,7 +370,7 @@ int main(int argc, const char *argv[]) {
 		// Get i2c records from first build
 		bStatus = bufInitialise(&i2c1, 0x4000, 0x00, &error);
 		CHECK(bStatus, 8);
-		i2cInitialise(&i2c1, 0x0000, 0x0000, 0x0000, CONFIG_BYTE_400KHZ);
+		i2cInitialise(&i2c1, 0x0000, 0x0000, 0x0000, configByte);
 		iStatus = i2cWritePromRecords(&i2c1, &data1, &mask1, &error);
 		CHECK(iStatus, 9);
 		iStatus = i2cFinalise(&i2c1, &error);
@@ -370,7 +379,7 @@ int main(int argc, const char *argv[]) {
 		// Get i2c records from second build
 		bStatus = bufInitialise(&i2c2, 0x4000, 0x00, &error);
 		CHECK(bStatus, 11);
-		i2cInitialise(&i2c2, 0x0000, 0x0000, 0x0000, CONFIG_BYTE_400KHZ);
+		i2cInitialise(&i2c2, 0x0000, 0x0000, 0x0000, configByte);
 		iStatus = i2cWritePromRecords(&i2c2, &data2, &mask2, &error);
 		CHECK(iStatus, 12);
 		iStatus = i2cFinalise(&i2c2, &error);

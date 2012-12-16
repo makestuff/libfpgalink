@@ -165,29 +165,34 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
 		xsvfSize = i2cBuf.length - fwSize;
 		if ( handle->writeBuffer.length ) {
-			// Write a big-endian uint16 length for the init data, then the data itself
-			if ( handle->writeBuffer.length > 0xFFFF ) {
+			// Write a big-endian uint24 length for the init data, then the data itself
+			const uint32 length = handle->writeBuffer.length;
+			if ( length > 0x20000 ) {
 				errRender(
 					error,
 					"flFlashStandardFirmware(): Cannot cope with %lu bytes of init data",
-					handle->writeBuffer.length);
+					length);
 				FAIL(FL_FX2_ERR);
 			}
-			bStatus = bufAppendByte(&i2cBuf, (uint8)(handle->writeBuffer.length >> 8), error);
+			bStatus = bufAppendByte(&i2cBuf, (uint8)((length>>16) & 0xFF), error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			bStatus = bufAppendByte(&i2cBuf, (uint8)(handle->writeBuffer.length & 0xFF), error);
+			bStatus = bufAppendByte(&i2cBuf, (uint8)((length>>8) & 0xFF), error);
+			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
+			bStatus = bufAppendByte(&i2cBuf, (uint8)(length & 0xFF), error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 			bStatus = bufAppendBlock(
-				&i2cBuf, handle->writeBuffer.data, handle->writeBuffer.length, error);
+				&i2cBuf, handle->writeBuffer.data, length, error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			initSize = handle->writeBuffer.length + 2;
+			initSize = length + 3;
 		} else {
-			// Write a zero length so the firmware knows there's no init data to follow
+			// Write a zero uint24 length so the firmware knows there's no init data to follow
 			bStatus = bufAppendByte(&i2cBuf, 0x00, error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 			bStatus = bufAppendByte(&i2cBuf, 0x00, error);
 			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			initSize = 2;
+			bStatus = bufAppendByte(&i2cBuf, 0x00, error);
+			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
+			initSize = 3;
 		}
 	} else {
 		flStatus = copyFirmwareAndRewriteIDs(
@@ -210,6 +215,8 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 	//bStatus = bufWriteBinaryFile(&i2cBuf, "out.bin", 0UL, i2cBuf.length, error);
 	//CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
 	
+	printf("Writing %d bytes to EEPROM...\n", i2cBuf.length);
+
 	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, i2cBuf.length, error);
 	CHECK_STATUS(fxStatus, "flFlashStandardFirmware()", FL_FX2_ERR);
 
