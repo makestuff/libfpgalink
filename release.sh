@@ -112,7 +112,6 @@ cp fpgalink2.py fpgalink3.py
 ../../2to3/2to3 fpgalink3.py | patch fpgalink3.py
 cd ../..
 cp -rp examples ${LIB}-${DATE}/
-rm -f ${LIB}-${DATE}/examples/c/Makefile
 
 # User Manual
 #cp -p docs/*.pdf /mnt/ukfsn/docs/fpgalink/

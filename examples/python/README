@@ -77,14 +77,14 @@ MacOSX:
     -x ../../hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2all-nexys2-1200.csvf \
     -f /var/tmp/foo.dat
 
-Windows x64 (assuming you're running from http://bit.ly/k0ydbN):
+Windows x64 (assuming you're running from http://bit.ly/makestuff):
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   PATH=../../win.x64/rel:$PATH /c/Python27/python fpgalink2.py \
     -i 1443:0005 -v 1443:0005 -p -s \
     -x ../../hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2all-nexys2-1200.csvf \
     -f /var/tmp/foo.dat
 
-Windows x86 (assuming you're running from http://bit.ly/k0ydbN):
+Windows x86 (assuming you're running from http://bit.ly/makestuff):
   dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
   PATH=../../win.x86/rel:$PATH /c/Python27/python fpgalink2.py \
     -i 1443:0005 -v 1443:0005 -p -s \
@@ -133,8 +133,8 @@ And Linux ppc:
 And MacOS:
   chris@osx$ DYLD_LIBRARY_PATH=../../osx/rel python
 
-And Windows x64 (assuming you're running from http://bit.ly/k0ydbN):
+And Windows x64 (assuming you're running from http://bit.ly/makestuff):
   chris@winx64$ PATH=../../win.x64/rel:$PATH /c/Python27/python
 
-And Windows x86 (assuming you're running from http://bit.ly/k0ydbN):
+And Windows x86 (assuming you're running from http://bit.ly/makestuff):
   chris@winx86$ PATH=../../win.x86/rel:$PATH /c/Python27/python
