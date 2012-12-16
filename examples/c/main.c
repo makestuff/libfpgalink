@@ -97,7 +97,8 @@ int main(int argc, const char *argv[]) {
 		jtagPort = "D0234";
 	}
 
-	flInitialise();
+	status = flInitialise(0, &error);
+	CHECK(10);
 	
 	printf("Attempting to open connection to FPGALink device %s...\n", vp);
 	status = flOpen(vp, &handle, NULL);
@@ -106,7 +107,7 @@ int main(int argc, const char *argv[]) {
 			int count = 60;
 			printf("Loading firmware into %s...\n", ivp);
 			status = flLoadStandardFirmware(ivp, vp, jtagPort, &error);
-			CHECK(10);
+			CHECK(11);
 			
 			printf("Awaiting renumeration");
 			flSleep(1000);
@@ -115,28 +116,28 @@ int main(int argc, const char *argv[]) {
 				fflush(stdout);
 				flSleep(100);
 				status = flIsDeviceAvailable(vp, &flag, &error);
-				CHECK(11);
+				CHECK(12);
 				count--;
 			} while ( !flag && count );
 			printf("\n");
 			if ( !flag ) {
 				fprintf(stderr, "FPGALink device did not renumerate properly as %s\n", vp);
-				FAIL(12);
+				FAIL(13);
 			}
 			
 			printf("Attempting to open connection to FPGLink device %s again...\n", vp);
 			status = flOpen(vp, &handle, &error);
-			CHECK(13);
+			CHECK(14);
 		} else {
 			fprintf(stderr, "Could not open FPGALink device at %s and no initial VID:PID was supplied\n", vp);
-			FAIL(14);
+			FAIL(15);
 		}
 	}
 	
 	if ( usbPower ) {
 		printf("Connecting USB power to FPGA...\n");
-		status = flPortAccess(handle, 0x0080, 0x0080, NULL, &error);
-		CHECK(15);
+		status = flPortAccess(handle, 3, 0x80, 0x80, 0x80, NULL, &error);
+		CHECK(16);
 		flSleep(100);
 	}
 
@@ -145,7 +146,7 @@ int main(int argc, const char *argv[]) {
 	if ( scan ) {
 		if ( isNeroCapable ) {
 			status = flScanChain(handle, &numDevices, scanChain, 16, &error);
-			CHECK(16);
+			CHECK(17);
 			if ( numDevices ) {
 				printf("The FPGALink device at %s scanned its JTAG chain, yielding:\n", vp);
 				for ( i = 0; i < numDevices; i++ ) {
@@ -156,7 +157,7 @@ int main(int argc, const char *argv[]) {
 			}
 		} else {
 			fprintf(stderr, "JTAG chain scan requested but FPGALink device at %s does not support NeroJTAG\n", vp);
-			FAIL(17);
+			FAIL(18);
 		}
 	}
 
@@ -164,23 +165,25 @@ int main(int argc, const char *argv[]) {
 		printf("Playing \"%s\" into the JTAG chain on FPGALink device %s...\n", xsvfFile, vp);
 		if ( isNeroCapable ) {
 			status = flPlayXSVF(handle, xsvfFile, &error);
-			CHECK(18);
+			CHECK(19);
 		} else {
 			fprintf(stderr, "XSVF play requested but device at %s does not support NeroJTAG\n", vp);
-			FAIL(19);
+			FAIL(20);
 		}
 	}
 	
 	if ( dataFile && !isCommCapable ) {
 		fprintf(stderr, "Data file load requested but device at %s does not support CommFPGA\n", vp);
-		FAIL(20);
+		FAIL(21);
 	}
 	
 	if ( isCommCapable ) {
-		printf("Writing channel 0x01 to zero count...\n");
-		byte = 0x01;
+		printf("Zeroing registers 1 & 2...\n");
+		byte = 0x00;
 		status = flWriteChannel(handle, 1000, 0x01, 1, &byte, &error);
-		CHECK(21);
+		CHECK(22);
+		status = flWriteChannel(handle, 1000, 0x02, 1, &byte, &error);
+		CHECK(23);
 
 		if ( dataFile ) {
 			buffer = flLoadFile(dataFile, &fileLen);
@@ -194,24 +197,24 @@ int main(int argc, const char *argv[]) {
 					"Writing %0.2f MiB (checksum 0x%04X) from %s to FPGALink device %s...\n",
 					(double)fileLen/(1024*1024), checksum, dataFile, vp);
 				status = flWriteChannel(handle, 30000, 0x00, fileLen, buffer, &error);
-				CHECK(22);
+				CHECK(24);
 			} else {
 				fprintf(stderr, "Unable to load file %s!\n", dataFile);
-				FAIL(23);
+				FAIL(25);
 			}
 		}		
-		printf("Reading channel...\n");
-		status = flReadChannel(handle, 1000, 0x00, 2, buf, &error);
-		CHECK(24);
-		printf("Got 0x%02X\n", buf[0]);
-		printf("Reading channel...\n");
-		status = flReadChannel(handle, 1000, 0x00, 2, buf, &error);
-		CHECK(25);
-		printf("Got 0x%02X\n", buf[0]);
-		printf("Reading channel...\n");
-		status = flReadChannel(handle, 1000, 0x00, 2, buf, &error);
+		printf("Reading channel 0...");
+		status = flReadChannel(handle, 1000, 0x00, 1, buf, &error);
 		CHECK(26);
-		printf("Got 0x%02X\n", buf[0]);
+		printf("got 0x%02X\n", buf[0]);
+		printf("Reading channel 1...");
+		status = flReadChannel(handle, 1000, 0x01, 1, buf, &error);
+		CHECK(27);
+		printf("got 0x%02X\n", buf[0]);
+		printf("Reading channel 2...");
+		status = flReadChannel(handle, 1000, 0x02, 1, buf, &error);
+		CHECK(28);
+		printf("got 0x%02X\n", buf[0]);
 	}
 
 	returnCode = 0;
@@ -224,7 +227,7 @@ cleanup:
 
 void usage(const char *prog) {
 	printf("Usage: %s [-hps] -v <VID:PID> [-i <VID:PID>] [-x <xsvfFile>] [-f <dataFile>]\n\n", prog);
-	printf("Load FX2 firmware, load the FPGA, interact with the FPGA.\n\n");
+	printf("Load FX2LP firmware, load the FPGA, interact with the FPGA.\n\n");
 	printf("  -h             print this help and exit\n");
 	printf("  -p             FPGA is powered from USB (Nexys2 only!)\n");
 	printf("  -s             scan the JTAG chain\n");
