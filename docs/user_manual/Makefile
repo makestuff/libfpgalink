@@ -96,6 +96,6 @@ images/%.pdf : images/%.svg
 #cat /home/chris/makestuff/libs/libfpgalink/hdl/sync/vhdl/ex_fifo/top_level.vhdl | perl -e 'undef $/;$file=<STDIN>;if($file=~m/BEGIN_SNIPPET\(fifos\)\n(.*?)\n\s*\-\-\s*END_SNIPPET/mgs){print"$1\n";}' > code/vhdl/fifos.vhdl
 
 clean: FORCE
-	rm -rf *.log *.aux *.pdf *.out *.toc tmp images/*.pdf images/*.pdf top_level_vhdl.tex top_level.tex
+	rm -rf *.log *.aux *.pdf *.out *.toc tmp images/*.pdf images/*.pdf
 
 FORCE:
