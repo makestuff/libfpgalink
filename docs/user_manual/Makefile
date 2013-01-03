@@ -24,6 +24,7 @@ PDFS := \
 	images/commFpgaAppInterface.pdf \
 	images/fx2allHarness.pdf \
 	images/fx2minHarness.pdf \
+	images/eppHarness.pdf \
 	images/fx2Full.pdf \
 	images/fx2Minimal.pdf \
 	images/epp.pdf

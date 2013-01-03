@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.48.3.1 r9886"
    sodipodi:docname="fx2minHarness.svg"
-   inkscape:export-filename="fx2allHarness.png"
+   inkscape:export-filename="fx2minHarness.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <sodipodi:namedview
@@ -26,9 +26,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1"
-     inkscape:cx="142.84284"
-     inkscape:cy="395.69993"
+     inkscape:zoom="5.6568542"
+     inkscape:cx="346.93708"
+     inkscape:cy="561.68821"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -2846,10 +2846,10 @@
        id="linearGradient8278"
        gradientUnits="userSpaceOnUse"
        gradientTransform="matrix(-2.2422624,0,0,1,304.91754,382.36196)"
-       x1="120.37347"
-       y1="240.00014"
+       x1="120.37732"
+       y1="240.00021"
        x2="129.29689"
-       y2="240.00018" />
+       y2="240.00021" />
     <linearGradient
        id="linearGradient4836-1-7-8">
       <stop
@@ -3063,10 +3063,10 @@
        id="linearGradient6316"
        gradientUnits="userSpaceOnUse"
        gradientTransform="matrix(1.0286667,0,0,0.93684236,-114.29987,-336.11421)"
-       x1="144.69704"
-       y1="831.29834"
-       x2="125.08479"
-       y2="831.29834" />
+       x1="145.13921"
+       y1="830.9577"
+       x2="125.69656"
+       y2="830.9577" />
     <marker
        inkscape:stockid="Arrow2Mstart"
        orient="auto"
@@ -4224,7 +4224,7 @@
        sodipodi:nodetypes="sssssssss"
        inkscape:connector-curvature="0"
        id="rect6892-0-9-0-6-9-3"
-       d="m 14.283465,448.36213 95.629265,0 c 5.12796,0 9.28581,3.78723 9.28581,8.52128 l 0,160.95746 c 0,4.73405 -4.12698,8.52128 -9.28581,8.52128 l -95.629265,0 c -5.69878,0 -10.286654,-4.73537 -10.286654,-10.6176 l 0,-156.76486 c 0,-5.88211 4.587874,-10.61756 10.286654,-10.61756 z"
+       d="m 15,448.36217 95,0 c 5,0 9,4 9,9 l 0,160 c 0,5 -4,9 -9,9 l -95,0 c -5,0 -9,-3.9996 -9,-9 l 0,-160 c 0,-5 4,-9 9,-9 z"
        style="fill:url(#linearGradient6316);fill-opacity:1;stroke:none" />
     <text
        transform="scale(1.0043521,0.99566676)"
@@ -4324,13 +4324,13 @@
        sodipodi:nodetypes="cssccc"
        inkscape:connector-curvature="0"
        id="path4844-4"
-       d="m 35.999962,627.36213 c 0,0 68.869148,2e-5 73.912758,2e-5 5.04363,0 10.08725,-4.73684 10.08725,-9.47368 0,-4.73684 0,-161.0526 0,-161.0526 0,-4.7369 -5.04362,-9.47374 -10.08725,-9.47374 l -73.912758,2e-5"
+       d="m 36,627.36217 c 0,0 69,0 74,0 5,0 10,-5 10,-10 0,-5 0,-160 0,-160 0,-5 -5,-10 -10,-10 l -74,0"
        style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <path
        sodipodi:nodetypes="cc"
        inkscape:connector-curvature="0"
        id="path4834-5"
-       d="m 33.999962,447.36215 -18,0"
+       d="m 34,447.36217 -18,0"
        style="fill:none;stroke:url(#linearGradient4861-9);stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <text
        transform="scale(1.0043521,0.99566676)"
@@ -4544,7 +4544,7 @@
        sodipodi:nodetypes="cc"
        inkscape:connector-curvature="0"
        id="path4834-5-8"
-       d="m 33.999962,627.36215 -18,0"
+       d="m 34,627.36217 -18,0"
        style="fill:none;stroke:url(#linearGradient8278);stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <text
        sodipodi:linespacing="125%"
