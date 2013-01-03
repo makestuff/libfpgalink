@@ -27,8 +27,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.4142136"
-     inkscape:cx="146.65492"
-     inkscape:cy="260.32036"
+     inkscape:cx="208.13065"
+     inkscape:cy="367.62187"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -4509,14 +4509,14 @@
     <text
        sodipodi:linespacing="125%"
        id="text6016-5-2-0-3-2-7-3-1"
-       y="466.65128"
-       x="189.19339"
+       y="466.73035"
+       x="187.92383"
        style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Bitstream Charter Bold"
        xml:space="preserve"><tspan
          id="tspan6426-0-4"
-         y="466.65128"
-         x="189.19339"
-         sodipodi:role="line">'GND'</tspan></text>
+         y="466.73035"
+         x="187.92383"
+         sodipodi:role="line">GND</tspan></text>
     <path
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccc"
