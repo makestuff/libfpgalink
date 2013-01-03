@@ -23,6 +23,7 @@ PDFS := \
 	images/jtag.pdf \
 	images/commFpgaAppInterface.pdf \
 	images/fx2allHarness.pdf \
+	images/fx2minHarness.pdf \
 	images/fx2Full.pdf \
 	images/fx2Minimal.pdf \
 	images/epp.pdf
