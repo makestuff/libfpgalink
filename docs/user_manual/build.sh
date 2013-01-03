@@ -4,13 +4,13 @@ export HDL=../../hdl
 
 rm -rf code/vhdl
 mkdir -p code/vhdl
-./snippet.pl ${HDL}/fx2/vhdl/ex_cksum/top_level.vhdl registers > code/vhdl/registers.vhdl
-./snippet.pl ${HDL}/fx2/vhdl/ex_fifo/top_level.vhdl fifos > code/vhdl/fifos.vhdl
+./snippet.pl ${HDL}/apps/makestuff/swled/cksum/vhdl/cksum_rtl.vhdl registers > code/vhdl/registers.vhdl
+./snippet.pl ${HDL}/apps/makestuff/swled/fifo/vhdl/fifo_rtl.vhdl fifos > code/vhdl/fifos.vhdl
 
 rm -rf code/verilog
 mkdir -p code/verilog
-./snippet.pl ${HDL}/fx2/verilog/ex_cksum/top_level.v registers > code/verilog/registers.v
-./snippet.pl ${HDL}/fx2/verilog/ex_fifo/top_level.v fifos > code/verilog/fifos.v
+./snippet.pl ${HDL}/apps/makestuff/swled/cksum/verilog/cksum_rtl.v registers > code/verilog/registers.v
+./snippet.pl ${HDL}/apps/makestuff/swled/fifo/verilog/fifo_rtl.v fifos > code/verilog/fifos.v
 
 cat top_level_verilog.tex | sed 's/Verilog/VHDL/g;s/verilog/vhdl/g;s/\.v/\.vhdl/g' > top_level_vhdl.tex
 

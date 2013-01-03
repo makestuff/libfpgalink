@@ -22,15 +22,19 @@ PDFS := \
 	images/comm.pdf \
 	images/jtag.pdf \
 	images/commFpgaAppInterface.pdf \
+	images/fx2allHarness.pdf \
 	images/fx2Full.pdf \
 	images/fx2Minimal.pdf \
 	images/epp.pdf
 
 all: paper.pdf mobile.pdf
 
+#MAKESTUFF_TODAY_DATE := $(shell date +%Y%m%d)
+MAKESTUFF_TODAY_DATE := 20121216
+
 paper.pdf: top_level.tex ../style.tex tmp/pygments.tex $(SNIPPETS) $(PDFS)
 	sed 's/MAKESTUFF_GEOMETRY//g' ../style.tex > tmp/style.tex
-	sed 's/MAKESTUFF_TODAY_DATE/$(shell date +%Y%m%d)/g' $< > tmp/paper.tex
+	sed 's/MAKESTUFF_TODAY_DATE/$(MAKESTUFF_TODAY_DATE)/g' $< > tmp/paper.tex
 	${LATEX} tmp/paper.tex
 	cmp -s paper.toc tmp/paper.toc; if [ "$$?" != "0" ]; then echo "New TOC"; cp paper.toc tmp/paper.toc; rm -f $@; ${LATEX} tmp/paper.tex; fi
 	mv $@ tmp/$@
@@ -92,6 +96,6 @@ images/%.pdf : images/%.svg
 #cat /home/chris/makestuff/libs/libfpgalink/hdl/sync/vhdl/ex_fifo/top_level.vhdl | perl -e 'undef $/;$file=<STDIN>;if($file=~m/BEGIN_SNIPPET\(fifos\)\n(.*?)\n\s*\-\-\s*END_SNIPPET/mgs){print"$1\n";}' > code/vhdl/fifos.vhdl
 
 clean: FORCE
-	rm -rf *.log *.aux *.pdf *.out *.toc tmp images/*.pdf images/*.pdf
+	rm -rf *.log *.aux *.pdf *.out *.toc tmp images/*.pdf images/*.pdf top_level_vhdl.tex top_level.tex
 
 FORCE:

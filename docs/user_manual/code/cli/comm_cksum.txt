@@ -1,16 +1,22 @@
-wotan$ ¬./<PLATFORM>/rel/flcli -v <VID:PID> -c
-Attempting to open connection to FPGALink device 04B4:8613...
+wotan$ ¬<PLATFORM>/rel/flcli -v <VID:PID> -b -c
+Attempting to open connection to FPGALink device 1D50:602B...
 
 Entering CommFPGA command-line mode:
-> ¬w1 12;w2 34;w3 abcdef56;r1;r2;r3 04
+> ¬w1 00;w2 00;w0 cafebabef00d1e;r1;r2;r0 4
+Wrote 1 bytes (checksum 0x0000) to channel 1 at 0.002709 MiB/s
+Wrote 1 bytes (checksum 0x0000) to channel 2 at 0.003200 MiB/s
+Wrote 7 bytes (checksum 0x045B) to channel 0 at 0.029408 MiB/s
+Read 1 bytes (checksum 0x0004) from channel 1 at 0.004146 MiB/s
+Read 1 bytes (checksum 0x005B) from channel 2 at 0.004607 MiB/s
+Read 4 bytes (checksum 0x0000) from channel 0 at 0.017183 MiB/s
          00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
-00000000 12 34 56 56 56 56                               .4VVVV
-> ¬w0 01
-> ¬w0 02
-> ¬w0 04
-> ¬w0 08
-> ¬r0 10
+00000000 04 5B 00 00 00 00                               .[....
+> ¬w1 ca;w2 fe;r1;r2
+Wrote 1 bytes (checksum 0x00CA) to channel 1 at 0.002592 MiB/s
+Wrote 1 bytes (checksum 0x00FE) to channel 2 at 0.004201 MiB/s
+Read 1 bytes (checksum 0x00CA) from channel 1 at 0.004058 MiB/s
+Read 1 bytes (checksum 0x00FE) from channel 2 at 0.004220 MiB/s
          00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
-00000000 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 5555555555555555
+00000000 CA FE                                           ..
 > ¬q
 wotan$
