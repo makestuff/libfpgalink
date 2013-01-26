@@ -34,7 +34,7 @@ for j in cksum/vhdl cksum/verilog fifo/vhdl fifo/verilog; do
 
 	for i in atlys nexys2-1200 nexys2-500 nexys3 s3board xylo-l; do
 		hdlmake.py -c
-		hdlmake.py -t ../../templates/fx2all/${HDL} -p $i
+		hdlmake.py -t ../../templates/fx2all/${HDL} -b $i
 		cp top_level.svf svf/fx2all-$i.svf
 		cp top_level.xsvf xsvf/fx2all-$i.xsvf
 		${X2C} top_level.svf csvf/fx2all-$i.csvf
@@ -42,7 +42,7 @@ for j in cksum/vhdl cksum/verilog fifo/vhdl fifo/verilog; do
 
 	for i in lx9; do
 		hdlmake.py -c
-		hdlmake.py -t ../../templates/fx2min/${HDL} -p $i
+		hdlmake.py -t ../../templates/fx2min/${HDL} -b $i
 		cp top_level.svf svf/fx2min-$i.svf
 		cp top_level.xsvf xsvf/fx2min-$i.xsvf
 		${X2C} top_level.svf csvf/fx2min-$i.csvf
@@ -50,7 +50,7 @@ for j in cksum/vhdl cksum/verilog fifo/vhdl fifo/verilog; do
 
 	for i in ep2c5 nexys2-1200; do
 		hdlmake.py -c
-		hdlmake.py -t ../../templates/epp/${HDL} -p $i
+		hdlmake.py -t ../../templates/epp/${HDL} -b $i
 		cp top_level.svf svf/epp-$i.svf
 		if [ -e top_level.xsvf ]; then
 			cp top_level.xsvf xsvf/epp-$i.xsvf
