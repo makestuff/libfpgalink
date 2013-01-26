@@ -29,51 +29,59 @@ mkdir ${LIB}-${DATE}
 
 # Linux x64 binaries
 mkdir -p ${LIB}-${DATE}/lin.x64/rel
-cp -rp lin.x64/rel/*.so xsvf2csvf/lin.x64/rel/xsvf2csvf dump/lin.x64/rel/dump ${LIB}-${DATE}/lin.x64/rel/
+cp -rp lin.x64/rel/*.{so,txt} xsvf2csvf/lin.x64/rel/xsvf2csvf dump/lin.x64/rel/dump ${LIB}-${DATE}/lin.x64/rel/
 mkdir -p ${LIB}-${DATE}/lin.x64/dbg
-cp -rp lin.x64/dbg/*.so ${LIB}-${DATE}/lin.x64/dbg/
+cp -rp lin.x64/dbg/*.{so,txt} ${LIB}-${DATE}/lin.x64/dbg/
+cp -rp lin.x64/incs.txt ${LIB}-${DATE}/lin.x64/
 
 # Linux x86 binaries
 mkdir -p ${LIB}-${DATE}/lin.x86/rel
-cp -rp lin.x86/rel/*.so xsvf2csvf/lin.x86/rel/xsvf2csvf dump/lin.x86/rel/dump ${LIB}-${DATE}/lin.x86/rel/
+cp -rp lin.x86/rel/*.{so,txt} xsvf2csvf/lin.x86/rel/xsvf2csvf dump/lin.x86/rel/dump ${LIB}-${DATE}/lin.x86/rel/
 mkdir -p ${LIB}-${DATE}/lin.x86/dbg
-cp -rp lin.x86/dbg/*.so ${LIB}-${DATE}/lin.x86/dbg/
+cp -rp lin.x86/dbg/*.{so,txt} ${LIB}-${DATE}/lin.x86/dbg/
+cp -rp lin.x86/incs.txt ${LIB}-${DATE}/lin.x86/
 
 # Linux armel binaries
 mkdir -p ${LIB}-${DATE}/lin.armel/rel
-cp -rp lin.armel/rel/*.so xsvf2csvf/lin.armel/rel/xsvf2csvf dump/lin.armel/rel/dump ${LIB}-${DATE}/lin.armel/rel/
+cp -rp lin.armel/rel/*.{so,txt} xsvf2csvf/lin.armel/rel/xsvf2csvf dump/lin.armel/rel/dump ${LIB}-${DATE}/lin.armel/rel/
 mkdir -p ${LIB}-${DATE}/lin.armel/dbg
-cp -rp lin.armel/dbg/*.so ${LIB}-${DATE}/lin.armel/dbg/
+cp -rp lin.armel/dbg/*.{so,txt} ${LIB}-${DATE}/lin.armel/dbg/
+cp -rp lin.armel/incs.txt ${LIB}-${DATE}/lin.armel/
 
 # Linux armhf binaries
 mkdir -p ${LIB}-${DATE}/lin.armhf/rel
-cp -rp lin.armhf/rel/*.so xsvf2csvf/lin.armhf/rel/xsvf2csvf dump/lin.armhf/rel/dump ${LIB}-${DATE}/lin.armhf/rel/
+cp -rp lin.armhf/rel/*.{so,txt} xsvf2csvf/lin.armhf/rel/xsvf2csvf dump/lin.armhf/rel/dump ${LIB}-${DATE}/lin.armhf/rel/
 mkdir -p ${LIB}-${DATE}/lin.armhf/dbg
-cp -rp lin.armhf/dbg/*.so ${LIB}-${DATE}/lin.armhf/dbg/
+cp -rp lin.armhf/dbg/*.{so,txt} ${LIB}-${DATE}/lin.armhf/dbg/
+cp -rp lin.armhf/incs.txt ${LIB}-${DATE}/lin.armhf/
 
 # Linux ppc binaries
 mkdir -p ${LIB}-${DATE}/lin.ppc/rel
-cp -rp lin.ppc/rel/*.so xsvf2csvf/lin.ppc/rel/xsvf2csvf dump/lin.ppc/rel/dump ${LIB}-${DATE}/lin.ppc/rel/
+cp -rp lin.ppc/rel/*.{so,txt} xsvf2csvf/lin.ppc/rel/xsvf2csvf dump/lin.ppc/rel/dump ${LIB}-${DATE}/lin.ppc/rel/
 mkdir -p ${LIB}-${DATE}/lin.ppc/dbg
-cp -rp lin.ppc/dbg/*.so ${LIB}-${DATE}/lin.ppc/dbg/
+cp -rp lin.ppc/dbg/*.{so,txt} ${LIB}-${DATE}/lin.ppc/dbg/
+cp -rp lin.ppc/incs.txt ${LIB}-${DATE}/lin.ppc/
 
 # MacOSX x86/x64 binaries
 mkdir -p ${LIB}-${DATE}/osx/rel
-cp -rp osx/rel/*.dylib xsvf2csvf/osx/rel/xsvf2csvf dump/osx/rel/dump ${LIB}-${DATE}/osx/rel/
+cp -rp osx/rel/*.{dylib,txt} xsvf2csvf/osx/rel/xsvf2csvf dump/osx/rel/dump ${LIB}-${DATE}/osx/rel/
 mkdir -p ${LIB}-${DATE}/osx/dbg
-cp -rp osx/dbg/*.dylib ${LIB}-${DATE}/osx/dbg/
+cp -rp osx/dbg/*.{dylib,txt} ${LIB}-${DATE}/osx/dbg/
+cp -rp osx/incs.txt ${LIB}-${DATE}/osx/
 
 # Windows x64 binaries
 mkdir -p ${LIB}-${DATE}/win.x64/rel
-cp -rp win.x64/rel/*.dll win.x64/rel/*.lib win.x64/rel/*.pdb xsvf2csvf/win.x64/rel/xsvf2csvf.exe dump/win.x64/rel/dump.exe ${LIB}-${DATE}/win.x64/rel/
+cp -rp win.x64/rel/*.{dll,txt} win.x64/rel/*.lib win.x64/rel/*.pdb xsvf2csvf/win.x64/rel/xsvf2csvf.exe dump/win.x64/rel/dump.exe ${LIB}-${DATE}/win.x64/rel/
 mkdir -p ${LIB}-${DATE}/win.x64/dbg
-cp -rp win.x64/dbg/*.dll win.x64/dbg/*.lib win.x64/dbg/*.pdb ${LIB}-${DATE}/win.x64/dbg/
+cp -rp win.x64/dbg/*.{dll,txt} win.x64/dbg/*.lib win.x64/dbg/*.pdb ${LIB}-${DATE}/win.x64/dbg/
+cp -rp win.x64/incs.txt ${LIB}-${DATE}/win.x64/
 
 # Windows x86 binaries
 mkdir -p ${LIB}-${DATE}/win.x86/rel
-cp -rp win.x86/rel/*.dll win.x86/rel/*.lib win.x86/rel/*.pdb xsvf2csvf/win.x86/rel/xsvf2csvf.exe dump/win.x86/rel/dump.exe ${LIB}-${DATE}/win.x86/rel/
+cp -rp win.x86/rel/*.{dll,txt} win.x86/rel/*.lib win.x86/rel/*.pdb xsvf2csvf/win.x86/rel/xsvf2csvf.exe dump/win.x86/rel/dump.exe ${LIB}-${DATE}/win.x86/rel/
 mkdir -p ${LIB}-${DATE}/win.x86/dbg
-cp -rp win.x86/dbg/*.dll win.x86/dbg/*.lib win.x86/dbg/*.pdb ${LIB}-${DATE}/win.x86/dbg/
+cp -rp win.x86/dbg/*.{dll,txt} win.x86/dbg/*.lib win.x86/dbg/*.pdb ${LIB}-${DATE}/win.x86/dbg/
+cp -rp win.x86/incs.txt ${LIB}-${DATE}/win.x86/
 
 # FLCLI binaries
 export FLCLI=../../apps/flcli
@@ -99,10 +107,7 @@ cp -rp ../../common/makestuff.h ${LIB}-${DATE}/
 cp -rp ${LIB}.h ${LIB}-${DATE}/
 
 # HDL files
-cp -rp hdl ${LIB}-${DATE}/
-
-# CSVF files
-#cp -rp gen_csvf ${LIB}-${DATE}/
+#cp -rp hdl ${LIB}-${DATE}/
 
 # Examples
 rm -rf 2to3
@@ -112,6 +117,7 @@ cp fpgalink2.py fpgalink3.py
 ../../2to3/2to3 fpgalink3.py | patch fpgalink3.py
 cd ../..
 cp -rp examples ${LIB}-${DATE}/
+sed -i s/fpgalink/fpgalink-${DATE}/g ${LIB}-${DATE}/examples/c/Makefile
 
 # User Manual
 #cp -p docs/*.pdf /mnt/ukfsn/docs/fpgalink/
