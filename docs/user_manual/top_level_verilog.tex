@@ -42,7 +42,7 @@ It provides a host-side API, firmware for several USB interface microcontrollers
     For the FPGA there is a simple interface module which when instantiated in your design gives the host a FIFO-style read/write interface, supporting up to 128 separate logical ``channels'' into your design. A couple of fully-functional example designs are provided to get you started.
 \end{blobs}
 
-Everything is licensed under the GNU Lesser General Public Licence\footnote{\url{http://www.gnu.org/copyleft/lesser.html}}; you are therefore free to distribute unmodified copies of FPGALink with your products. The library has no commercial or hardware platform usage restrictions, so you can prototype your design with an inexpensive devkit, and then use the same software tools on your custom-built PCBs. In this way you can easily distribute updated FPGA designs to your customers just as you would with regular firmware updates, with no special programming cables required, making your FPGA truly ``field-programmable''.
+Everything is licensed under the GNU Lesser General Public Licence\footnote{\url{http://www.gnu.org/copyleft/lesser.html}}; you are therefore free to distribute unmodified copies of FPGALink with your products. The library has no commercial or hardware usage restrictions, so you can prototype your design with an inexpensive devkit, and then use the same software tools on your custom-built PCBs. In this way you can easily distribute updated FPGA designs to your customers just as you would with regular firmware updates, with no special programming cables required, making your FPGA truly ``field-programmable''.
 
 \subsection{Document Conventions}
 Whilst describing interactive console sessions, I will use {\bf\textcolor[rgb]{0.00,0.00,0.00}{\texttt{monospace bold}}} for characters entered by a human and {\textcolor[rgb]{0.20,0.20,0.20}{\texttt{monospace regular}}} for the computer's responses.
@@ -130,7 +130,7 @@ First, download the FPGALink binary distribution. This manual assumes you're usi
 \end{desc}
 
 \subsection{Supported Boards}
-By providing multiple ``board support packages'' (BSPs), FPGALink is able to support several different FPGA development kits, based on Xilinx or Altera FPGAs and Atmel AVR or Cypress FX2LP USB microcontrollers\footnote{Porting to other boards based on these components is usually fairly trivial; if you have such a board, ask on the \href{http://groups.google.com/group/fpgalink-users}{mailing list}.}. The BSPs are implemented as a hierarchy: at the top level there are one or more \texttt{templates}, which provide an abstract description of the host-FPGA connection. Each template has one or more supported \textit{platforms}, each of which can be thought of as a concrete instantiation of the template for a given board: the actual FPGA device, its pinout, etc.
+By providing multiple ``board support packages'' (BSPs), FPGALink is able to support several different FPGA development kits, based on Xilinx or Altera FPGAs and Atmel AVR or Cypress FX2LP USB microcontrollers\footnote{Porting to other boards based on these components is usually fairly trivial; if you have such a board, ask on the \href{http://groups.google.com/group/fpgalink-users}{mailing list}.}. The BSPs are implemented as a hierarchy: at the top level there are one or more \textit{templates}, which provide an abstract description of the host-FPGA connection. Each template has one or more supported \textit{boards}, each of which can be thought of as a concrete instantiation of the template for a given board: the actual FPGA device, its pinout, etc.
 
 A pair of fully-functional examples is provided, with ready-to-go programming files for each of the supported FPGA boards. The first example is \texttt{cksum}, which we will play with in the next section, and the second is \texttt{fifo}. Both use various bits of board I/O to provide some interaction and visual feedback:
 
@@ -166,7 +166,7 @@ The Cypress FX2LP is a Hi-Speed (480Mb/s) USB interface. It is capable of transf
 
 \subsubsection{Atmel AVR-Based Boards}
 
-The USB-capable Atmel AVR8 microcontrollers (AT90USB* \& ATmega*U*) are very cheap, and they incorporate a Full-Speed (12Mb/s) USB interface. They are capable of transferring data between an FPGA and the host at between 330KiB/s and about 1.2MiB/s, using an eight-bit asynchronous EPP-style interface. Although slower than the FX2LP, they are much more popular as general-purpose microcontrollers, and much easier to program, making custom firmware development fairly straightforward.
+The USB-capable Atmel AVR8 microcontrollers (AT90USB* \& ATMEGA*U*) are very cheap, and they incorporate a Full-Speed (12Mb/s) USB interface. They are capable of transferring data between an FPGA and the host at between 330KiB/s and about 1.2MiB/s, using an eight-bit asynchronous EPP-style interface. Although slower than the FX2LP, they are much more popular as general-purpose microcontrollers, and much easier to program, making custom firmware development fairly straightforward.
 
 \begin{desc}
   \item[\sffamily{Minimus/EP2C5 Board:}] \hfill \\
@@ -187,7 +187,7 @@ Since FPGALink is a library, you would normally just embed it into your applicat
   \item[\texttt{--ivp=<VID:PID> [FX2LP-specific]}] \hfill \\
     The FX2LP microcontroller has no onchip nonvolatile storage, so it loads its firmware from an external EEPROM and/or has its firmware loaded over USB. The \texttt{flcli} utility first tries to connect to the device specified by \texttt{--vp}; if it fails, it tries to load firmware into the device specified by \texttt{--ivp}.
   \item[\texttt{--jtag=<portSpec> [FX2LP-specific]}] \hfill \\
-    By default the FX2LP firmware's JTAG interface is compatible with the wiring on Digilent boards (\texttt{TDO}, \texttt{TDI}, \texttt{TMS} \& \texttt{TCK} connected to port D bits 0, 2, 3 \& 4 respectively.) If your board has different connections, you will need to specify which port lines to use along with \texttt{--ivp}. The port specification is the port (``A'', ``C'' or ``D'') followed by four digits for the port bits to use for \texttt{TDO}, \texttt{TDI}, \texttt{TMS} \& \texttt{TCK}. For example, the Xylo-L board uses a JTAG port of ``\texttt{D1240}'' and the MakeStuff LX9 uses ``\texttt{A7031}''.
+    By default the FX2LP firmware's JTAG interface is compatible with the wiring on Digilent boards (\texttt{TDO}, \texttt{TDI}, \texttt{TMS} \& \texttt{TCK} connected to port D bits 0, 2, 3 \& 4 respectively.) If your board has different connections, you will need to specify which port lines to use along with \texttt{--ivp}. The port specification is the port (``A'', ``C'' or ``D'') followed by four digits for the port bits to use for \texttt{TDO}, \texttt{TDI}, \texttt{TMS} \& \texttt{TCK}. For example, the Xylo-L board uses a JTAG port of ``\texttt{D1240}'' and the MakeStuff LX9 uses ``\texttt{A7031}''. Only bits 0, 1, 3 \& 7 are available for JTAG on port A.
   \item[\texttt{--vp=<VID:PID>}] \hfill \\
     The FPGALink device to connect. This may either be a regular \texttt{<VID:PID>} (e.g \texttt{1D50:602B}) or it may include an additional device ID (e.g \texttt{1D50:602B:0006}). The device ID may be used to distinguish between multiple FPGALink devices sharing the same \texttt{<VID:PID>}.
   \item[\texttt{--power [Nexys2-specific]}] \hfill \\
@@ -211,9 +211,9 @@ The \texttt{--cli} and \texttt{--action=<actionString>} options support three co
 
 \begin{desc}
   \item[\texttt{channel:}] \hfill \\
-    The FPGA channel, 0-7f.
+    The FPGA channel, 0-7F.
   \item[\texttt{count:}] \hfill \\
-    How many bytes to read from the FPGA channel, default 1.
+    How many bytes (in hex) to read from the FPGA channel, default 1.
   \item[\texttt{fileName:}] \hfill \\
     A binary file (in single or double-quotes) to write the FPGA's data to.
 \end{desc}
@@ -229,9 +229,9 @@ The syntax of the write command is as follows:
 
 \begin{desc}
   \item[\texttt{channel:}] \hfill \\
-    The FPGA channel, 0-7f.
+    The FPGA channel, 0-7F.
   \item[\texttt{byteSeq:}] \hfill \\
-    A sequence of bytes to be written to the FPGA channel,\\e.g \texttt{0123456789abcdef}.
+    A sequence of hex bytes to be written to the FPGA channel,\\e.g \texttt{0123456789abcdef}.
   \item[\texttt{fileName:}] \hfill \\
     An existing binary file (in single or double-quotes) to dump into the FPGA.
 \end{desc}
@@ -288,7 +288,7 @@ There are some caveats:
 
 If successful, you should see the ``Done'' light on your board switch on, and ``\texttt{0000}'' appear on your board's seven-segment display. If your board does not have either of these, don't worry; as long as the \texttt{flcli} command completed without error, you can proceed to the next section.
 
-So what just happened? Well, \texttt{flcli} loads new firmware if necessary (FX2LP-based boards only), then powers up the FPGA (Nexys2 only), then scans the board's JTAG chain for attached devices, and finally loads a pre-built design file for the \texttt{cksum} example into the FPGA.
+So what just happened? Well, \texttt{flcli} loaded new firmware if necessary (FX2LP-based boards only), then powered up the FPGA (Nexys2 only), then scanned the board's JTAG chain for attached devices, and finally loaded a pre-built design file for the \texttt{cksum} example into the FPGA.
 
 In this case we used a \texttt{.csvf} file\footnote{The CSVF format is similar to Xilinx's XSVF, but it's better suited for playback by small microcontrollers, and is much more space-efficient.} to program the FPGA, but FPGALink directly supports the \texttt{.svf} files generated by the Xilinx and Altera tools, as well as the Xilinx-specific \texttt{.xsvf} format.
 
@@ -299,7 +299,7 @@ A couple of interface modules are supplied, ``\texttt{comm\_fpga\_fx2}''\footnot
 
 Each channel is eight bits wide. Each channel may be read from or written to by the host. Each read or write operation can deal with single bytes or many hundreds of megabytes. Applications are free to choose how these channels are implemented in their Verilog code. Two such implementations are given in the \texttt{cksum} and \texttt{fifo} examples.
 
-In the previous section, we loaded the \texttt{cksum} example into the FPGA. The \texttt{cksum} example implements the FPGA channels using ordinary registers, meaning that writes to channel N update \texttt{regN}, and reads from channel N typically return the current value of \texttt{regN}.
+In the previous section, we loaded the \texttt{cksum} example into the FPGA. The \texttt{cksum} example implements the FPGA channels using ordinary registers, meaning that a write to channel N merely updates register N inside the FPGA, and a read from channel N typically returns the current value of register N.
 
 You can see this by using \texttt{flcli}'s command-line mode (triggered by the \texttt{-c} option):
 
@@ -318,7 +318,7 @@ The ``\texttt{w1 00;w2 00;w0 cafebabef00d1e;r1;r2;r0 4}'' command line performs 
   \item Read \textbf{four} bytes from channel 0.
 \end{blobs}
 
-The FPGA maintains a running 16-bit checksum of the bytes written to channel 0; the checksum itself is available on channels 1 \& 2. Notice that the checksum value read from channels 1 \& 2 is \texttt{0x045B}, which is the same as the checksum value reported by \texttt{flcli} for the seven-byte transfer: the checksum calculated by \texttt{flcli} matches the checksum calculated by the FPGA. The four reads from channel 0 just return the state of the eight switches on the board.
+The \texttt{cksum} example maintains a running 16-bit checksum of the bytes written to channel 0; the checksum itself is available on channels 1 \& 2. Notice that the checksum value read from channels 1 \& 2 is \texttt{0x045B}, which is the same as the checksum value reported by \texttt{flcli} for the seven-byte transfer: the checksum calculated by \texttt{flcli} matches the checksum calculated by the FPGA. The four reads from channel 0 just return the state of the eight switches on the board.
 
 The ``\texttt{w1 ca;w2 fe;r1;r2}'' command line performs four operations sequentially:
 
@@ -339,7 +339,7 @@ So ``\texttt{w1 ca}'' writes a single byte to channel 1, which sets \texttt{chan
 
 Similarly when you enter ``\texttt{r2}'', it initiates a single byte read of channel 2, which sets \texttt{chanAddr\_in=0x02} and drives \texttt{f2hReady\_in}\footnote{Actually, since the value stored in a simple register like this is unaffected by a read operation, it's not necessary for this code to consider \texttt{f2hReady\_in} - it need only select the correct register value with which to drive \texttt{f2hData\_out}, and do so continuously.} high for one clock cycle, causing the MSB of the checksum register to be sampled and returned to the host.
 
-Channel 0 is a little more interesting. Bytes written (e.g ``\texttt{w0 aa}'') are displayed on the eight board LEDs and also added to the running sixteen-bit checksum shown on the seven-segment display. Conversely, channel 0 reads return the current state of the eight switches.
+Channel 0 is a little more interesting. Bytes written (e.g ``\texttt{w0 aa}'') are displayed on the eight board LEDs and also added to the running sixteen-bit checksum shown on the seven-segment display. Conversely, reads return the current state of the eight switches.
 
 Notice that reads and writes never block: there is always data available in the read pipe and there is always room available in the write pipe.
 
@@ -348,7 +348,7 @@ In the previous section, we used the \texttt{flcli} utility to read and write si
 
 \code{cli/prog_fifo_verilog}
 
-Now, channel 0 is connected to a pair of FIFOs inside the FPGA, a read FIFO and a write FIFO. Independent producer and consumer processes periodically insert upcount data into the read FIFO and drain data from the write FIFO, respectively. The speed at which these processes work is selectable by setting different values on the eight switches: \texttt{sw[7:4]} control the speed of the consumer and \texttt{sw[3:0]} control the speed of the producer.
+Now, channel 0 is connected to a pair of FIFOs inside the FPGA, a read FIFO and a write FIFO. Independent producer and consumer processes periodically insert upcount data into the read FIFO and drain data from the write FIFO, respectively. The speed at which these processes work is selectable by setting different values on the eight switches: \texttt{sw[7:4]} controls the speed of the consumer and \texttt{sw[3:0]} controls the speed of the producer.
 
 Here's the code\footnote{See \texttt{hdl/apps/makestuff/swled/fifo/verilog/fifo\_rtl.v} for the complete module.}:
 
@@ -503,7 +503,7 @@ Some operations are useful or just necessary, but don't fit into the other four 
 Whilst it's possible to write your own FPGA-side code, the FPGALink distribution includes some useful tools and Verilog modules to simplify this task.
 
 \subsection{FX2LP-Based Designs}
-The most common data-transfer approach taken by the supported hardware platforms is to connect 17 FPGA I/O pins to the slave FIFO interface of a Cypress FX2LP microcontroller. This configuration is supported by instantiating the \texttt{comm\_fpga\_fx2}\footnote{See \texttt{hdl/libs/makestuff/comm\_fpga/fx2/verilog/comm\_fpga\_fx2.v}.} module, and wiring\footnote{See \texttt{hdl/apps/makestuff/swled/templates/fx2all/verilog/top\_level.v}} it up like this:
+The most common data-transfer approach taken by the supported boards is to connect 17 FPGA I/O pins to the slave FIFO interface of a Cypress FX2LP microcontroller. This configuration is supported by instantiating the \texttt{comm\_fpga\_fx2}\footnote{See \texttt{hdl/libs/makestuff/comm\_fpga/fx2/verilog/comm\_fpga\_fx2.v}.} module, and wiring\footnote{See \texttt{hdl/apps/makestuff/swled/templates/fx2all/verilog/top\_level.v}} it up like this:
 
 \img{fx2allHarness}
 
@@ -518,7 +518,7 @@ If you're designing your own PCB, a more optimal approach is to connect the FX2L
 
 \img{fx2minHarness}
 
-This is the approach taken by the \href{http://www.makestuff.eu/wordpress/electronics/lx9-fpga-board}{MakeStuff LX9} board. Notice that the \texttt{comm\_fpga\_fx2} and \texttt{swled} modules are identical to those we had previously. The only changes are in the PCB layout (15 FX2LP-FPGA signals rather than 17), and in the \texttt{top\_level} structural module.
+This is the approach taken by the \href{http://www.makestuff.eu/wordpress/electronics/lx9-fpga-board}{MakeStuff LX9} board. Notice that the \texttt{comm\_fpga\_fx2} and \texttt{swled} modules are identical to those we used previously. The only changes are in the PCB layout (only 15 FX2LP-FPGA signals as opposed to 17), and in the \texttt{top\_level} structural module.
 
 \subsection{EPP-Based Designs}
 The Atmel AVR firmware implements the IEEE 1284 Enhanced Parallel Port
@@ -527,6 +527,8 @@ protocol\footnote{See \url{http://www.fapo.com/eppmode.htm}}. This is implemente
 \img{eppHarness}
 
 It uses fewer signals than the FX2LP's synchronous FIFO interface, but it's also significantly slower. Since EPP is an asynchronous protocol, its signals are not synchronous to any particular clock, so the FPGA needs an arbitrary clock source for its own operation.
+
+The EPP protocol is not as efficient as the synchronous FIFO interface of the FX2LP, but in any case the overall throughput of a system based on an Atmel AVR is limited by the USB interface and not the EPP interface. This is because unlike the Hi-Speed 480Mb/s FX2LP, the AVRs are Full-Speed 12Mb/s devices. Observed throughput is about 330KiB/s for the AVR firmware running single-buffered on an AT90USB162, ATMEGA16U2, ATMEGA32U2 or similar, and about 1.2MiB/s for the firmware running double-buffered on an AT90USB647, ATMEGA32U4 or similar.
 
 Notice that the \texttt{swled} module is identical to the one in the two FX2LP configurations shown previously. Now, not only has the PCB layout and \texttt{top\_level} module changed, but the \texttt{comm\_fpga\_fx2} module has been replaced with \texttt{comm\_fpga\_epp}.
 
@@ -540,40 +542,7 @@ This common internal interface is implemented using separate host-to-FPGA and FP
 
 The \texttt{h2f*} pipe carries data from the host to the FPGA, and the \texttt{f2h*} pipe carries data in the opposite direction, from the FPGA back to the host. Each pipe has three signals, \texttt{*Data} and \texttt{*Valid} which are driven by the sender, and \texttt{*Ready} which is driven by the receiver. The sender drives \texttt{*Valid} high in order to tell the receiver there's valid data on \texttt{*Data}, and the receiver can drive \texttt{*Ready} low in order to tell the sender that it's not ready to accept the data yet. The data on \texttt{*Data} is transferred from the sender to the receiver if and only if both \texttt{*Valid} and \texttt{*Ready} are high on the rising edge of the clock.
 
-\subsection{FX2 External Port}
-The \texttt{comm\_fpga\_fx2} module's external port clocks data synchronously on every rising edge of \texttt{clk\_in}, which is driven at 48MHz by the FX2LP. The internal port is synchronous to the same clock. The interface comprises most of the signals in the FX2LP Slave FIFO Interface\footnote{See \href{http://www.cypress.com/?docID=27095}{EZ-USB TRM Chapter 9}.} with the following changes:
-
-\begin{blobs}
-  \item The data bus is only eight bits wide.
-  \item Only one \texttt{FIFOADR} line is supplied, called \texttt{fx2FifoSel\_out}.
-  \item The other \texttt{FIFOADR} line is connected (internally or externally) to Vcc.
-  \item Only \texttt{FLAGB} and \texttt{FLAGC} are used.
-  \item One signal is supplied for driving both \texttt{/SLOE} and \texttt{/SLRD}.
-\end{blobs}
-
-The result is nine signals for control and eight signals for data; most FX2LP-based FPGA devkits just connect all 17 directly to the FPGA:
-
-\img{fx2Full}
-
-This represents the \texttt{fx2all} template. Notice that the FPGA continuously drives \texttt{FIFOADR[1]} high, and that the \texttt{fx2Read\_out} signal drives \textit{two} external pins, \texttt{/SLOE} and \texttt{/SLRD}. This is the wiring used by the \texttt{cksum} and \texttt{fifo} examples.
-
-\newpage
-If you're designing your own PCB, you can save two FPGA I/O pins by doing the same thing on the PCB rather than in the FPGA:
-
-\img{fx2Minimal}
-
-In this case we use eight pins for data as before, but only seven pins for control. Notice that the result is logically the same: \texttt{fx2Read\_out} signal drives \texttt{/SLOE} and \texttt{/SLRD}, and \texttt{fx2FifoSel\_out} drives \texttt{FIFOADR[0]}, with \texttt{FIFOADR[1]} tied high.
-
-Since the FX2 Slave FIFO interface clocks data synchronously at the end of every 48MHz clock cycle, the theoretical maximum throughput is 48MB/s (45.8MiB/s). In real-world tests with FPGALink, the actual observed throughput is typically about 26MiB/s. The achievable throughput is limited by the speed of the host-side USB code.
-
-\subsection{EPP External Port}
-The Atmel AVR firmware implements the IEEE 1284 Enhanced Parallel Port protocol\footnote{See \url{http://www.fapo.com/eppmode.htm}}.
-
-\img{epp}
-
-The EPP protocol is asynchronous (i.e the control signals are not synchronised to any particular clock). Since FPGAs tend to be synchronous, the EPP signals are internally synchronised to the \texttt{comm\_fpga\_epp} module's \texttt{eppClk\_in}. The internal port is synchronous to the same clock. The frequency of \texttt{eppClk\_in} is not important, and neither is its source; the \texttt{cksum} and \texttt{fifo} examples just use the devkits' onboard 50MHz cystal oscillators.
-
-The EPP protocol is not as efficient as the synchronous FIFO interface of the FX2LP, but in any case the overall throughput of a system based on an Atmel AVR is limited by the USB throughput (unlike the 480Mb/s Hi-Speed FX2LP, the AVRs are Full-Speed 12Mb/s devices) and not the EPP interface. Observed throughput is about 330KiB/s for the AVR firmware running single-buffered on an AT90USB162, ATmega16U2, ATmega32U2 or similar, and about 1.2MiB/s for the firmware running double-buffered on an AT90USB647, ATmega32U4 or similar.
+In practice, the \texttt{swled} application could be either \texttt{cksum} or \texttt{fifo}, discussed in sections 2.5 and 2.6 respectively. Obviously it's not typical for two different FPGA applications to have exactly the same interface to the outside world (i.e \texttt{swled}); in this case the two different examples were contrived to share the same interface for illustrative purposes.
 
 \subsection{Build Infrastructure}
 In the \texttt{hdl} directory is a build infrastructure capable of synthesising Verilog code into SVF files suitable for loading into an FPGA with FPGALink. Xilinx and Altera FPGA toolchains are supported. The build infrastructure uses command-line tools rather than the vendors' Integrated Development Environments, but if you prefer to work in an IDE, setting up a project is straightforward.
@@ -601,12 +570,12 @@ Then from within a terminal window, you can build the \texttt{cksum} example for
 \code{cli/make_hdl_lin_verilog}
 
 \subsubsection{Specifying the JTAG Chain}
-The Altera tools will only generate SVF files for a single-device JTAG chain, but the Xilinx tools support JTAG chains with multiple devices. The JTAG chain and the actual device to program is specified in the \texttt{platforms/*/platform.batch} files. All devices except the one being programmed need BSDL descriptions so that the programming algorithm can bypass them.
+The Altera tools will only generate SVF files for a single-device JTAG chain, but the Xilinx tools support JTAG chains with multiple devices. The JTAG chain and the actual device to program is specified in the \texttt{boards/*/board.batch} files. All devices except the one being programmed need BSDL descriptions so that the programming algorithm can bypass them.
 
 A future release of FPGALink will simplify this, and provide support for multi-device chains with Altera FPGAs.
 
 \subsubsection{Location Constraints}
-For boards based on Xilinx FPGAs, the location constraints are specified in the \texttt{platforms/*/platform.ucf} files. For boards based on Altera FPGAs, the location constraints are specified in the \texttt{platforms/*/platform.qsf} files.
+For boards based on Xilinx FPGAs, the location constraints are specified in the \texttt{boads/*/board.ucf} files. For boards based on Altera FPGAs, the location constraints are specified in the \texttt{boards/*/board.qsf} files.
 
 \subsubsection{The \texttt{xsvf2csvf} Utility}
 The CSVF format is very similar to Xilinx's XSVF, except that it has a few simplifications and the JTAG bitmaps have been been reversed, making it better suited for playback on small microcontrollers. It also has a simple run-length compression scheme making the programming files smaller. You can generate a CSVF file from an XSVF or SVF file using the \texttt{xsvf2csvf} utility.
