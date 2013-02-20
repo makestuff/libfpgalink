@@ -94,6 +94,8 @@ fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, c_char_p, uint3
 fpgalink.flFlashStandardFirmware.restype = FLStatus
 fpgalink.flSaveFirmware.argtypes = [FLHandle, uint32, c_char_p, POINTER(ErrorString)]
 fpgalink.flSaveFirmware.restype = FLStatus
+fpgalink.flLoadCustomFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
+fpgalink.flLoadCustomFirmware.restype = FLStatus
 fpgalink.flFlashCustomFirmware.argtypes = [FLHandle, c_char_p, uint32, POINTER(ErrorString)]
 fpgalink.flFlashCustomFirmware.restype = FLStatus
 fpgalink.flCleanWriteBuffer.argtypes = [FLHandle]
@@ -248,6 +250,15 @@ def flPlayXSVF(handle, xsvfFile):
 def flLoadStandardFirmware(curVidPid, newVidPid, jtagPort):
     error = ErrorString()
     status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), jtagPort.encode('ascii'), byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+# Load standard firmware into the FX2LP chip
+def flLoadCustomFirmware(curVidPid, fwFile):
+    error = ErrorString()
+    status = fpgalink.flLoadCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
