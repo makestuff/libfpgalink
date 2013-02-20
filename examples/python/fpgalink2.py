@@ -46,8 +46,8 @@ elif ( sys.platform == "win32" ):
     fpgalink = WinDLL("libfpgalink.dll")
 
 # Miscellaneous Functions
-fpgalink.flInitialise.argtypes = []
-fpgalink.flInitialise.restype = None
+fpgalink.flInitialise.argtypes = [c_int, POINTER(ErrorString)]
+fpgalink.flInitialise.restype = FLStatus
 fpgalink.flFreeError.argtypes = [c_char_p]
 fpgalink.flFreeError.restype = None
 fpgalink.flSleep.argtypes = [uint32]
@@ -295,7 +295,15 @@ def flFlashStandardFirmware(handle, newVidPid, jtagPort, eepromSize, xsvfFile = 
         raise FLException(s)
 
 # Initialise the library
-fpgalink.flInitialise()
+def flInitialise(debugLevel):
+    error = ErrorString()
+    status = fpgalink.flInitialise(debugLevel, byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+flInitialise(0)
 
 # Main function if we're not loaded as a module
 if __name__ == "__main__":
