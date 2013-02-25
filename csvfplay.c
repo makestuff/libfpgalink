@@ -14,6 +14,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+// Uncomment for help debugging JTAG issues
+//#define DEBUG
+
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 #include <stdlib.h>
 #include <makestuff.h>
 #include <liberror.h>
@@ -40,7 +46,7 @@ static bool tdoMatchFailed(
 int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, const char **error) {
 	int returnCode;
 	NeroStatus nStatus;
-	uint8 thisByte;
+	uint8 thisByte, numBits;
 	uint32 numBytes;
 	uint8 *tdoPtr, *tdiPtr;
 	uint8 i;
@@ -50,6 +56,11 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 	uint8 tdiData[CSVF_BUF_SIZE];
 	uint8 tdoData[CSVF_BUF_SIZE];
 	uint8 tdoExpected[CSVF_BUF_SIZE];
+	
+	char data[CSVF_BUF_SIZE*2+1];
+	char mask[CSVF_BUF_SIZE*2+1];
+	char expected[CSVF_BUF_SIZE*2+1];
+	
 	uint8 *tdiAll;
 	struct Context cp;
 
@@ -66,27 +77,50 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 	while ( thisByte != XCOMPLETE ) {
 		switch ( thisByte ) {
 		case XTDOMASK:
+			#ifdef DEBUG
+				printf("XTDOMASK(");
+			#endif
 			numBytes = bitsToBytes(xsdrSize);
 			tdoPtr = tdoMask;
 			while ( numBytes-- ) {
-				*tdoPtr++ = csvfGetByte(&cp);
+				thisByte = csvfGetByte(&cp);
+				#ifdef DEBUG
+					printf("%02X", thisByte);
+				#endif
+				*tdoPtr++ = thisByte;
 			}
+			#ifdef DEBUG
+				printf(")\n");
+			#endif
 			break;
 
 		case XRUNTEST:
 			xruntest = csvfGetLong(&cp);
+			#ifdef DEBUG
+				printf("XRUNTEST(%08X)\n", xruntest);
+			#endif
 			break;
 
 		case XSIR:
 			nStatus = neroClockFSM(nero, 0x00000003, 4, error);  // -> Shift-IR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			thisByte = csvfGetByte(&cp);
-			numBytes = bitsToBytes(thisByte);
+			numBits = csvfGetByte(&cp);
+			#ifdef DEBUG
+				printf("XSIR(%02X, ", numBits);
+			#endif
+			numBytes = bitsToBytes(numBits);
 			tdiPtr = tdiData;
 			while ( numBytes-- ) {
-				*tdiPtr++ = csvfGetByte(&cp);
+				thisByte = csvfGetByte(&cp);
+				#ifdef DEBUG
+					printf("%02X", thisByte);
+				#endif
+				*tdiPtr++ = thisByte;
 			}
-			nStatus = neroShift(nero, thisByte, tdiData, NULL, true, error);  // -> Exit1-DR
+			#ifdef DEBUG
+				printf(")\n");
+			#endif
+			nStatus = neroShift(nero, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
@@ -98,6 +132,9 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 
 		case XSDRSIZE:
 			xsdrSize = csvfGetLong(&cp);
+			#ifdef DEBUG
+				printf("XSDRSIZE(%08X)\n", xsdrSize);
+			#endif
 			break;
 
 		case XSDRTDO:
@@ -122,12 +159,15 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 					CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 				}
 				i++;
+				#ifdef DEBUG
+					dumpSimple(tdoData, numBytes, data);
+					dumpSimple(tdoMask, numBytes, mask);
+					dumpSimple(tdoExpected, numBytes, expected);
+					printf("XSDRTDO(attempt: %d; mask: %s; expecting: %s; got: %s)\n", i, mask, expected, data);
+				#endif
 			} while ( tdoMatchFailed(tdoData, tdoMask, tdoExpected, numBytes) && i < 32 );
 
 			if ( i == 32 ) {
-				char data[CSVF_BUF_SIZE*2+1];
-				char mask[CSVF_BUF_SIZE*2+1];
-				char expected[CSVF_BUF_SIZE*2+1];
 				dumpSimple(tdoData, numBytes, data);
 				dumpSimple(tdoMask, numBytes, mask);
 				dumpSimple(tdoExpected, numBytes, expected);
@@ -140,6 +180,10 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			break;
 
 		case XSDR:
+			#ifdef DEBUG
+				// TODO: Need to print actual TDO data too
+				printf("XSDR(%08X)\n", xsdrSize);
+			#endif
 			nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
