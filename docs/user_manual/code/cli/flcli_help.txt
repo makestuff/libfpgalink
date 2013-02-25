@@ -1,17 +1,17 @@
 wotan$ ¬lin.x64/rel/flcli -h
 FPGALink Command-Line Interface Copyright (C) 2012 Chris McClelland
 
-Usage: flcli [-pscbh] [-i <VID:PID>] [-j <portSpec>] -v <VID:PID> [-x <fileName>]
-             [-a <actionString>]
+Usage: flcli [-qcbh] [-i <VID:PID>] [-j <portSpec>] -v <VID:PID>
+             [-d <S:MM:DD:PP>]... [-x <fileName>] [-a <actionString>]
 
 Interact with an FPGALink device.
 
   -i, --ivp=<VID:PID>          vendor ID and product ID (e.g 04B4:8613)
   -j, --jtag=<portSpec>        JTAG port config (e.g D0234)
   -v, --vp=<VID:PID>           VID, PID and optional dev ID (e.g 1D50:602B:0001)
+  -d, --digport=<S:MM:DD:PP>   read/write digital port
+  -q, --query                  query the JTAG chain
   -x, --xsvf=<fileName>        SVF, XSVF or CSVF file to load
-  -p, --power                  FPGA is powered from USB (Nexys2 only!)
-  -s, --scan                   scan the JTAG chain
   -a, --action=<actionString>  a series of CommFPGA actions
   -c, --cli                    start up an interactive CommFPGA session
   -b, --benchmark              enable benchmarking & checksumming

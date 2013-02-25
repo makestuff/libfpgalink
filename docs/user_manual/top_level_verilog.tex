@@ -63,7 +63,7 @@ The only place you're \textit{guaranteed} to get a response to FPGALink-related 
 The FPGALink library, firmware \& Verilog code is licensed under the LGPLv3\footnote{\url{http://www.gnu.org/copyleft/lesser.html}}:
 
 \begin{quote}
-Copyright \copyright 2009-2012 Chris McClelland
+Copyright \copyright 2009-{\the\year} Chris McClelland
 
 FPGALink is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -73,7 +73,7 @@ FPGALink is distributed in the hope that it will be useful, but WITHOUT ANY WARR
 The FLCLI utility is licensed under the GPLv3\footnote{\url{http://www.gnu.org/copyleft/gpl.html}}:
 
 \begin{quote}
-Copyright \copyright 2009-2012 Chris McClelland
+Copyright \copyright 2009-{\the\year} Chris McClelland
 
 FLCLI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -96,7 +96,7 @@ First, download the FPGALink binary distribution. This manual assumes you're usi
 
     \code{cli/udev}
 
-    You may need to restart the udev service with \texttt{sudo service udev restart}, but you will definitely need to unplug and reconnect the device(s) before the new permissions will be in effect.
+    Ensure the VID:PID is lowercase. You may need to restart the udev service with \texttt{sudo service udev restart}, but you will definitely need to unplug and reconnect the device(s) in order to activate the new permissions.
 
   \item[\sffamily{Windows:}] \hfill \\
     You may need to install the VC++ 2010 redistributable package:
@@ -190,9 +190,9 @@ Since FPGALink is a library, you would normally just embed it into your applicat
     By default the FX2LP firmware's JTAG interface is compatible with the wiring on Digilent boards (\texttt{TDO}, \texttt{TDI}, \texttt{TMS} \& \texttt{TCK} connected to port D bits 0, 2, 3 \& 4 respectively.) If your board has different connections, you will need to specify which port lines to use along with \texttt{--ivp}. The port specification is the port (``A'', ``C'' or ``D'') followed by four digits for the port bits to use for \texttt{TDO}, \texttt{TDI}, \texttt{TMS} \& \texttt{TCK}. For example, the Xylo-L board uses a JTAG port of ``\texttt{D1240}'' and the MakeStuff LX9 uses ``\texttt{A7031}''. Only bits 0, 1, 3 \& 7 are available for JTAG on port A.
   \item[\texttt{--vp=<VID:PID>}] \hfill \\
     The FPGALink device to connect. This may either be a regular \texttt{<VID:PID>} (e.g \texttt{1D50:602B}) or it may include an additional device ID (e.g \texttt{1D50:602B:0006}). The device ID may be used to distinguish between multiple FPGALink devices sharing the same \texttt{<VID:PID>}.
-  \item[\texttt{--power [Nexys2-specific]}] \hfill \\
-    If your Nexys2's power jumper is set to ``USB'', it's necessary to switch on the FPGA's power manually using this option.
-  \item[\texttt{--scan}] \hfill \\
+  \item[\texttt{--digport=<S:MM:DD:PP}] \hfill \\
+    Configure general-purpose port pins and data directions.
+  \item[\texttt{--query}] \hfill \\
     Print an IDCODE for each device in the JTAG chain.
   \item[\texttt{--xsvf}] \hfill \\
     Play the specified \texttt{.svf}, \texttt{.xsvf} or \texttt{.csvf} file into the JTAG chain. This is typically (but not necessarily) used for FPGA programming.
