@@ -149,14 +149,36 @@ cleanup:
 	return returnCode;
 }
 
-static FLStatus dataWrite(struct FLContext *handle, ProgOp progOp, const uint8 *buf, uint32 len, const char **error) {
+static void makeLookup(const uint8 bitOrder[8], uint8 lookupTable[256]) {
+	uint8 thisByte;
+	uint16 i;
+	for ( i = 0; i < 256; i++ ) {
+		thisByte = 0x00;
+		if ( i & 0x80 ) { thisByte |= (1 << bitOrder[7]); }
+		if ( i & 0x40 ) { thisByte |= (1 << bitOrder[6]); }
+		if ( i & 0x20 ) { thisByte |= (1 << bitOrder[5]); }
+		if ( i & 0x10 ) { thisByte |= (1 << bitOrder[4]); }
+		if ( i & 0x08 ) { thisByte |= (1 << bitOrder[3]); }
+		if ( i & 0x04 ) { thisByte |= (1 << bitOrder[2]); }
+		if ( i & 0x02 ) { thisByte |= (1 << bitOrder[1]); }
+		if ( i & 0x01 ) { thisByte |= (1 << bitOrder[0]); }
+		lookupTable[i] = thisByte;
+	}
+}	
+
+static FLStatus dataWrite(struct FLContext *handle, ProgOp progOp, const uint8 *buf, uint32 len, const uint8 lookupTable[256], const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
-	NeroStatus nStatus = beginShift(handle, len, progOp, 0x00, error);
 	uint16 chunkSize;
+	uint8 bitSwap[64];
+	uint16 i;
+	NeroStatus nStatus = beginShift(handle, len, progOp, 0x00, error);
 	CHECK_STATUS(nStatus, "dataWrite()", FL_JTAG_ERR);
 	while ( len ) {
 		chunkSize = (len >= 64) ? 64 : (uint16)len;
-		nStatus = doSend(handle, buf, chunkSize, error);
+		for ( i = 0; i < chunkSize; i++ ) {
+			bitSwap[i] = lookupTable[buf[i]];
+		}
+		nStatus = doSend(handle, bitSwap, chunkSize, error);
 		CHECK_STATUS(nStatus, "dataWrite()", FL_JTAG_ERR);
 		buf += chunkSize;
 		len -= chunkSize;
@@ -165,7 +187,7 @@ cleanup:
 	return returnCode;
 }
 
-static FLStatus fileWrite(struct FLContext *handle, ProgOp progOp, const char *fileName, const char **error) {
+static FLStatus fileWrite(struct FLContext *handle, ProgOp progOp, const char *fileName, const uint8 lookupTable[256], const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
 	uint8 *fileData = NULL;
@@ -176,7 +198,7 @@ static FLStatus fileWrite(struct FLContext *handle, ProgOp progOp, const char *f
 		FAIL(FL_JTAG_ERR);
 	}
 	printf("Loaded %d bytes\n", fileLen);
-	fStatus = dataWrite(handle, progOp, fileData, fileLen, error);
+	fStatus = dataWrite(handle, progOp, fileData, fileLen, lookupTable, error);
 	CHECK_STATUS(fStatus, "fileWrite()", fStatus);
 cleanup:
 	if ( fileData ) {
@@ -185,7 +207,7 @@ cleanup:
 	return returnCode;
 }
 
-static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
+static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *portConfig, const char *progFile, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
 	uint8 progPort, progBit;
@@ -199,54 +221,65 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 	const char *ptr = portConfig + 2;
 	PinState pinMap[5*8] = {0,};
 	const uint8 zeroBlock[64] = {0,};
+	uint8 lookupTable[256];
 	int i;
 	char ch;
-	EXPECT_CHAR(':', "xpProgram");
-	GET_PAIR(progPort, progBit, "xpProgram");
+	if ( progOp != PROG_PARALLEL && progOp != PROG_SERIAL ) {
+		errRender(error, "xProgram(): unsupported ProgOp");
+		FAIL(FL_INTERNAL_ERR);
+	}
+	EXPECT_CHAR(':', "xProgram");
+	GET_PAIR(progPort, progBit, "xProgram");
 	progMask = 1 << progBit;
-	SET_BIT(progPort, progBit, LOW, "xpProgram");
-	GET_PAIR(initPort, initBit, "xpProgram");
+	SET_BIT(progPort, progBit, LOW, "xProgram");
+	GET_PAIR(initPort, initBit, "xProgram");
 	initMask = 1 << initBit;
-	SET_BIT(initPort, initBit, INPUT, "xpProgram");
-	GET_PAIR(donePort, doneBit, "xpProgram");
+	SET_BIT(initPort, initBit, INPUT, "xProgram");
+	GET_PAIR(donePort, doneBit, "xProgram");
 	doneMask = 1 << doneBit;
-	SET_BIT(donePort, doneBit, INPUT, "xpProgram");
-	GET_PAIR(cclkPort, cclkBit, "xpProgram");
-	SET_BIT(cclkPort, cclkBit, LOW, "xpProgram");
+	SET_BIT(donePort, doneBit, INPUT, "xProgram");
+	GET_PAIR(cclkPort, cclkBit, "xProgram");
+	SET_BIT(cclkPort, cclkBit, LOW, "xProgram");
 	if ( progPort != initPort || progPort != donePort ) {
-		errRender(error, "xpProgram(): For now, PROG, INIT & DONE must be on the same port");
+		errRender(error, "xProgram(): For now, PROG, INIT & DONE must be on the same port");
 		FAIL(FL_CONF_FORMAT);
 	}
-	GET_PORT(dataPort, "xpProgram");
-	for ( i = 0; i < 8; i++ ) {
-		GET_BIT(dataBit[i], "xpProgram");
-		if ( dataBit[i] != i ) {
-			errRender(error, "xpProgram(): For now, the SelectMAP data bus is hard-wired to '01234567'");
-			FAIL(FL_CONF_FORMAT);
+	GET_PORT(dataPort, "xProgram");
+
+	if ( progOp == PROG_PARALLEL ) {
+		for ( i = 0; i < 8; i++ ) {
+			GET_BIT(dataBit[i], "xProgram");
+			SET_BIT(dataPort, dataBit[i], LOW, "xProgram");
 		}
-		SET_BIT(dataPort, dataBit[i], LOW, "xpProgram");
+		makeLookup(dataBit, lookupTable);
+	} else if ( progOp == PROG_SERIAL ) {
+		const uint8 bitOrder[8] = {7,6,5,4,3,2,1,0};
+		makeLookup(bitOrder, lookupTable);
+		GET_BIT(dataBit[0], "xProgram");
+		SET_BIT(dataPort, dataBit[0], LOW, "xProgram");
 	}
-	EXPECT_CHAR(':', "xpProgram");
-	GET_CHAR("xpProgram");
+
+	EXPECT_CHAR(':', "xProgram");
+	GET_CHAR("xProgram");
 	if ( ch == '[' ) {
 		ptr++;
 		fStatus = populateMap(portConfig, ptr, &ptr, pinMap, error);
-		CHECK_STATUS(fStatus, "xpProgram()", fStatus);
-		EXPECT_CHAR(']', "xpProgram");
+		CHECK_STATUS(fStatus, "xProgram()", fStatus);
+		EXPECT_CHAR(']', "xProgram");
 	}
 	ch = *ptr;
 	if ( ch == ':' ) {
 		ptr++;
 		if ( progFile ) {
-			errRender(error, "xpProgram(): Config includes a filename, but a filename is already provided");
+			errRender(error, "xProgram(): Config includes a filename, but a filename is already provided");
 			FAIL(FL_CONF_FORMAT);
 		}
 		progFile = ptr;
 	} else if ( ch != '\0' ) {
-		errRender(error, "xpProgram(): Expecting ':' or end-of-string, not '%c' at char %d", ch, ptr-portConfig);
+		errRender(error, "xProgram(): Expecting ':' or end-of-string, not '%c' at char %d", ch, ptr-portConfig);
 		FAIL(FL_CONF_FORMAT);
 	} else if ( !progFile ) {
-		errRender(error, "xpProgram(): No filename given");
+		errRender(error, "xProgram(): No filename given");
 		FAIL(FL_CONF_FORMAT);
 	}
 
@@ -256,7 +289,7 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 	//} else if ( !strcmp(ptr, ".bit") ) {
 	//	printf("BITFILE\n");
 	//} else {
-	//	errRender(error, "xpProgram(): Unrecognised file type");
+	//	errRender(error, "xProgram(): Unrecognised file type");
 	//	FAIL(FL_CONF_FORMAT);
 	//}
 
@@ -270,9 +303,14 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 
 	// Map the CCLK bit & the SelectMAP data bus
 	fStatus = portMap(handle, 3, cclkPort, cclkBit, error);
-	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
-	fStatus = portMap(handle, 4, dataPort, 0x00, error);
-	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+	CHECK_STATUS(fStatus, "xProgram()", fStatus);
+	if ( progOp == PROG_PARALLEL ) {
+		fStatus = portMap(handle, 4, dataPort, 0x00, error);
+		CHECK_STATUS(fStatus, "xProgram()", fStatus);
+	} else if ( progOp == PROG_SERIAL ) {
+		fStatus = portMap(handle, 1, dataPort, dataBit[0], error);
+		CHECK_STATUS(fStatus, "xProgram()", fStatus);
+	}
 
 	// Assert PROG & wait for INIT & DONE to go low
 	do {
@@ -284,13 +322,13 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 			&tempByte,
 			error
 		);
-		CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	} while ( tempByte & (initMask | doneMask) );
 
 	printf("Asserted PROG, saw INIT & DONE low: FPGA is in INIT mode\n");
 
 	fStatus = flFifoMode(handle, false, error);
-	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+	CHECK_STATUS(fStatus, "xProgram()", fStatus);
 
 	printf("Disabled FIFO mode\n");
 
@@ -310,7 +348,7 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 				NULL,
 				error
 			);
-			CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+			CHECK_STATUS(fStatus, "xProgram()", fStatus);
 		}
 	}
 
@@ -325,13 +363,13 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 			&tempByte,
 			error
 		);
-		CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	} while ( !(tempByte & initMask) );
 
 	printf("Deasserted PROG, saw INIT go high: FPGA is ready for data\n");
 
-	fStatus = fileWrite(handle, PROG_PARALLEL, progFile, error);
-	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+	fStatus = fileWrite(handle, progOp, progFile, lookupTable, error);
+	CHECK_STATUS(fStatus, "xProgram()", fStatus);
 
 	printf("Finished sending data\n");
 
@@ -344,7 +382,7 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 			&tempByte,
 			error
 		);
-		CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 		if ( tempByte & doneMask ) {
 			// If DONE goes high, we've finished.
 			break;
@@ -352,14 +390,14 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 			// If DONE remains low and INIT remains high, we probably just need more clocks
 			i++;
 			if ( i == 10 ) {
-				errRender(error, "xpProgram(): DONE did not assert");
+				errRender(error, "xProgram(): DONE did not assert");
 				FAIL(FL_JTAG_ERR);
 			}
-			fStatus = dataWrite(handle, PROG_PARALLEL, zeroBlock, 64, error);
-			CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+			fStatus = dataWrite(handle, progOp, zeroBlock, 64, lookupTable, error);
+			CHECK_STATUS(fStatus, "xProgram()", fStatus);
 		} else {
 			// If DONE remains low and INIT goes low, an error occurred
-			errRender(error, "xpProgram(): INIT unexpectedly low (CRC error during config)");
+			errRender(error, "xProgram(): INIT unexpectedly low (CRC error during config)");
 			FAIL(FL_JTAG_ERR);
 		}
 	}
@@ -377,13 +415,13 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 				NULL,
 				error
 			);
-			CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+			CHECK_STATUS(fStatus, "xProgram()", fStatus);
 		}
 	}
 	printf("De-configured ports\n");
 
 	fStatus = flFifoMode(handle, true, error);
-	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+	CHECK_STATUS(fStatus, "xProgram()", fStatus);
 
 	printf("Enabled FIFO mode again\n");
 
@@ -391,13 +429,9 @@ cleanup:
 	return returnCode;
 }
 
-static FLStatus xsProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
-	return FL_SUCCESS;
-}
-
-static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
-	return FL_SUCCESS;
-}
+//static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
+//	return FL_SUCCESS;
+//}
 
 DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
@@ -407,10 +441,10 @@ DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, 
 		const char algoType = portConfig[1];
 		if ( algoType == 'P' ) {
 			// This is Xilinx Slave Parallel ("SelectMAP")
-			return xpProgram(handle, portConfig, progFile, error);
+			return xProgram(handle, PROG_PARALLEL, portConfig, progFile, error);
 		} else if ( algoType == 'S' ) {
 			// This is Xilinx Slave Serial
-			return xsProgram(handle, portConfig, progFile, error);
+			return xProgram(handle, PROG_SERIAL, portConfig, progFile, error);
 		} else if ( algoType == '\0' ) {
 			errRender(error, "flProgram(): Missing Xilinx algorithm code");
 			FAIL(FL_CONF_FORMAT);
@@ -419,9 +453,9 @@ DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, 
 			errRender(error, "flProgram(): '%c' is not a valid Xilinx algorithm code", algoType);
 			FAIL(FL_CONF_FORMAT);
 		}
-	} else if ( algoVendor == 'J' ) {
-		// This is a JTAG algorithm
-		return jProgram(handle, portConfig + 2, progFile, error);
+	//} else if ( algoVendor == 'J' ) {
+	//	// This is a JTAG algorithm
+	//	return jProgram(handle, portConfig + 2, progFile, error);
 	} else if ( algoVendor == '\0' ) {
 		errRender(error, "flProgram(): Missing algorithm vendor code");
 		FAIL(FL_CONF_FORMAT);

@@ -47,17 +47,9 @@ static NeroStatus setJtagMode(
 	struct FLContext *handle, bool enable, const char **error
 ) WARN_UNUSED_RESULT;
 
-//#define ORIG_PORTMAP
-
-#ifdef ORIG_PORTMAP
-static NeroStatus portMap(
-	struct FLContext *handle, const uint8 *binConfig, const char **error
-) WARN_UNUSED_RESULT;
-#else
 static NeroStatus portMap(
 	struct FLContext *handle, uint8 patchClass, uint8 port, uint8 bit, const char **error
 ) WARN_UNUSED_RESULT;
-#endif
 
 // -------------------------------------------------------------------------------------------------
 // Public functions
@@ -82,7 +74,6 @@ NeroStatus neroInitialise(
 		uint8 tckPort;
 		uint8 tckBit;
 		uint8 thisBit;
-		uint8 binConfig[8];
 		handle->usesCustomPorts = true;
 		if (
 			strlen(portConfig) != 8 ||
@@ -98,18 +89,14 @@ NeroStatus neroInitialise(
 			errRender(error, "neroInitialise(): JTAG config should be of the form <tdoPort><tdoBit><tdiPort><tdiBit><tmsPort><tmsBit><tckPort><tckBit>, e.g A7A0A3A1");
 			FAIL(NERO_PORTMAP);
 		}
-		binConfig[0] = tdoPort = portConfig[0] - 'A';
-		binConfig[1] = tdoBit  = portConfig[1] - '0';
-		binConfig[2] = tdiPort = portConfig[2] - 'A';
-		binConfig[3] = tdiBit  = portConfig[3] - '0';
-		binConfig[4] = tmsPort = portConfig[4] - 'A';
-		binConfig[5] = tmsBit  = portConfig[5] - '0';
-		binConfig[6] = tckPort = portConfig[6] - 'A';
-		binConfig[7] = tckBit  = portConfig[7] - '0';
-#ifdef ORIG_PORTMAP
-		nStatus = portMap(handle, binConfig, error);
-		CHECK_STATUS(nStatus, "neroInitialise()", nStatus);
-#else
+		tdoPort = portConfig[0] - 'A';
+		tdoBit  = portConfig[1] - '0';
+		tdiPort = portConfig[2] - 'A';
+		tdiBit  = portConfig[3] - '0';
+		tmsPort = portConfig[4] - 'A';
+		tmsBit  = portConfig[5] - '0';
+		tckPort = portConfig[6] - 'A';
+		tckBit  = portConfig[7] - '0';
 		nStatus = portMap(handle, 0, tdoPort, tdoBit, error);
 		CHECK_STATUS(nStatus, "neroInitialise()", nStatus);
 		nStatus = portMap(handle, 1, tdiPort, tdiBit, error);
@@ -118,7 +105,6 @@ NeroStatus neroInitialise(
 		CHECK_STATUS(nStatus, "neroInitialise()", nStatus);
 		nStatus = portMap(handle, 3, tckPort, tckBit, error);
 		CHECK_STATUS(nStatus, "neroInitialise()", nStatus);
-#endif
 		for ( i = 0; i < 4; i++ ) {
 			handle->masks[i] = 0x00;
 			handle->ports[i] = 0x00;
@@ -317,26 +303,6 @@ cleanup:
 // -------------------------------------------------------------------------------------------------
 // Implementation of private functions
 // -------------------------------------------------------------------------------------------------
-#ifdef ORIG_PORTMAP
-static NeroStatus portMap(
-	struct FLContext *handle, const uint8 *binConfig, const char **error)
-{
-	NeroStatus returnCode = NERO_SUCCESS;
-	int uStatus = usbControlWrite(
-		handle->device,
-		CMD_PORT_MAP,      // bRequest
-		0x0000,            // wValue
-		0x0000,            // wIndex
-		binConfig,         // no data
-		8,                 // wLength
-		1000,              // timeout (ms)
-		error
-	);
-	CHECK_STATUS(uStatus, "portMap()", NERO_PORTMAP);
-cleanup:
-	return returnCode;
-}
-#else
 static NeroStatus portMap(
 	struct FLContext *handle, uint8 patchClass, uint8 port, uint8 bit, const char **error)
 {
@@ -363,7 +329,6 @@ static NeroStatus portMap(
 cleanup:
 	return returnCode;
 }
-#endif
 
 // Kick off a shift operation on the micro. This will be followed by a bunch of sends and receives.
 //
