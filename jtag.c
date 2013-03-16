@@ -197,9 +197,10 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 	uint8 mask, ddr, port;
 	uint8 progMask, initMask, doneMask, tempByte;
 	const char *ptr = portConfig + 2;
-	char ch;
 	PinState pinMap[5*8] = {0,};
+	const uint8 zeroBlock[64] = {0,};
 	int i;
+	char ch;
 	EXPECT_CHAR(':', "xpProgram");
 	GET_PAIR(progPort, progBit, "xpProgram");
 	progMask = 1 << progBit;
@@ -334,19 +335,33 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 
 	printf("Finished sending data\n");
 
-	fStatus = flPortAccess(
-		handle, progPort,  // check INIT & DONE
-		0x00,                   // mask: affect nothing
-		0x00,                   // ddr: ignored
-		0x00,                   // port: ignored
-		&tempByte,
-		error
-	);
-	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
-	printf("init: %02X; done: %02X\n", tempByte&initMask, tempByte&doneMask);
-	if ( !(tempByte & doneMask) && !(tempByte & initMask) ) {
-		errRender(error, "xpProgram(): INIT unexpectedly low (CRC error during config)");
-		FAIL(FL_JTAG_ERR);
+	for ( i = 0;; ) {
+		fStatus = flPortAccess(
+			handle, progPort,  // check INIT & DONE
+			0x00,                   // mask: affect nothing
+			0x00,                   // ddr: ignored
+			0x00,                   // port: ignored
+			&tempByte,
+			error
+		);
+		CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+		if ( tempByte & doneMask ) {
+			// If DONE goes high, we've finished.
+			break;
+		} else if ( tempByte & initMask ) {
+			// If DONE remains low and INIT remains high, we probably just need more clocks
+			i++;
+			if ( i == 10 ) {
+				errRender(error, "xpProgram(): DONE did not assert");
+				FAIL(FL_JTAG_ERR);
+			}
+			fStatus = dataWrite(handle, PROG_PARALLEL, zeroBlock, 64, error);
+			CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+		} else {
+			// If DONE remains low and INIT goes low, an error occurred
+			errRender(error, "xpProgram(): INIT unexpectedly low (CRC error during config)");
+			FAIL(FL_JTAG_ERR);
+		}
 	}
 
 	printf("Saw DONE go high\n");
