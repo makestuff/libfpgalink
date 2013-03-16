@@ -29,14 +29,24 @@ extern "C" {
 	// Struct used to maintain context for most of the FPGALink operations
 	struct USBDevice;
 	struct FLContext {
+		// USB connection
 		struct USBDevice *device;
-		struct Buffer writeBuffer;
-		bool isNeroCapable;
+
+		// CommFPGA stuff
 		bool isCommCapable;
-		uint8 jtagOutEP;
-		uint8 jtagInEP;
 		uint8 commOutEP;
 		uint8 commInEP;
+		struct Buffer writeBuffer;
+
+		// JTAG stuff
+		bool isNeroCapable;
+		uint8 jtagOutEP;
+		uint8 jtagInEP;
+		uint16 endpointSize;
+		uint8 masks[4];
+		uint8 ports[4];
+		bool usesCustomPorts;
+
 	};
 
 	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will
@@ -134,7 +144,6 @@ extern "C" {
 
 	FLStatus copyFirmwareAndRewriteIDs(
 		const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid, uint16 did,
-		uint8 port, uint8 tdoBit, uint8 tdiBit, uint8 tmsBit, uint8 tckBit,
 		struct Buffer *dest, const char **error
 	) WARN_UNUSED_RESULT;
 

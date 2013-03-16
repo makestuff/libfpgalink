@@ -61,6 +61,8 @@ extern "C" {
 		FL_UNSUPPORTED_DATA_ERR, ///< The XSVF file contains an unsupported XENDIR or XENDDR.
 		FL_UNSUPPORTED_SIZE_ERR, ///< The XSVF file requires more buffer space than is available.
 		FL_SVF_PARSE_ERR,        ///< The SVF file was not parseable.
+		FL_CONF_FORMAT,          ///< The supplied programing config was not parseable.
+		FL_PORTMAP,              ///< There was a problem remapping ports for programming.
 		FL_INTERNAL_ERR          ///< An internal error occurred. Please report it!
 	} FLStatus;
 	//@}
@@ -185,7 +187,7 @@ extern "C" {
 	 *
 	 * \b NeroJTAG is a simple JTAG-over-USB protocol, currently implemented for Atmel AVR and
 	 * Cypress FX2. It uses bulk endpoints 2 and 4. An affirmative response means you can call
-	 * \c flPlayXSVF() and \c flScanChain().
+	 * \c flPlaySVF() and \c flScanChain().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
 	 *
@@ -385,7 +387,7 @@ extern "C" {
 	 * All are simply played into the JTAG chain, so it's your responsibility to ensure that the
 	 * file is created for the appropriate chain configuration. Typically, this is used for
 	 * programming devices, but it doesn't have to be - the file can be arbitrary JTAG operations.
-	 * Before calling \c flPlayXSVF(), you should verify that the \b FPGALink device actually
+	 * Before calling \c flPlaySVF(), you should verify that the \b FPGALink device actually
 	 * supports \b NeroJTAG using \c flIsNeroCapable().
 	 *
 	 * @param handle The handle returned by \c flOpen().
@@ -402,8 +404,8 @@ extern "C" {
 	 *     - \c FL_JTAG_ERR if an error occurred during the JTAG operation.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
-	DLLEXPORT(FLStatus) flPlayXSVF(
-		struct FLContext *handle, const char *xsvfFile, const char **error
+	DLLEXPORT(FLStatus) flPlaySVF(
+		struct FLContext *handle, const char *svfFile, const char *jtagPort, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -413,6 +415,7 @@ extern "C" {
 	 * \c deviceArray is not \c NULL, populate it with at most \c arraySize IDCODEs, in chain order.
 	 *
 	 * @param handle The handle returned by \c flOpen().
+	 * @param portConfig The port bits to use for TDO, TDI, TMS & TCK, or NULL to use the default.
 	 * @param numDevices A pointer to a \c uint32 which will be set on exit to the number of devices
 	 *            in the JTAG chain.
 	 * @param deviceArray A pointer to an array of \c uint32, which will be populated on exit with a
@@ -430,7 +433,8 @@ extern "C" {
 	 *     - \c FL_JTAG_ERR if an error occurred during the JTAG operation.
 	 */
 	DLLEXPORT(FLStatus) flScanChain(
-		struct FLContext *handle, uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
+		struct FLContext *handle, const char *portConfig,
+		uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
 		const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
@@ -472,7 +476,7 @@ extern "C" {
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flLoadStandardFirmware(
-		const char *curVidPid, const char *newVidPid, const char *jtagPort, const char **error
+		const char *curVidPid, const char *newVidPid, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -511,8 +515,7 @@ extern "C" {
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flFlashStandardFirmware(
-		struct FLContext *handle, const char *newVidPid, const char *jtagPort,
-		uint32 eepromSize, const char *xsvfFile, const char **error
+		struct FLContext *handle, const char *newVidPid, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -664,6 +667,19 @@ extern "C" {
 	 */
 	DLLEXPORT(FLStatus) flPortAccess(
 		struct FLContext *handle, uint8 portSelect, uint8 mask, uint8 ddrWrite, uint8 portWrite, uint8 *portRead, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flResetToggle(
+		struct FLContext *handle, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flFifoMode(
+		struct FLContext *handle, bool fifoMode, const char **error
+	) WARN_UNUSED_RESULT;
+
+
+	DLLEXPORT(FLStatus) flProgram(
+		struct FLContext *handle, const char *portConfig, const char *progFile, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
 

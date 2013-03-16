@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <makestuff.h>
 #include <liberror.h>
-#include <libnero.h>
+#include "nero.h"
 #include "vendorCommands.h"
 #include "xsvf.h"
 #include "csvfplay.h"
@@ -43,7 +43,7 @@ static bool tdoMatchFailed(
 
 // Play the uncompressed CSVF stream into the JTAG port.
 //
-int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, const char **error) {
+int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed, const char **error) {
 	int returnCode;
 	NeroStatus nStatus;
 	uint8 thisByte, numBits;
@@ -64,7 +64,7 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 	uint8 *tdiAll;
 	struct Context cp;
 
-	nStatus = neroClockFSM(nero, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
+	nStatus = neroClockFSM(handle, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
 	CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 
 	if ( csvfInitReader(&cp, csvfData, isCompressed) ) {
@@ -102,7 +102,7 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			break;
 
 		case XSIR:
-			nStatus = neroClockFSM(nero, 0x00000003, 4, error);  // -> Shift-IR
+			nStatus = neroClockFSM(handle, 0x00000003, 4, error);  // -> Shift-IR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBits = csvfGetByte(&cp);
 			#ifdef DEBUG
@@ -120,12 +120,12 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			#ifdef DEBUG
 				printf(")\n");
 			#endif
-			nStatus = neroShift(nero, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
+			nStatus = neroShift(handle, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
+			nStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			if ( xruntest ) {
-				nStatus = neroClocks(nero, xruntest, error);
+				nStatus = neroClocks(handle, xruntest, error);
 				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			}
 			break;
@@ -148,14 +148,14 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			numBytes = bitsToBytes(xsdrSize);
 			i = 0;
 			do {
-				nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
+				nStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
 				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-				nStatus = neroShift(nero, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
+				nStatus = neroShift(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
 				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-				nStatus = neroClockFSM(nero, 0x0000001A, 6, error);  // -> Run-Test/Idle
+				nStatus = neroClockFSM(handle, 0x0000001A, 6, error);  // -> Run-Test/Idle
 				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 				if ( xruntest ) {
-					nStatus = neroClocks(nero, xruntest, error);
+					nStatus = neroClocks(handle, xruntest, error);
 					CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 				}
 				i++;
@@ -184,7 +184,7 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 				// TODO: Need to print actual TDO data too
 				printf("XSDR(%08X)\n", xsdrSize);
 			#endif
-			nStatus = neroClockFSM(nero, 0x00000001, 3, error);  // -> Shift-DR
+			nStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			tdiAll = malloc(numBytes);
@@ -192,13 +192,13 @@ int csvfPlay(const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, 
 			while ( numBytes-- ) {
 				*tdiPtr++ = csvfGetByte(&cp);
 			}
-			nStatus = neroShift(nero, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
+			nStatus = neroShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
 			free(tdiAll);
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			nStatus = neroClockFSM(nero, 0x00000001, 2, error);  // -> Run-Test/Idle
+			nStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			if ( xruntest ) {
-				nStatus = neroClocks(nero, xruntest, error);
+				nStatus = neroClocks(handle, xruntest, error);
 				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
 			}
 			break;

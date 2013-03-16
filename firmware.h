@@ -27,30 +27,11 @@ extern "C" {
 		const uint8 *const data;
 		const uint16 length;
 		const uint16 vp;
-		const uint16 d0E;  // 0x08 when on A, 0x0C when on C, 0x0E when on D
-		const uint16 d0F;  // 0x09 when on A, 0x0D when on C, 0x0F when on D
-		const uint16 outBits;
-		const uint16 outBitsComp;
-		const uint16 *oeRegs;
-		const uint16 *allBits;
-		const uint16 *allBitsComp;
-		const uint16 *tdoBit;
-		const uint16 *tdiBit;
-		const uint16 *tmsBit;
-		const uint16 *tckBit;
 	};
 	
 	extern const struct FirmwareInfo ramFirmware;
 	extern const struct FirmwareInfo eepromNoBootFirmware;
-	extern const struct FirmwareInfo eepromWithBootFirmware;
 	
-	#define NUM_OE_BITS  2
-	#define NUM_ALL_BITS 6
-	#define NUM_TDO_BIT  11
-	#define NUM_TDI_BIT  30
-	#define NUM_TMS_BIT  7
-	#define NUM_TCK_BIT  66
-
 #ifdef __cplusplus
 }
 #endif

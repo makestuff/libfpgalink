@@ -25,18 +25,13 @@
 #include "private.h"
 #include "firmware.h"
 
-static FLStatus convertJtagFileToCsvf(
-	struct Buffer *dest, const char *xsvfFile, const char **error
-) WARN_UNUSED_RESULT;
-
-// On port A, only bits 0, 1, 3 & 7 are available. The other bits are used by the slave FIFOs.
-static bool isInvalidPortABit(uint8 bit) {
-	return (bit == 2 || bit == 4 || bit == 5 || bit == 6);
-}
+//static FLStatus convertJtagFileToCsvf(
+//	struct Buffer *dest, const char *xsvfFile, const char **error
+//) WARN_UNUSED_RESULT;
 
 // Load the standard FPGALink firmware into the FX2 at currentVid/currentPid.
 DLLEXPORT(FLStatus) flLoadStandardFirmware(
-	const char *curVidPid, const char *newVidPid, const char *jtagPort, const char **error)
+	const char *curVidPid, const char *newVidPid, const char **error)
 {
 	FLStatus flStatus, returnCode;
 	struct Buffer ramBuf = {0,};
@@ -45,7 +40,6 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	struct USBDevice *device = NULL;
 	int uStatus;
 	uint16 newVid, newPid, newDid;
-	uint8 port, tdoBit, tdiBit, tmsBit, tckBit;
 	if ( !usbValidateVidPid(newVidPid) ) {
 		errRender(error, "flLoadStandardFirmware(): The supplied VID:PID:DID \"%s\" is invalid; it should look like 1D50:602B or 1D50:602B:0001", newVidPid);
 		FAIL(FL_USB_ERR);
@@ -53,43 +47,12 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	newVid = (uint16)strtoul(newVidPid, NULL, 16);
 	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
 	newDid = (strlen(newVidPid) == 14) ? (uint16)strtoul(newVidPid+10, NULL, 16) : 0x0000;
-	if ( strlen(jtagPort) != 5 ) {
-		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
-		FAIL(FL_FX2_ERR);
-	}
-	if ( (jtagPort[0] & 0xDF) == 'A' ) {
-		port = 0;
-	} else if ( (jtagPort[0] & 0xDF) == 'C' ) {
-		port = 2;
-	} else if ( (jtagPort[0] & 0xDF) == 'D' ) {
-		port = 3;
-	} else {
-		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
-		FAIL(FL_FX2_ERR);
-	}
-	if  (jtagPort[1] < '0' || jtagPort[1] > '7' || jtagPort[2] < '0' || jtagPort[2] > '7' || jtagPort[3] < '0' || jtagPort[3] > '7' || jtagPort[4] < '0' || jtagPort[4] > '7' ) {
-		errRender(error, "flLoadStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
-		FAIL(FL_FX2_ERR);
-	}
-	tdoBit = jtagPort[1] - '0';
-	tdiBit = jtagPort[2] - '0';
-	tmsBit = jtagPort[3] - '0';
-	tckBit = jtagPort[4] - '0';
-	if (
-		port == 0 &&
-		(isInvalidPortABit(tdoBit) || isInvalidPortABit(tdiBit) ||
-		 isInvalidPortABit(tmsBit) || isInvalidPortABit(tckBit))
-	) {
-		errRender(error, "flFlashStandardFirmware(): Only bits 0, 1, 3 & 7 are available for JTAG use on port A");
-		FAIL(FL_FX2_ERR);
-	}		
 	uStatus = usbOpenDevice(curVidPid, 1, 0, 0, &device, error);
 	CHECK_STATUS(uStatus, "flLoadStandardFirmware()", FL_USB_ERR);
 	bStatus = bufInitialise(&ramBuf, 0x4000, 0x00, error);
 	CHECK_STATUS(bStatus, "flLoadStandardFirmware()", FL_ALLOC_ERR);
 	flStatus = copyFirmwareAndRewriteIDs(
 		&ramFirmware, newVid, newPid, newDid,
-		port, tdoBit, tdiBit, tmsBit, tckBit,
 		&ramBuf, error);
 	CHECK_STATUS(flStatus, "flLoadStandardFirmware()", flStatus);
 	fxStatus = fx2WriteRAM(device, ramBuf.data, ramBuf.length, error);
@@ -104,118 +67,26 @@ cleanup:
 }
 
 DLLEXPORT(FLStatus) flFlashStandardFirmware(
-	struct FLContext *handle, const char *newVidPid, const char *jtagPort,
-	 uint32 eepromSize, const char *xsvfFile, const char **error)
+	struct FLContext *handle, const char *newVidPid, const char **error)
 {
 	FLStatus flStatus, returnCode;
 	struct Buffer i2cBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
-	uint32 fwSize, xsvfSize, initSize;
 	uint16 newVid, newPid, newDid;
-	uint8 port, tdoBit, tdiBit, tmsBit, tckBit;
 	if ( !usbValidateVidPid(newVidPid) ) {
-		errRender(error, "flFlashStandardFirmware(): The supplied new VID:PID \"%s\" is invalid; it should look like 04B4:8613", newVidPid);
+		errRender(error, "flFlashStandardFirmware(): The supplied new VID:PID \"%s\" is invalid; it should look like 1D50:602B or 1D50:602B:0001", newVidPid);
 		FAIL(FL_USB_ERR);
 	}
 	newVid = (uint16)strtoul(newVidPid, NULL, 16);
 	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
 	newDid = (strlen(newVidPid) == 14) ? (uint16)strtoul(newVidPid+10, NULL, 16) : 0x0000;
-	if ( strlen(jtagPort) != 5 ) {
-		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <C|D><tdoBit><tdiBit><tmsBit><tckBit>");
-		FAIL(FL_FX2_ERR);
-	}
-	if ( (jtagPort[0] & 0xDF) == 'A' ) {
-		port = 0;
-	} else if ( (jtagPort[0] & 0xDF) == 'C' ) {
-		port = 2;
-	} else if ( (jtagPort[0] & 0xDF) == 'D' ) {
-		port = 3;
-	} else {
-		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
-		FAIL(FL_FX2_ERR);
-	}
-	if  (jtagPort[1] < '0' || jtagPort[1] > '7' || jtagPort[2] < '0' || jtagPort[2] > '7' || jtagPort[3] < '0' || jtagPort[3] > '7' || jtagPort[4] < '0' || jtagPort[4] > '7' ) {
-		errRender(error, "flFlashStandardFirmware(): JTAG port specification must be <A|C|D><tdoBit><tdiBit><tmsBit><tckBit>");
-		FAIL(FL_FX2_ERR);
-	}
-	tdoBit = jtagPort[1] - '0';
-	tdiBit = jtagPort[2] - '0';
-	tmsBit = jtagPort[3] - '0';
-	tckBit = jtagPort[4] - '0';
-	if (
-		port == 0 &&
-		(isInvalidPortABit(tdoBit) || isInvalidPortABit(tdiBit) ||
-		 isInvalidPortABit(tmsBit) || isInvalidPortABit(tckBit))
-	) {
-		errRender(error, "flFlashStandardFirmware(): Only bits 0, 1, 3 & 7 are available for JTAG use on port A");
-		FAIL(FL_FX2_ERR);
-	}		
-		
 	bStatus = bufInitialise(&i2cBuf, 0x4000, 0x00, error);
 	CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-	if ( xsvfFile ) {
-		flStatus = copyFirmwareAndRewriteIDs(
-			&eepromWithBootFirmware, newVid, newPid, newDid,
-			port, tdoBit, tdiBit, tmsBit, tckBit,
-			&i2cBuf, error);
-		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
-		fwSize = i2cBuf.length;
-		flStatus = convertJtagFileToCsvf(&i2cBuf, xsvfFile, error);
-		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
-		xsvfSize = i2cBuf.length - fwSize;
-		if ( handle->writeBuffer.length ) {
-			// Write a big-endian uint24 length for the init data, then the data itself
-			const uint32 length = handle->writeBuffer.length;
-			if ( length > 0x20000 ) {
-				errRender(
-					error,
-					"flFlashStandardFirmware(): Cannot cope with %lu bytes of init data",
-					length);
-				FAIL(FL_FX2_ERR);
-			}
-			bStatus = bufAppendByte(&i2cBuf, (uint8)((length>>16) & 0xFF), error);
-			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			bStatus = bufAppendByte(&i2cBuf, (uint8)((length>>8) & 0xFF), error);
-			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			bStatus = bufAppendByte(&i2cBuf, (uint8)(length & 0xFF), error);
-			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			bStatus = bufAppendBlock(
-				&i2cBuf, handle->writeBuffer.data, length, error);
-			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			initSize = length + 3;
-		} else {
-			// Write a zero uint24 length so the firmware knows there's no init data to follow
-			bStatus = bufAppendByte(&i2cBuf, 0x00, error);
-			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			bStatus = bufAppendByte(&i2cBuf, 0x00, error);
-			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			bStatus = bufAppendByte(&i2cBuf, 0x00, error);
-			CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-			initSize = 3;
-		}
-	} else {
-		flStatus = copyFirmwareAndRewriteIDs(
-			&eepromNoBootFirmware, newVid, newPid, newDid,
-			port, tdoBit, tdiBit, tmsBit, tckBit,
-			&i2cBuf, error);
-		CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
-		fwSize = i2cBuf.length;
-		xsvfSize = 0;
-		initSize = 0;
-	}
-	if ( i2cBuf.length > (eepromSize<<7) ) {
-		errRender(
-			error,
-			"flFlashStandardFirmware(): Cannot load %lu bytes (%lu + %lu + %lu) into an %lukbit EEPROM!",
-			i2cBuf.length, fwSize, xsvfSize, initSize, eepromSize);
-		FAIL(FL_FX2_ERR);
-	}
-
-	//bStatus = bufWriteBinaryFile(&i2cBuf, "out.bin", 0UL, i2cBuf.length, error);
-	//CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
-	
-	printf("Writing %d bytes to EEPROM...\n", i2cBuf.length);
+	flStatus = copyFirmwareAndRewriteIDs(
+		&eepromNoBootFirmware, newVid, newPid, newDid,
+		&i2cBuf, error);
+	CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
 
 	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, i2cBuf.length, error);
 	CHECK_STATUS(fxStatus, "flFlashStandardFirmware()", FL_FX2_ERR);
@@ -337,13 +208,10 @@ cleanup:
 
 FLStatus copyFirmwareAndRewriteIDs(
 	const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid, uint16 did,
-	uint8 port, uint8 tdoBit, uint8 tdiBit, uint8 tmsBit, uint8 tckBit,
 	struct Buffer *dest, const char **error)
 {
 	FLStatus returnCode;  // Can return FL_ALLOC_ERR, FL_FX2_ERR and FL_INTERNAL_ERR
 	BufferStatus bStatus;
-	uint8 reg;
-	int i;
 	bStatus = bufAppendBlock(dest, fwInfo->data, fwInfo->length, error);
 	CHECK_STATUS(bStatus, "copyFirmwareAndRewriteIDs()", FL_ALLOC_ERR);
 
@@ -354,63 +222,12 @@ FLStatus copyFirmwareAndRewriteIDs(
 	dest->data[fwInfo->vp + 4] = (uint8)(did & 0xFF);
 	dest->data[fwInfo->vp + 5] = (uint8)(did >> 8);
 
-	if ( port == 0 ) {
-		// Use port A for JTAG operations
-		dest->data[fwInfo->d0E] = 0x08;
-		dest->data[fwInfo->d0F] = 0x09;
-		reg = 0xB2;
-	} else if ( port == 2 ) {
-		// Use port C for JTAG operations
-		dest->data[fwInfo->d0E] = 0x0C;
-		dest->data[fwInfo->d0F] = 0x0D;
-		reg = 0xB4;
-	} else if ( port == 3 ) {
-		// Use port D for JTAG operations
-		dest->data[fwInfo->d0E] = 0x0E;
-		dest->data[fwInfo->d0F] = 0x0F;
-		reg = 0xB5;
-	} else {
-		errRender(
-			error,
-			"copyFirmwareAndRewriteIDs(): Only port C or D may be used for JTAG operations!");
-		FAIL(FL_FX2_ERR);
-	}
-	dest->data[fwInfo->outBits] = (1<<tdiBit) | (1<<tmsBit) | (1<<tckBit);
-	dest->data[fwInfo->outBitsComp] = (uint8)~((1<<tdiBit) | (1<<tmsBit) | (1<<tckBit));
-	i = NUM_OE_BITS;
-	while ( i-- ) {
-		dest->data[fwInfo->oeRegs[i]] = reg;
-	}
-	i = NUM_ALL_BITS;
-	while ( i-- ) {
-		dest->data[fwInfo->allBits[i]] = (1<<tdoBit) | (1<<tdiBit) | (1<<tmsBit) | (1<<tckBit);;
-	}
-	i = NUM_ALL_BITS;
-	while ( i-- ) {
-		dest->data[fwInfo->allBitsComp[i]] = (uint8)~((1<<tdoBit) | (1<<tdiBit) | (1<<tmsBit) | (1<<tckBit));
-	}
-	i = NUM_TDO_BIT;
-	while ( i-- ) {
-		dest->data[fwInfo->tdoBit[i]] = (0x80 + (port<<4) + tdoBit);
-	}
-	i = NUM_TDI_BIT;
-	while ( i-- ) {
-		dest->data[fwInfo->tdiBit[i]] = (0x80 + (port<<4) + tdiBit);
-	}
-	i = NUM_TMS_BIT;
-	while ( i-- ) {
-		dest->data[fwInfo->tmsBit[i]] = (0x80 + (port<<4) + tmsBit);
-	}
-	i = NUM_TCK_BIT;
-	while ( i-- ) {
-		dest->data[fwInfo->tckBit[i]] = (0x80 + (port<<4) + tckBit);
-	}
 	returnCode = FL_SUCCESS;
 cleanup:
 	return returnCode;
 }
 
-static FLStatus convertJtagFileToCsvf(struct Buffer *dest, const char *xsvfFile, const char **error) {
+/*static FLStatus convertJtagFileToCsvf(struct Buffer *dest, const char *xsvfFile, const char **error) {
 	FLStatus returnCode, fStatus;
 	struct Buffer csvfBuf = {0,};
 	BufferStatus bStatus;
@@ -453,4 +270,4 @@ static FLStatus convertJtagFileToCsvf(struct Buffer *dest, const char *xsvfFile,
 cleanup:
 	bufDestroy(&csvfBuf);
 	return returnCode;
-}
+}*/

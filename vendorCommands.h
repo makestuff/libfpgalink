@@ -27,7 +27,8 @@
 #define CMD_JTAG_CLOCK        0x83
 #define CMD_CALCULATOR        0x84
 #define CMD_PORT_IO           0x85
-#define CMD_SELECTMAP         0x86
+#define CMD_PORT_MAP          0x86
+#define CMD_SELECTMAP         0x87
 #define CMD_READ_WRITE_EEPROM 0xA2
 
 // Bits in the mode word

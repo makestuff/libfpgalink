@@ -88,9 +88,9 @@ fpgalink.flPlayXSVF.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
 fpgalink.flPlayXSVF.restype = FLStatus
 
 # FX2LP Firmware Operations
-fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, c_char_p, POINTER(ErrorString)]
+fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
 fpgalink.flLoadStandardFirmware.restype = FLStatus
-fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, c_char_p, uint32, c_char_p, POINTER(ErrorString)]
+fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
 fpgalink.flFlashStandardFirmware.restype = FLStatus
 fpgalink.flSaveFirmware.argtypes = [FLHandle, uint32, c_char_p, POINTER(ErrorString)]
 fpgalink.flSaveFirmware.restype = FLStatus
@@ -247,9 +247,9 @@ def flPlayXSVF(handle, xsvfFile):
         raise FLException(s)
 
 # Load standard firmware into the FX2LP chip
-def flLoadStandardFirmware(curVidPid, newVidPid, jtagPort):
+def flLoadStandardFirmware(curVidPid, newVidPid):
     error = ErrorString()
-    status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), jtagPort.encode('ascii'), byref(error))
+    status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -285,10 +285,9 @@ def flAppendWriteChannelCommand(handle, chan, values):
         raise FLException(s)
 
 # Flash standard firmware into the FX2LP's EEPROM
-def flFlashStandardFirmware(handle, newVidPid, jtagPort, eepromSize, xsvfFile = None):
+def flFlashStandardFirmware(handle, newVidPid):
     error = ErrorString()
-    xsvfFile = None if ( xsvfFile == None ) else xsvfFile.encode('ascii')
-    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), jtagPort.encode('ascii'), eepromSize, xsvfFile, byref(error))
+    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -313,7 +312,6 @@ if __name__ == "__main__":
     parser.add_argument('-s', action="store_true", default=False, help="scan the JTAG chain")
     parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="renumerated vendor and product ID of the FPGALink device")
     parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="initial vendor and product ID of the (FX2LP-based) FPGALink device")
-    parser.add_argument('-j', action="store", nargs=1, metavar="<jtagPort>", help="JTAG port specification for the (FX2LP-based) FPGALink device")
     parser.add_argument('-x', action="store", nargs=1, metavar="<xsvfFile>", help="SVF, XSVF or CSVF file to play into the JTAG chain")
     parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to channel 0")
     argList = parser.parse_args()
@@ -328,12 +326,9 @@ if __name__ == "__main__":
             handle = flOpen(vp)
         except FLException, ex:
             if ( argList.i ):
-                jtagPort = "D0234"
-                if ( argList.j ):
-                    jtagPort = argList.j[0]
                 ivp = argList.i[0]
                 print "Loading firmware into %s..." % ivp
-                flLoadStandardFirmware(ivp, vp, jtagPort);
+                flLoadStandardFirmware(ivp, vp);
 
                 print "Awaiting renumeration..."
                 if ( not flAwaitDevice(vp, 600) ):

@@ -23,8 +23,8 @@
 extern "C" {
 #endif
 
-	// Forward declaration of NeroHandle struct
-	struct NeroHandle;
+	// Forward declaration of NeroContext struct
+	struct FLContext;
 
 	// csvfPlay() may return any NeroStatus code, plus these
 	#define CPLAY_COMPARE_ERR     100
@@ -33,7 +33,7 @@ extern "C" {
 
 	// Play the uncompressed CSVF stream into the JTAG port.
 	int csvfPlay(
-		const uint8 *csvfData, bool isCompressed, struct NeroHandle *nero, const char **error
+		struct FLContext *handle, const uint8 *csvfData, bool isCompressed, const char **error
 	) WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus

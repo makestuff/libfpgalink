@@ -286,6 +286,44 @@ cleanup:
 	return returnCode;
 }
 
+DLLEXPORT(FLStatus) flResetToggle(
+	struct FLContext *handle, const char **error)
+{
+	FLStatus returnCode = FL_SUCCESS;
+	int uStatus = usbControlWrite(
+		handle->device,
+		0x0B,            // bRequest
+		0x0000,          // wValue
+		0x0000,          // wIndex
+		NULL,            // buffer to receive current state of ports
+		0,               // wLength
+		1000,            // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "flResetToggle()", FL_USB_ERR);
+cleanup:
+	return returnCode;
+}
+
+DLLEXPORT(FLStatus) flFifoMode(
+	struct FLContext *handle, bool fifoMode, const char **error)
+{
+	FLStatus returnCode = FL_SUCCESS;
+	int uStatus = usbControlWrite(
+		handle->device,
+		0x80,            // bRequest
+		fifoMode?0x0002:0x0000,          // wValue
+		0x0002,          // wIndex
+		NULL,            // buffer to receive current state of ports
+		0,               // wLength
+		1000,            // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "flFifoMode()", FL_USB_ERR);
+cleanup:
+	return returnCode;
+}
+
 uint16 flReadWord(const uint8 *p) {
 	uint16 value = *p++;
 	value <<= 8;
