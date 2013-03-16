@@ -23,6 +23,13 @@
 #include "libfpgalink.h"
 #include "private.h"
 #include "csvfplay.h"
+#include "prog.h"
+
+NeroStatus beginShift(
+	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error);
+
+NeroStatus doSend(
+	struct FLContext *handle, const uint8 *sendPtr, uint16 chunkSize, const char **error);
 
 #define GET_CHAR(func) \
 	ch = *ptr; \
@@ -139,6 +146,42 @@ static FLStatus portMap(struct FLContext *handle, uint8 patchClass, uint8 port, 
 	);
 	CHECK_STATUS(uStatus, "portMap()", FL_PORTMAP);
 cleanup:
+	return returnCode;
+}
+
+static FLStatus dataWrite(struct FLContext *handle, ProgOp progOp, const uint8 *buf, uint32 len, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	NeroStatus nStatus = beginShift(handle, len, progOp, 0x00, error);
+	uint16 chunkSize;
+	CHECK_STATUS(nStatus, "dataWrite()", FL_JTAG_ERR);
+	while ( len ) {
+		chunkSize = (len >= 64) ? 64 : (uint16)len;
+		nStatus = doSend(handle, buf, chunkSize, error);
+		CHECK_STATUS(nStatus, "dataWrite()", FL_JTAG_ERR);
+		buf += chunkSize;
+		len -= chunkSize;
+	}
+cleanup:
+	return returnCode;
+}
+
+static FLStatus fileWrite(struct FLContext *handle, ProgOp progOp, const char *fileName, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
+	uint8 *fileData = NULL;
+	uint32 fileLen;
+	fileData = flLoadFile(fileName, &fileLen);
+	if ( !fileData ) {
+		errRender(error, "fileWrite(): Unable to read from %s", fileName);
+		FAIL(FL_JTAG_ERR);
+	}
+	printf("Loaded %d bytes\n", fileLen);
+	fStatus = dataWrite(handle, progOp, fileData, fileLen, error);
+	CHECK_STATUS(fStatus, "fileWrite()", fStatus);
+cleanup:
+	if ( fileData ) {
+		flFreeFile(fileData);
+	}
 	return returnCode;
 }
 
@@ -285,6 +328,49 @@ static FLStatus xpProgram(struct FLContext *handle, const char *portConfig, cons
 	} while ( !(tempByte & initMask) );
 
 	printf("Deasserted PROG, saw INIT go high: FPGA is ready for data\n");
+
+	fStatus = fileWrite(handle, PROG_PARALLEL, progFile, error);
+	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+
+	printf("Finished sending data\n");
+
+	fStatus = flPortAccess(
+		handle, progPort,  // check INIT & DONE
+		0x00,                   // mask: affect nothing
+		0x00,                   // ddr: ignored
+		0x00,                   // port: ignored
+		&tempByte,
+		error
+	);
+	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+	printf("init: %02X; done: %02X\n", tempByte&initMask, tempByte&doneMask);
+	if ( !(tempByte & doneMask) && !(tempByte & initMask) ) {
+		errRender(error, "xpProgram(): INIT unexpectedly low (CRC error during config)");
+		FAIL(FL_JTAG_ERR);
+	}
+
+	printf("Saw DONE go high\n");
+
+	for ( i = 0; i < 5; i++ ) {
+		mask = maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask,
+				(i == progPort) ? progMask : 0x00,
+				0xFF,
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+		}
+	}
+	printf("De-configured ports\n");
+
+	fStatus = flFifoMode(handle, true, error);
+	CHECK_STATUS(fStatus, "xpProgram()", fStatus);
+
+	printf("Enabled FIFO mode again\n");
 
 cleanup:
 	return returnCode;

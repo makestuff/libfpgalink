@@ -27,11 +27,11 @@
 // Declaration of private types & functions
 // -------------------------------------------------------------------------------------------------
 
-static NeroStatus beginShift(
+NeroStatus beginShift(
 	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error
 ) WARN_UNUSED_RESULT;
 
-static NeroStatus doSend(
+NeroStatus doSend(
 	struct FLContext *handle, const uint8 *sendPtr, uint16 chunkSize, const char **error
 ) WARN_UNUSED_RESULT;
 
@@ -367,7 +367,7 @@ cleanup:
 
 // Kick off a shift operation on the micro. This will be followed by a bunch of sends and receives.
 //
-static NeroStatus beginShift(
+NeroStatus beginShift(
 	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error)
 {
 	NeroStatus returnCode = NERO_SUCCESS;
@@ -394,7 +394,7 @@ cleanup:
 
 // Send a chunk of data to the micro.
 //
-static NeroStatus doSend(
+NeroStatus doSend(
 	struct FLContext *handle, const uint8 *sendPtr, uint16 chunkSize, const char **error)
 {
 	NeroStatus returnCode = NERO_SUCCESS;
