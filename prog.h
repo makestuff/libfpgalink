@@ -17,11 +17,15 @@
 #ifndef PROG_H
 #define PROG_H
 
-#define bmNEEDRESPONSE (1<<0)
-#define bmISLAST       (1<<1)
-#define bmSENDZEROS    (0<<2)
-#define bmSENDONES     (1<<2)
-#define bmSENDDATA     (2<<2)
-#define bmSENDMASK     (3<<2)
+typedef enum {
+	PROG_NOP,
+	PROG_JTAG_ISSENDING_ISRECEIVING,
+	PROG_JTAG_ISSENDING_NOTRECEIVING,
+	PROG_JTAG_NOTSENDING_ISRECEIVING,
+	PROG_JTAG_NOTSENDING_NOTRECEIVING
+} ProgOp;
+
+#define bmISLAST       (1<<0)
+#define bmSENDONES     (1<<1)
 
 #endif

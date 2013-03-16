@@ -28,7 +28,7 @@
 // -------------------------------------------------------------------------------------------------
 
 static NeroStatus beginShift(
-	struct FLContext *handle, uint32 numBits, uint8 mode, const char **error
+	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error
 ) WARN_UNUSED_RESULT;
 
 static NeroStatus doSend(
@@ -217,34 +217,46 @@ NeroStatus neroShift(
 	NeroStatus returnCode, nStatus;
 	uint32 numBytes;
 	uint16 chunkSize;
+	ProgOp progOp;
 	uint8 mode = 0x00;
-	bool sendData = false;
+	bool isSending = false;
+	bool isReceiving = false;
 
-	if ( inData == ZEROS ) {
-		mode |= bmSENDZEROS;
-	} else if ( inData == ONES ) {
+	if ( inData == ONES ) {
 		mode |= bmSENDONES;
-	} else {
-		mode |= bmSENDDATA;
-		sendData = true;
+	} else if ( inData != ZEROS ) {
+		isSending = true;
 	}
 	if ( outData ) {
-		mode |= bmNEEDRESPONSE;
+		isReceiving = true;
 	}
 	if ( isLast ) {
 		mode |= bmISLAST;
 	}
-	nStatus = beginShift(handle, numBits, mode, error);
+	if ( isSending ) {
+		if ( isReceiving ) {
+			progOp = PROG_JTAG_ISSENDING_ISRECEIVING;
+		} else {
+			progOp = PROG_JTAG_ISSENDING_NOTRECEIVING;
+		}
+	} else {
+		if ( isReceiving ) {
+			progOp = PROG_JTAG_NOTSENDING_ISRECEIVING;
+		} else {
+			progOp = PROG_JTAG_NOTSENDING_NOTRECEIVING;
+		}
+	}
+	nStatus = beginShift(handle, numBits, progOp, mode, error);
 	CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
 	numBytes = bitsToBytes(numBits);
 	while ( numBytes ) {
 		chunkSize = (numBytes>=handle->endpointSize) ? handle->endpointSize : (uint16)numBytes;
-		if ( sendData ) {
+		if ( isSending ) {
 			nStatus = doSend(handle, inData, chunkSize, error);
 			CHECK_STATUS(nStatus, "neroShift()", NERO_SEND);
 			inData += chunkSize;
 		}
-		if ( outData ) {
+		if ( isReceiving ) {
 			nStatus = doReceive(handle, outData, chunkSize, error);
 			CHECK_STATUS(nStatus, "neroShift()", NERO_RECEIVE);
 			outData += chunkSize;
@@ -356,7 +368,7 @@ cleanup:
 // Kick off a shift operation on the micro. This will be followed by a bunch of sends and receives.
 //
 static NeroStatus beginShift(
-	struct FLContext *handle, uint32 numBits, uint8 mode, const char **error)
+	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error)
 {
 	NeroStatus returnCode = NERO_SUCCESS;
 	int uStatus;
@@ -369,7 +381,7 @@ static NeroStatus beginShift(
 		handle->device,
 		CMD_JTAG_CLOCK_DATA,  // bRequest
 		(uint8)mode,          // wValue
-		0x0000,               // wIndex
+		(uint8)progOp,        // wIndex
 	   leNumBits.bytes,      // send bit count
 		4,                    // wLength
 		5000,                 // timeout (ms)
