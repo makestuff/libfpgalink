@@ -21,27 +21,14 @@
 #include "vendorCommands.h"
 #include "private.h"
 #include "nero.h"
+#include "prog.h"
 
 // -------------------------------------------------------------------------------------------------
 // Declaration of private types & functions
 // -------------------------------------------------------------------------------------------------
 
-typedef enum {
-	SEND_ZEROS,
-	SEND_ONES,
-	SEND_DATA,
-	SEND_MASK
-} SendType;
-
-enum {
-	IS_RESPONSE_NEEDED = 0,
-	IS_LAST = 1,
-	SEND_TYPE = 2
-};
-
 static NeroStatus beginShift(
-	struct FLContext *handle, uint32 numBits, SendType sendType, bool isLast,
-	bool isResponseNeeded, const char **error
+	struct FLContext *handle, uint32 numBits, uint8 mode, const char **error
 ) WARN_UNUSED_RESULT;
 
 static NeroStatus doSend(
@@ -230,32 +217,34 @@ NeroStatus neroShift(
 	NeroStatus returnCode, nStatus;
 	uint32 numBytes;
 	uint16 chunkSize;
-	SendType sendType;
-	bool isResponseNeeded;
+	uint8 mode = 0x00;
+	bool sendData = false;
 
 	if ( inData == ZEROS ) {
-		sendType = SEND_ZEROS;
+		mode |= bmSENDZEROS;
 	} else if ( inData == ONES ) {
-		sendType = SEND_ONES;
+		mode |= bmSENDONES;
 	} else {
-		sendType = SEND_DATA;
+		mode |= bmSENDDATA;
+		sendData = true;
 	}
 	if ( outData ) {
-		isResponseNeeded = true;
-	} else {
-		isResponseNeeded = false;
+		mode |= bmNEEDRESPONSE;
 	}
-	nStatus = beginShift(handle, numBits, sendType, isLast, isResponseNeeded, error);
+	if ( isLast ) {
+		mode |= bmISLAST;
+	}
+	nStatus = beginShift(handle, numBits, mode, error);
 	CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
 	numBytes = bitsToBytes(numBits);
 	while ( numBytes ) {
 		chunkSize = (numBytes>=handle->endpointSize) ? handle->endpointSize : (uint16)numBytes;
-		if ( sendType == SEND_DATA ) {
+		if ( sendData ) {
 			nStatus = doSend(handle, inData, chunkSize, error);
 			CHECK_STATUS(nStatus, "neroShift()", NERO_SEND);
 			inData += chunkSize;
 		}
-		if ( isResponseNeeded ) {
+		if ( outData ) {
 			nStatus = doReceive(handle, outData, chunkSize, error);
 			CHECK_STATUS(nStatus, "neroShift()", NERO_RECEIVE);
 			outData += chunkSize;
@@ -367,28 +356,19 @@ cleanup:
 // Kick off a shift operation on the micro. This will be followed by a bunch of sends and receives.
 //
 static NeroStatus beginShift(
-	struct FLContext *handle, uint32 numBits, SendType sendType, bool isLast,
-	bool isResponseNeeded, const char **error)
+	struct FLContext *handle, uint32 numBits, uint8 mode, const char **error)
 {
 	NeroStatus returnCode = NERO_SUCCESS;
-	uint16 wValue = 0x0000;
 	int uStatus;
 	union {
 		uint32 u32;
 		uint8 bytes[4];
 	} leNumBits;
 	leNumBits.u32 = littleEndian32(numBits);
-	if ( isLast ) {
-		wValue |= (1<<IS_LAST);
-	}
-	if ( isResponseNeeded ) {
-		wValue |= (1<<IS_RESPONSE_NEEDED);
-	}
-	wValue |= sendType << SEND_TYPE;
 	uStatus = usbControlWrite(
 		handle->device,
 		CMD_JTAG_CLOCK_DATA,  // bRequest
-		wValue,               // wValue
+		(uint8)mode,          // wValue
 		0x0000,               // wIndex
 	   leNumBits.bytes,      // send bit count
 		4,                    // wLength
