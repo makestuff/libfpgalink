@@ -283,16 +283,6 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		FAIL(FL_CONF_FORMAT);
 	}
 
-	//ptr = progFile + strlen(progFile) - 4;
-	//if ( !strcmp(ptr, ".bin") ) {
-	//	printf("BINFILE\n");
-	//} else if ( !strcmp(ptr, ".bit") ) {
-	//	printf("BITFILE\n");
-	//} else {
-	//	errRender(error, "xProgram(): Unrecognised file type");
-	//	FAIL(FL_CONF_FORMAT);
-	//}
-
 	makeMasks(pinMap, maskList, ddrList, portList);
 
 	for ( i = 0; i < 5; i++ ) {
@@ -429,9 +419,110 @@ cleanup:
 	return returnCode;
 }
 
-//static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
-//	return FL_SUCCESS;
-//}
+static FLStatus jtagGetPorts(const char *portConfig, const char *ptr, uint8 *maskList, uint8 *ddrList, uint8 *portList, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	uint8 thisPort, thisBit;
+	PinState pinMap[5*8] = {0,};
+	char ch;
+	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TDO
+	SET_BIT(thisPort, thisBit, LOW, "jtagGetPorts");
+	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TDI
+	SET_BIT(thisPort, thisBit, INPUT, "jtagGetPorts");
+	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TMS
+	SET_BIT(thisPort, thisBit, INPUT, "jtagGetPorts");
+	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TCK
+	SET_BIT(thisPort, thisBit, LOW, "jtagGetPorts");
+	makeMasks(pinMap, maskList, ddrList, portList);
+cleanup:
+	return returnCode;
+}
+
+static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
+	const char *ptr = portConfig + 1;
+	uint8 maskList[5], ddrList[5], portList[5], mask;
+	char ch;
+	int i;
+	EXPECT_CHAR(':', "jProgram");
+	fStatus = jtagGetPorts(portConfig, ptr, maskList, ddrList, portList, error);
+	CHECK_STATUS(fStatus, "jProgram()", fStatus);
+	ptr += 8;
+	ch = *ptr;
+	if ( ch == ':' ) {
+		ptr++;
+		if ( progFile ) {
+			errRender(error, "jProgram(): Config includes a filename, but a filename is already provided");
+			FAIL(FL_CONF_FORMAT);
+		}
+		progFile = ptr;
+	} else if ( ch != '\0' ) {
+		errRender(error, "jProgram(): Expecting ':' or end-of-string, not '%c' at char %d", ch, ptr-portConfig);
+		FAIL(FL_CONF_FORMAT);
+	} else if ( !progFile ) {
+		errRender(error, "jProgram(): No filename given");
+		FAIL(FL_CONF_FORMAT);
+	}
+
+	printf("progFile = %s\n", progFile);
+
+	for ( i = 0; i < 5; i++ ) {
+		if ( maskList[i] ) {
+			printf("Port %c: {mask: %02X, ddr: %02X, port: %02X}\n", i + 'A', maskList[i], ddrList[i], portList[i]);
+		}
+	}
+
+	fStatus = flFifoMode(handle, false, error);
+	CHECK_STATUS(fStatus, "xProgram()", fStatus);
+
+	printf("Disabled FIFO mode\n");
+
+	for ( i = 0; i < 5; i++ ) {
+		mask = maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask, ddrList[i], portList[i],
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "jProgram()", fStatus);
+		}
+	}
+
+	printf("Configured ports\n");
+
+
+
+
+
+
+
+
+	for ( i = 0; i < 5; i++ ) {
+		mask = maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask,
+				0x00,
+				0x00,
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "jProgram()", fStatus);
+		}
+	}
+	printf("De-configured ports\n");
+
+	fStatus = flFifoMode(handle, true, error);
+	CHECK_STATUS(fStatus, "jProgram()", fStatus);
+
+	printf("Enabled FIFO mode again\n");
+
+cleanup:
+	return returnCode;
+}
 
 DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
@@ -453,9 +544,9 @@ DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, 
 			errRender(error, "flProgram(): '%c' is not a valid Xilinx algorithm code", algoType);
 			FAIL(FL_CONF_FORMAT);
 		}
-	//} else if ( algoVendor == 'J' ) {
-	//	// This is a JTAG algorithm
-	//	return jProgram(handle, portConfig + 2, progFile, error);
+	} else if ( algoVendor == 'J' ) {
+		// This is a JTAG algorithm
+		return jProgram(handle, portConfig, progFile, error);
 	} else if ( algoVendor == '\0' ) {
 		errRender(error, "flProgram(): Missing algorithm vendor code");
 		FAIL(FL_CONF_FORMAT);
