@@ -118,19 +118,21 @@ static FLStatus populateMap(const char *portConfig, const char *ptr, const char 
 		ptr++;
 		ch = *ptr++;
 	} while ( ch == ',' );
-	*endPtr = ptr - 1;
+	if ( endPtr ) {
+		*endPtr = ptr - 1;
+	}
 cleanup:
 	return returnCode;
 }
 
-static FLStatus portMap(struct FLContext *handle, uint8 patchClass, uint8 port, uint8 bit, const char **error) {
+static FLStatus portMap(struct FLContext *handle, PatchOp patchOp, uint8 port, uint8 bit, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	union {
 		uint16 word;
 		uint8 bytes[2];
 	} index, value;
 	int uStatus;
-	index.bytes[0] = patchClass;
+	index.bytes[0] = (uint8)patchOp;
 	index.bytes[1] = port;
 	value.bytes[0] = bit;
 	value.bytes[1] = 0x00;
@@ -292,13 +294,13 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	}
 
 	// Map the CCLK bit & the SelectMAP data bus
-	fStatus = portMap(handle, 3, cclkPort, cclkBit, error);
+	fStatus = portMap(handle, PATCH_TCK, cclkPort, cclkBit, error);
 	CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	if ( progOp == PROG_PARALLEL ) {
-		fStatus = portMap(handle, 4, dataPort, 0x00, error);
+		fStatus = portMap(handle, PATCH_D8, dataPort, 0x00, error);
 		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	} else if ( progOp == PROG_SERIAL ) {
-		fStatus = portMap(handle, 1, dataPort, dataBit[0], error);
+		fStatus = portMap(handle, PATCH_TDI, dataPort, dataBit[0], error);
 		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	}
 
@@ -419,21 +421,74 @@ cleanup:
 	return returnCode;
 }
 
-static FLStatus jtagGetPorts(const char *portConfig, const char *ptr, uint8 *maskList, uint8 *ddrList, uint8 *portList, const char **error) {
+static FLStatus jtagConfigPorts(struct FLContext *handle, const char *portConfig, const char *ptr, uint8 *maskList, uint8 *ddrList, uint8 *portList, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
 	uint8 thisPort, thisBit;
 	PinState pinMap[5*8] = {0,};
 	char ch;
-	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TDO
-	SET_BIT(thisPort, thisBit, LOW, "jtagGetPorts");
-	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TDI
-	SET_BIT(thisPort, thisBit, INPUT, "jtagGetPorts");
-	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TMS
-	SET_BIT(thisPort, thisBit, INPUT, "jtagGetPorts");
-	GET_PAIR(thisPort, thisBit, "jtagGetPorts");        // TCK
-	SET_BIT(thisPort, thisBit, LOW, "jtagGetPorts");
+
+	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TDO
+	SET_BIT(thisPort, thisBit, INPUT, "jtagConfigPorts");
+	fStatus = portMap(handle, PATCH_TDO, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
+
+	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TDI
+	SET_BIT(thisPort, thisBit, LOW, "jtagConfigPorts");
+	fStatus = portMap(handle, PATCH_TDI, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
+
+	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TMS
+	SET_BIT(thisPort, thisBit, LOW, "jtagConfigPorts");
+	fStatus = portMap(handle, PATCH_TMS, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
+
+	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TCK
+	SET_BIT(thisPort, thisBit, LOW, "jtagConfigPorts");
+	fStatus = portMap(handle, PATCH_TCK, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
+
 	makeMasks(pinMap, maskList, ddrList, portList);
 cleanup:
+	return returnCode;
+}
+
+static FLStatus playSVF(struct FLContext *handle, const char *svfFile, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
+	struct Buffer csvfBuf = {0,};
+	BufferStatus bStatus;
+	int cStatus;
+	uint32 maxBufSize;
+	bool isCompressed;
+	
+	const char *const ext = svfFile + strlen(svfFile) - 5;
+	if ( !handle->isNeroCapable ) {
+		errRender(error, "playSVF(): This device does not support NeroJTAG");
+		FAIL(FL_PROTOCOL_ERR);
+	}
+	bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
+	CHECK_STATUS(bStatus, "playSVF()", FL_ALLOC_ERR);
+	if ( strcmp(".svf", ext+1) == 0 ) {
+		fStatus = flLoadSvfAndConvertToCsvf(svfFile, &csvfBuf, &maxBufSize, error);
+		CHECK_STATUS(fStatus, "playSVF()", fStatus);
+		isCompressed = false;
+	} else if ( strcmp(".xsvf", ext) == 0 ) {
+		fStatus = flLoadXsvfAndConvertToCsvf(svfFile, &csvfBuf, &maxBufSize, error);
+		CHECK_STATUS(fStatus, "playSVF()", fStatus);
+		isCompressed = false;
+	} else if ( strcmp(".csvf", ext) == 0 ) {
+		bStatus = bufAppendFromBinaryFile(&csvfBuf, svfFile, error);
+		CHECK_STATUS(bStatus, "playSVF()", FL_FILE_ERR);
+		isCompressed = true;
+	} else {
+		errRender(error, "playSVF(): Filename should have .svf, .xsvf or .csvf extension");
+		FAIL(FL_FILE_ERR);
+	}
+	cStatus = csvfPlay(handle, csvfBuf.data, isCompressed, error);
+	CHECK_STATUS(cStatus, "playSVF()", FL_JTAG_ERR);
+cleanup:
+	bufDestroy(&csvfBuf);
 	return returnCode;
 }
 
@@ -445,7 +500,7 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	char ch;
 	int i;
 	EXPECT_CHAR(':', "jProgram");
-	fStatus = jtagGetPorts(portConfig, ptr, maskList, ddrList, portList, error);
+	fStatus = jtagConfigPorts(handle, portConfig, ptr, maskList, ddrList, portList, error);
 	CHECK_STATUS(fStatus, "jProgram()", fStatus);
 	ptr += 8;
 	ch = *ptr;
@@ -473,7 +528,7 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	}
 
 	fStatus = flFifoMode(handle, false, error);
-	CHECK_STATUS(fStatus, "xProgram()", fStatus);
+	CHECK_STATUS(fStatus, "jProgram()", fStatus);
 
 	printf("Disabled FIFO mode\n");
 
@@ -492,12 +547,8 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 
 	printf("Configured ports\n");
 
-
-
-
-
-
-
+	fStatus = playSVF(handle, progFile, error);
+	CHECK_STATUS(fStatus, "jProgram()", fStatus);
 
 	for ( i = 0; i < 5; i++ ) {
 		mask = maskList[i];
@@ -558,6 +609,31 @@ cleanup:
 	return returnCode;
 }
 
+DLLEXPORT(FLStatus) flPortConfig(struct FLContext *handle, const char *portConfig, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
+	PinState pinMap[5*8] = {0,};
+	uint8 maskList[5], ddrList[5], portList[5], mask;
+	int i;
+	fStatus = populateMap(portConfig, portConfig, NULL, pinMap, error);
+	CHECK_STATUS(fStatus, "flPortConfig()", fStatus);
+	makeMasks(pinMap, maskList, ddrList, portList);
+	for ( i = 0; i < 5; i++ ) {
+		mask = maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask, ddrList[i], portList[i],
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "flPortConfig()", fStatus);
+		}
+	}
+cleanup:
+	return returnCode;
+}
+
 // Play an SVF, XSVF or CSVF file into the JTAG chain.
 //
 DLLEXPORT(FLStatus) flPlaySVF(struct FLContext *handle, const char *svfFile, const char *portConfig, const char **error) {
@@ -568,7 +644,7 @@ DLLEXPORT(FLStatus) flPlaySVF(struct FLContext *handle, const char *svfFile, con
 	int cStatus;
 	uint32 maxBufSize;
 	bool isCompressed;
-		
+	
 	const char *const ext = svfFile + strlen(svfFile) - 5;
 	if ( !handle->isNeroCapable ) {
 		errRender(error, "flPlaySVF(): This device does not support NeroJTAG");

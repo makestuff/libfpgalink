@@ -201,53 +201,59 @@ NeroStatus neroShift(
 	const char **error)
 {
 	NeroStatus returnCode, nStatus;
-	uint32 numBytes;
+	uint32 numBytes = bitsToBytes(numBits);
 	uint16 chunkSize;
-	ProgOp progOp;
 	uint8 mode = 0x00;
 	bool isSending = false;
-	bool isReceiving = false;
 
 	if ( inData == ONES ) {
 		mode |= bmSENDONES;
 	} else if ( inData != ZEROS ) {
 		isSending = true;
 	}
-	if ( outData ) {
-		isReceiving = true;
-	}
 	if ( isLast ) {
 		mode |= bmISLAST;
 	}
 	if ( isSending ) {
-		if ( isReceiving ) {
-			progOp = PROG_JTAG_ISSENDING_ISRECEIVING;
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_SEND);
+				inData += chunkSize;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_RECEIVE);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
 		} else {
-			progOp = PROG_JTAG_ISSENDING_NOTRECEIVING;
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_SEND);
+				inData += chunkSize;
+				numBytes -= chunkSize;
+			}
 		}
 	} else {
-		if ( isReceiving ) {
-			progOp = PROG_JTAG_NOTSENDING_ISRECEIVING;
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_RECEIVE);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
 		} else {
-			progOp = PROG_JTAG_NOTSENDING_NOTRECEIVING;
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
 		}
-	}
-	nStatus = beginShift(handle, numBits, progOp, mode, error);
-	CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
-	numBytes = bitsToBytes(numBits);
-	while ( numBytes ) {
-		chunkSize = (numBytes>=handle->endpointSize) ? handle->endpointSize : (uint16)numBytes;
-		if ( isSending ) {
-			nStatus = doSend(handle, inData, chunkSize, error);
-			CHECK_STATUS(nStatus, "neroShift()", NERO_SEND);
-			inData += chunkSize;
-		}
-		if ( isReceiving ) {
-			nStatus = doReceive(handle, outData, chunkSize, error);
-			CHECK_STATUS(nStatus, "neroShift()", NERO_RECEIVE);
-			outData += chunkSize;
-		}
-		numBytes -= chunkSize;
 	}
 	return NERO_SUCCESS;
 cleanup:
@@ -303,32 +309,6 @@ cleanup:
 // -------------------------------------------------------------------------------------------------
 // Implementation of private functions
 // -------------------------------------------------------------------------------------------------
-static NeroStatus portMap(
-	struct FLContext *handle, uint8 patchClass, uint8 port, uint8 bit, const char **error)
-{
-	NeroStatus returnCode = NERO_SUCCESS;
-	union {
-		uint16 word;
-		uint8 bytes[2];
-	} index, value;
-	index.bytes[0] = patchClass;
-	index.bytes[1] = port;
-	value.bytes[0] = bit;
-	value.bytes[1] = 0x00;
-	int uStatus = usbControlWrite(
-		handle->device,
-		0x90,              // bRequest
-		value.word,        // wValue
-		index.word,        // wIndex
-		NULL,              // no data
-		0,                 // wLength
-		1000,              // timeout (ms)
-		error
-	);
-	CHECK_STATUS(uStatus, "portMap()", NERO_PORTMAP);
-cleanup:
-	return returnCode;
-}
 
 // Kick off a shift operation on the micro. This will be followed by a bunch of sends and receives.
 //
@@ -487,6 +467,33 @@ static NeroStatus setJtagMode(struct FLContext *handle, bool enable, const char 
 	);
 	CHECK_STATUS(uStatus, "setJtagMode()", NERO_ENABLE);
 	return NERO_SUCCESS;
+cleanup:
+	return returnCode;
+}
+
+static NeroStatus portMap(
+	struct FLContext *handle, uint8 patchClass, uint8 port, uint8 bit, const char **error)
+{
+	NeroStatus returnCode = NERO_SUCCESS;
+	union {
+		uint16 word;
+		uint8 bytes[2];
+	} index, value;
+	index.bytes[0] = patchClass;
+	index.bytes[1] = port;
+	value.bytes[0] = bit;
+	value.bytes[1] = 0x00;
+	int uStatus = usbControlWrite(
+		handle->device,
+		0x90,              // bRequest
+		value.word,        // wValue
+		index.word,        // wIndex
+		NULL,              // no data
+		0,                 // wLength
+		1000,              // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "portMap()", NERO_PORTMAP);
 cleanup:
 	return returnCode;
 }

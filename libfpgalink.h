@@ -681,6 +681,10 @@ extern "C" {
 	DLLEXPORT(FLStatus) flProgram(
 		struct FLContext *handle, const char *portConfig, const char *progFile, const char **error
 	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flPortConfig(
+		struct FLContext *handle, const char *portConfig, const char **error
+	) WARN_UNUSED_RESULT;
 	//@}
 
 #ifdef __cplusplus
