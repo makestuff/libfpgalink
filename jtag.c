@@ -828,55 +828,6 @@ cleanup:
 	return returnCode;
 }
 
-// Play an SVF, XSVF or CSVF file into the JTAG chain.
-//
-DLLEXPORT(FLStatus) flPlaySVF(struct FLContext *handle, const char *svfFile, const char *portConfig, const char **error) {
-	FLStatus returnCode, fStatus;
-	struct Buffer csvfBuf = {0,};
-	BufferStatus bStatus;
-	NeroStatus nStatus;
-	int cStatus;
-	uint32 maxBufSize;
-	bool isCompressed;
-	
-	const char *const ext = svfFile + strlen(svfFile) - 5;
-	if ( !handle->isNeroCapable ) {
-		errRender(error, "flPlaySVF(): This device does not support NeroJTAG");
-		FAIL(FL_PROTOCOL_ERR);
-	}
-	bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
-	CHECK_STATUS(bStatus, "flPlaySVF()", FL_ALLOC_ERR);
-	if ( strcmp(".svf", ext+1) == 0 ) {
-		fStatus = flLoadSvfAndConvertToCsvf(svfFile, &csvfBuf, &maxBufSize, error);
-		CHECK_STATUS(fStatus, "flPlaySVF()", fStatus);
-		isCompressed = false;
-	} else if ( strcmp(".xsvf", ext) == 0 ) {
-		fStatus = flLoadXsvfAndConvertToCsvf(svfFile, &csvfBuf, &maxBufSize, error);
-		CHECK_STATUS(fStatus, "flPlaySVF()", fStatus);
-		isCompressed = false;
-	} else if ( strcmp(".csvf", ext) == 0 ) {
-		bStatus = bufAppendFromBinaryFile(&csvfBuf, svfFile, error);
-		CHECK_STATUS(bStatus, "flPlaySVF()", FL_FILE_ERR);
-		isCompressed = true;
-	} else {
-		errRender(error, "flPlaySVF(): Filename should have .svf, .xsvf or .csvf extension");
-		FAIL(FL_FILE_ERR);
-	}
-	fStatus = flFifoMode(handle, false, error);
-	CHECK_STATUS(fStatus, "flPlaySVF()", fStatus);
-	nStatus = neroInitialise(handle, portConfig, error);
-	CHECK_STATUS(nStatus, "flPlaySVF()", FL_JTAG_ERR);
-	cStatus = csvfPlay(handle, csvfBuf.data, isCompressed, error);
-	CHECK_STATUS(cStatus, "flPlaySVF()", FL_JTAG_ERR);
-	fStatus = flFifoMode(handle, true, error);
-	CHECK_STATUS(fStatus, "flPlaySVF()", fStatus);
-	returnCode = FL_SUCCESS;
-cleanup:
-	nStatus = neroClose(handle, NULL);
-	bufDestroy(&csvfBuf);
-	return returnCode;
-}
-
 // Reverse the array in-place by swapping the outer items and progressing inward until we meet in
 // the middle
 //
@@ -932,5 +883,3 @@ cleanup:
 	nStatus = neroClose(handle, NULL);
 	return returnCode;
 }
-
-
