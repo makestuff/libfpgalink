@@ -23,13 +23,207 @@
 #include "libfpgalink.h"
 #include "private.h"
 #include "csvfplay.h"
+#include "vendorCommands.h"
 #include "prog.h"
 
-NeroStatus beginShift(
+static NeroStatus beginShift(
 	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error);
 
-NeroStatus doSend(
+static NeroStatus doSend(
 	struct FLContext *handle, const uint8 *sendPtr, uint16 chunkSize, const char **error);
+
+static NeroStatus doReceive(
+	struct FLContext *handle, uint8 *receivePtr, uint16 chunkSize, const char **error);
+
+
+
+
+// Shift data into and out of JTAG chain.
+//   In pointer may be ZEROS (shift in zeros) or ONES (shift in ones).
+//   Out pointer may be NULL (not interested in data shifted out of the chain).
+//
+NeroStatus neroShift(
+	struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
+	const char **error)
+{
+	NeroStatus returnCode, nStatus;
+	uint32 numBytes = bitsToBytes(numBits);
+	uint16 chunkSize;
+	uint8 mode = 0x00;
+	bool isSending = false;
+
+	if ( inData == ONES ) {
+		mode |= bmSENDONES;
+	} else if ( inData != ZEROS ) {
+		isSending = true;
+	}
+	if ( isLast ) {
+		mode |= bmISLAST;
+	}
+	if ( isSending ) {
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_SEND);
+				inData += chunkSize;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_RECEIVE);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		} else {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_SEND);
+				inData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		}
+	} else {
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", NERO_RECEIVE);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		} else {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", NERO_BEGIN_SHIFT);
+		}
+	}
+	return NERO_SUCCESS;
+cleanup:
+	return returnCode;
+}
+
+// Apply the supplied bit pattern to TMS, to move the TAP to a specific state.
+//
+NeroStatus neroClockFSM(
+	struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error)
+{
+	NeroStatus returnCode = NERO_SUCCESS;
+	int uStatus;
+	union {
+		uint32 u32;
+		uint8 bytes[4];
+	} lePattern;
+	lePattern.u32 = littleEndian32(bitPattern);
+	uStatus = usbControlWrite(
+		handle->device,
+		CMD_JTAG_CLOCK_FSM,       // bRequest
+		(uint16)transitionCount,  // wValue
+		0x0000,                   // wIndex
+		lePattern.bytes,          // bit pattern
+		4,                        // wLength
+		5000,                     // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "neroClockFSM()", NERO_CLOCKFSM);
+cleanup:
+	return returnCode;
+}
+
+// Cycle the TCK line for the given number of times.
+//
+NeroStatus neroClocks(struct FLContext *handle, uint32 numClocks, const char **error) {
+	NeroStatus returnCode = NERO_SUCCESS;
+	int uStatus = usbControlWrite(
+		handle->device,
+		CMD_JTAG_CLOCK,    // bRequest
+		numClocks&0xFFFF,  // wValue
+		numClocks>>16,     // wIndex
+		NULL,              // no data
+		0,                 // wLength
+		5000,              // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "neroClocks()", NERO_CLOCKS);
+cleanup:
+	return returnCode;
+}
+
+// -------------------------------------------------------------------------------------------------
+// Implementation of private functions
+// -------------------------------------------------------------------------------------------------
+
+// Kick off a shift operation on the micro. This will be followed by a bunch of sends and receives.
+//
+static NeroStatus beginShift(
+	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error)
+{
+	NeroStatus returnCode = NERO_SUCCESS;
+	int uStatus;
+	union {
+		uint32 u32;
+		uint8 bytes[4];
+	} leNumBits;
+	leNumBits.u32 = littleEndian32(numBits);
+	uStatus = usbControlWrite(
+		handle->device,
+		CMD_JTAG_CLOCK_DATA,  // bRequest
+		(uint8)mode,          // wValue
+		(uint8)progOp,        // wIndex
+	   leNumBits.bytes,      // send bit count
+		4,                    // wLength
+		5000,                 // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "beginShift()", NERO_BEGIN_SHIFT);
+cleanup:
+	return returnCode;
+}
+
+// Send a chunk of data to the micro.
+//
+static NeroStatus doSend(
+	struct FLContext *handle, const uint8 *sendPtr, uint16 chunkSize, const char **error)
+{
+	NeroStatus returnCode = NERO_SUCCESS;
+	int uStatus = usbBulkWrite(
+		handle->device,
+		handle->jtagOutEP,    // write to out endpoint
+		sendPtr,              // write from send buffer
+		chunkSize,            // write this many bytes
+		5000,                 // timeout in milliseconds
+		error
+	);
+	CHECK_STATUS(uStatus, "doSend()", NERO_SEND);
+cleanup:
+	return returnCode;
+}
+
+// Receive a chunk of data from the micro.
+//
+static NeroStatus doReceive(
+	struct FLContext *handle, uint8 *receivePtr, uint16 chunkSize, const char **error)
+{
+	NeroStatus returnCode = NERO_SUCCESS;
+	int uStatus = usbBulkRead(
+		handle->device,
+		handle->jtagInEP,    // read from in endpoint
+		receivePtr,          // read into the receive buffer
+		chunkSize,           // read this many bytes
+		5000,                // timeout in milliseconds
+		error
+	);
+	CHECK_STATUS(uStatus, "doReceive()", NERO_RECEIVE);
+cleanup:
+	return returnCode;
+}
+
+
+
+
 
 #define GET_CHAR(func) \
 	ch = *ptr; \
