@@ -25,10 +25,6 @@
 #include "private.h"
 #include "firmware.h"
 
-//static FLStatus convertJtagFileToCsvf(
-//	struct Buffer *dest, const char *xsvfFile, const char **error
-//) WARN_UNUSED_RESULT;
-
 // Load the standard FPGALink firmware into the FX2 at currentVid/currentPid.
 DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	const char *curVidPid, const char *newVidPid, const char **error)
@@ -226,48 +222,3 @@ FLStatus copyFirmwareAndRewriteIDs(
 cleanup:
 	return returnCode;
 }
-
-/*static FLStatus convertJtagFileToCsvf(struct Buffer *dest, const char *xsvfFile, const char **error) {
-	FLStatus returnCode, fStatus;
-	struct Buffer csvfBuf = {0,};
-	BufferStatus bStatus;
-	uint32 maxBufSize;
-	const char *const ext = xsvfFile + strlen(xsvfFile) - 5;
-	if ( strcmp(".svf", ext+1) == 0 ) {
-		bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
-		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
-		fStatus = flLoadSvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
-		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
-		if ( maxBufSize > CSVF_BUF_SIZE ) {
-			errRender(error, "convertJtagFileToCsvf(): This SVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
-			FAIL(FL_JTAG_ERR);
-		}
-		fStatus = flCompressCsvf(&csvfBuf, error);
-		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
-		bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);
-		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
-	} else if ( strcmp(".xsvf", ext) == 0 ) {
-		bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
-		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
-		fStatus = flLoadXsvfAndConvertToCsvf(xsvfFile, &csvfBuf, &maxBufSize, error);
-		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
-		if ( maxBufSize > CSVF_BUF_SIZE ) {
-			errRender(error, "convertJtagFileToCsvf(): This XSVF file requires CSVF_BUF_SIZE=%d", maxBufSize);
-			FAIL(FL_JTAG_ERR);
-		}
-		fStatus = flCompressCsvf(&csvfBuf, error);
-		CHECK_STATUS(fStatus, "convertJtagFileToCsvf()", fStatus);
-		bStatus = bufAppendBlock(dest, csvfBuf.data, csvfBuf.length, error);
-		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_ALLOC_ERR);
-	} else if ( strcmp(".csvf", ext) == 0 ) {
-		bStatus = bufAppendFromBinaryFile(dest, xsvfFile, error);
-		CHECK_STATUS(bStatus, "convertJtagFileToCsvf()", FL_FILE_ERR);
-	} else {
-		errRender(error, "convertJtagFileToCsvf(): Filename should have .svf, .xsvf or .csvf extension");
-		FAIL(FL_FILE_ERR);
-	}
-	returnCode = FL_SUCCESS;
-cleanup:
-	bufDestroy(&csvfBuf);
-	return returnCode;
-}*/

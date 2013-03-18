@@ -27,7 +27,6 @@
 #include "vendorCommands.h"
 #include "xsvf.h"
 #include "csvfplay.h"
-#include "csvfreader.h"
 
 // -------------------------------------------------------------------------------------------------
 // Declaration of private types & functions
@@ -41,9 +40,9 @@ static bool tdoMatchFailed(
 // Public functions
 // -------------------------------------------------------------------------------------------------
 
-// Play the uncompressed CSVF stream into the JTAG port.
+// Play the CSVF stream into the JTAG port.
 //
-FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed, const char **error) {
+FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
 	uint8 thisByte, numBits;
@@ -62,18 +61,12 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 	char expected[CSVF_BUF_SIZE*2+1];
 	
 	uint8 *tdiAll;
-	struct Context cp;
+	const uint8 *ptr = csvfData;
 
 	fStatus = neroClockFSM(handle, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
 	CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 
-	if ( csvfInitReader(&cp, csvfData, isCompressed) ) {
-		// Header byte may be used for something later. For now, ensure it's zero.
-		errRender(error, "csvfPlay(): Bad CSVF header!");
-		FAIL(FL_FILE_ERR);
-	}
-
-	thisByte = csvfGetByte(&cp);
+	thisByte = *ptr++;
 	while ( thisByte != XCOMPLETE ) {
 		switch ( thisByte ) {
 		case XTDOMASK:
@@ -83,7 +76,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 			numBytes = bitsToBytes(xsdrSize);
 			tdoPtr = tdoMask;
 			while ( numBytes-- ) {
-				thisByte = csvfGetByte(&cp);
+				thisByte = *ptr++;
 				#ifdef DEBUG
 					printf("%02X", thisByte);
 				#endif
@@ -95,7 +88,13 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 			break;
 
 		case XRUNTEST:
-			xruntest = csvfGetLong(&cp);
+			xruntest = *ptr++;
+			xruntest <<= 8;
+			xruntest |= *ptr++;
+			xruntest <<= 8;
+			xruntest |= *ptr++;
+			xruntest <<= 8;
+			xruntest |= *ptr++;
 			#ifdef DEBUG
 				printf("XRUNTEST(%08X)\n", xruntest);
 			#endif
@@ -104,14 +103,14 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 		case XSIR:
 			fStatus = neroClockFSM(handle, 0x00000003, 4, error);  // -> Shift-IR
 			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
-			numBits = csvfGetByte(&cp);
+			numBits = *ptr++;
 			#ifdef DEBUG
 				printf("XSIR(%02X, ", numBits);
 			#endif
 			numBytes = bitsToBytes(numBits);
 			tdiPtr = tdiData;
 			while ( numBytes-- ) {
-				thisByte = csvfGetByte(&cp);
+				thisByte = *ptr++;
 				#ifdef DEBUG
 					printf("%02X", thisByte);
 				#endif
@@ -131,7 +130,13 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 			break;
 
 		case XSDRSIZE:
-			xsdrSize = csvfGetLong(&cp);
+			xsdrSize = *ptr++;
+			xsdrSize <<= 8;
+			xsdrSize |= *ptr++;
+			xsdrSize <<= 8;
+			xsdrSize |= *ptr++;
+			xsdrSize <<= 8;
+			xsdrSize |= *ptr++;
 			#ifdef DEBUG
 				printf("XSDRSIZE(%08X)\n", xsdrSize);
 			#endif
@@ -142,8 +147,8 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 			tdiPtr = tdiData;
 			tdoPtr = tdoExpected;
 			while ( numBytes-- ) {
-				*tdiPtr++ = csvfGetByte(&cp);
-				*tdoPtr++ = csvfGetByte(&cp);
+				*tdiPtr++ = *ptr++;
+				*tdoPtr++ = *ptr++;
 			}
 			numBytes = bitsToBytes(xsdrSize);
 			i = 0;
@@ -190,7 +195,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 			tdiAll = malloc(numBytes);
 			tdiPtr = tdiAll;
 			while ( numBytes-- ) {
-				*tdiPtr++ = csvfGetByte(&cp);
+				*tdiPtr++ = *ptr++;
 			}
 			fStatus = neroShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
 			free(tdiAll);
@@ -207,7 +212,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompre
 			errRender(error, "csvfPlay(): Unsupported command 0x%02X", thisByte);
 			FAIL(FL_PROG_SVF_UNKNOWN_CMD);
 		}
-		thisByte = csvfGetByte(&cp);
+		thisByte = *ptr++;
 	}
 cleanup:
 	return returnCode;

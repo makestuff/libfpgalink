@@ -35,20 +35,13 @@ int main(int argc, const char *argv[]) {
 	const char *error = NULL;
 	uint32 csvfBufSize = 0;
 	const char *srcFile, *dstFile;
-	bool doCompress;
 	const char *ext;
-	if ( argc == 3 ) {
-		srcFile = argv[1];
-		dstFile = argv[2];
-		doCompress = true;
-	} else if ( argc == 4 && argv[1][0] == '-' && argv[1][1] == 'u' && argv[1][2] == '\0' ) {
-		srcFile = argv[2];
-		dstFile = argv[3];
-		doCompress = false;
-	} else {
+	if ( argc != 3 ) {
 		fprintf(stderr, "Synopsis: %s [-u] <src.xsvf|src.svf> <dst.csvf>\n", argv[0]);
 		FAIL(1);
 	}
+	srcFile = argv[1];
+	dstFile = argv[2];
 	ext = srcFile + strlen(srcFile) - 5;
 	bStatus = bufInitialise(&csvfBuf, 10240, 0x00, &error);
 	CHECK(bStatus, 2);
@@ -57,15 +50,11 @@ int main(int argc, const char *argv[]) {
 	} else if ( strcmp(".xsvf", ext) == 0 ) {
 		fStatus = flLoadXsvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
 	} else {
-		fprintf(stderr, "Source file should have .svf or .xsvf extension\n");
+		fprintf(stderr, "Source filename should have an .svf or an .xsvf extension\n");
 		FAIL(3);
 	}
 	CHECK(fStatus, 4);
 	printf("CSVF_BUF_SIZE = %d\n", csvfBufSize);
-	if ( doCompress ) {
-		fStatus = flCompressCsvf(&csvfBuf, &error);
-		CHECK(fStatus, 5);
-	}
 	bStatus = bufWriteBinaryFile(&csvfBuf, dstFile, 0, csvfBuf.length, &error);
 	CHECK(bStatus, 6);
 

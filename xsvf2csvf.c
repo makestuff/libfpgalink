@@ -305,89 +305,6 @@ cleanup:
 	return returnCode;
 }
 
-static FLStatus compress(const struct Buffer *inBuf, struct Buffer *outBuf, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
-	const uint8 *runStart, *runEnd, *bufEnd, *chunkStart, *chunkEnd;
-	uint32 runLen, chunkLen;
-	BufferStatus bStatus;
-	bufEnd = inBuf->data + inBuf->length;
-	runStart = chunkStart = inBuf->data;
-	bStatus = bufAppendByte(outBuf, 0x00, error);  // Hdr byte: defaults
-	CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-	while ( runStart < bufEnd ) {
-		// Find next zero
-		while ( runStart < bufEnd && *runStart ) {
-			runStart++;
-		}
-		
-		// Remember the position of the zero
-		runEnd = runStart;
-
-		// Find the end of this run of zeros
-		while ( runEnd < bufEnd && !*runEnd ) {
-			runEnd++;
-		}
-		
-		// Get the length of this run
-		runLen = (uint32)(runEnd - runStart);
-		
-		// If this run is more than four zeros, break the chunk
-		if ( runLen > 8 || runEnd == bufEnd ) {
-			chunkEnd = runStart;
-			chunkLen = (uint32)(chunkEnd - chunkStart);
-
-			// There is now a chunk starting at chunkStart and ending at chunkEnd (length chunkLen),
-			// Followed by a run of zeros starting at runStart and ending at runEnd (length runLen).
-			//printf("Chunk: %d bytes followed by %d zeros\n", chunkLen, runLen);
-			if ( chunkLen < 256 ) {
-				// Short chunk: uint8
-				bStatus = bufAppendByte(outBuf, (uint8)chunkLen, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-			} else if ( chunkLen < 65536 ) {
-				// Medium chunk: uint16 (big-endian)
-				bStatus = bufAppendByte(outBuf, 0x00, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-				bStatus = bufAppendWordBE(outBuf, (uint16)chunkLen, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-			} else {
-				// Long chunk: uint32 (big-endian)
-				bStatus = bufAppendConst(outBuf, 0x00, 3, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-				bStatus = bufAppendLongBE(outBuf, chunkLen, error);
-			}
-			while ( chunkStart < chunkEnd ) {
-				bStatus = bufAppendByte(outBuf, *chunkStart++, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-			}
-			if ( runLen < 256 ) {
-				// Short run: uint8
-				bStatus = bufAppendByte(outBuf, (uint8)runLen, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-			} else if ( runLen < 65536 ) {
-				// Medium run: uint16 (big-endian)
-				bStatus = bufAppendByte(outBuf, 0x00, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-				bStatus = bufAppendWordBE(outBuf, (uint16)runLen, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-			} else {
-				// Long run: uint32 (big-endian)
-				bStatus = bufAppendConst(outBuf, 0x00, 3, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-				bStatus = bufAppendLongBE(outBuf, runLen, error);
-				CHECK_STATUS(bStatus, "compress()", FL_BUF_APPEND_ERR);
-			}
-
-			chunkStart = runEnd;
-		}
-		
-		// Start the next round from the end of this run
-		runStart = runEnd;
-	}
-
-cleanup:
-	return returnCode;
-}
-
 DLLEXPORT(FLStatus) flLoadXsvfAndConvertToCsvf(
 	const char *xsvfFile, struct Buffer *csvfBuf, uint32 *maxBufSize, const char **error)
 {
@@ -403,21 +320,5 @@ DLLEXPORT(FLStatus) flLoadXsvfAndConvertToCsvf(
 	CHECK_STATUS(fStatus, "flLoadXsvfAndConvertToCsvf()", fStatus);
 cleanup:
 	bufDestroy(&xc.xsvfBuf);
-	return returnCode;
-}
-
-DLLEXPORT(FLStatus) flCompressCsvf(
-	struct Buffer *csvfBuf, const char **error)
-{
-	FLStatus fStatus, returnCode = FL_SUCCESS;
-	struct Buffer swapBuf = {0,};
-	BufferStatus bStatus;
-	bStatus = bufInitialise(&swapBuf, 0x20000, 0, error);
-	CHECK_STATUS(bStatus, "flCompressCsvf()", FL_BUF_INIT_ERR);
-	fStatus = compress(csvfBuf, &swapBuf, error);
-	CHECK_STATUS(fStatus, "flCompressCsvf()", fStatus);
-	bufSwap(csvfBuf, &swapBuf);
-cleanup:
-	bufDestroy(&swapBuf);
 	return returnCode;
 }

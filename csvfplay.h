@@ -24,9 +24,9 @@
 extern "C" {
 #endif
 
-	// Play the uncompressed CSVF stream into the JTAG port.
+	// Play the CSVF stream into the JTAG port.
 	FLStatus csvfPlay(
-		struct FLContext *handle, const uint8 *csvfData, bool isCompressed, const char **error
+		struct FLContext *handle, const uint8 *csvfData, const char **error
 	) WARN_UNUSED_RESULT;
 
 #ifdef __cplusplus

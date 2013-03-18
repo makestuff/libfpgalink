@@ -94,8 +94,7 @@ extern "C" {
 	 *
 	 * The CSVF format ("Compressed Serial Vector Format") swaps the byte order so bit sequences
 	 * can be played by reading forwards, and it replaces each XSDRB, XSDRC*, XSDRE command sequence
-	 * with one big XSDR command. CSVF buffers should be compressed with /c flCompressCsvf() before
-	 * being written to persistent storage.
+	 * with one big XSDR command.
 	 *
 	 * @param xsvfFile The XSVF filename.
 	 * @param csvfBuf A pointer to a \c Buffer to be populated with the CSVF data.
@@ -118,24 +117,6 @@ extern "C" {
 	 */
 	DLLEXPORT(FLStatus) flLoadXsvfAndConvertToCsvf(
 		const char *xsvfFile, struct Buffer *csvfBuf, uint32 *maxBufSize, const char **error
-	) WARN_UNUSED_RESULT;
-
-	/**
-	 * @brief Perform run-length encoding on a CSVF buffer.
-	 *
-	 * @param csvfBuf A pointer to a \c Buffer containing CSVF data to be RLE-compressed.
-	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
-	 * @returns
-	 *     - \c FL_SUCCESS if the command completed successfully.
-	 *     - \c FL_BUF_INIT_ERR If the compress buffer could not be allocated.
-	 *     - \c FL_BUF_APPEND_ERR If the compress buffer could not be grown.
-	 */
-	DLLEXPORT(FLStatus) flCompressCsvf(
-		struct Buffer *csvfBuf, const char **error
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
