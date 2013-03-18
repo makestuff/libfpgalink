@@ -40,12 +40,12 @@ extern "C" {
 
 		// JTAG stuff
 		bool isNeroCapable;
-		uint8 jtagOutEP;
-		uint8 jtagInEP;
-		uint16 endpointSize;
-		uint8 masks[4];
-		uint8 ports[4];
-		bool usesCustomPorts;
+		uint8 progOutEP;
+		uint8 progInEP;
+		//uint16 endpointSize;
+		//uint8 masks[4];
+		//uint8 ports[4];
+		//bool usesCustomPorts;
 
 	};
 
@@ -129,7 +129,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	// ----------------------------------------------------------------------------------------------
-	// NeroPROG JTAG stuff
+	// NeroProg JTAG stuff
 	// ----------------------------------------------------------------------------------------------
 
 	// Return the number of bytes necessary to store x number of bits

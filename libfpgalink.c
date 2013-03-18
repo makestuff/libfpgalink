@@ -52,7 +52,7 @@ DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char
 	int uStatus;
 	uint8 statusBuffer[16];
 	struct FLContext *newCxt = (struct FLContext *)calloc(sizeof(struct FLContext), 1);
-	uint8 jtagEndpoints, commEndpoints;
+	uint8 progEndpoints, commEndpoints;
 	CHECK_STATUS(!newCxt, "flOpen()", FL_ALLOC_ERR);
 	uStatus = usbOpenDevice(vp, 1, 0, 0, &newCxt->device, error);
 	CHECK_STATUS(uStatus, "flOpen()", FL_USB_ERR);
@@ -65,19 +65,19 @@ DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char
 		FAIL(FL_PROTOCOL_ERR);
 	}
 	if ( !statusBuffer[6] && !statusBuffer[7] ) {
-		errRender(error, "flOpen(): Device at %s supports neither NeroJTAG nor CommFPGA", vp);
+		errRender(error, "flOpen(): Device at %s supports neither NeroProg nor CommFPGA", vp);
 		FAIL(FL_PROTOCOL_ERR);
 	}
-	jtagEndpoints = statusBuffer[6];
+	progEndpoints = statusBuffer[6];
 	commEndpoints = statusBuffer[7];
-	newCxt->jtagOutEP = 0;
-	newCxt->jtagInEP = 0;
+	newCxt->progOutEP = 0;
+	newCxt->progInEP = 0;
 	newCxt->commOutEP = 0;
 	newCxt->commInEP = 0;
-	if ( jtagEndpoints ) {
+	if ( progEndpoints ) {
 		newCxt->isNeroCapable = true;
-		newCxt->jtagOutEP = (jtagEndpoints >> 4);
-		newCxt->jtagInEP = (jtagEndpoints & 0x0F);
+		newCxt->progOutEP = (progEndpoints >> 4);
+		newCxt->progInEP = (progEndpoints & 0x0F);
 	}
 	if ( commEndpoints ) {
 		newCxt->isCommCapable = true;
@@ -108,7 +108,7 @@ DLLEXPORT(void) flClose(struct FLContext *handle) {
 	}
 }
 
-// Check to see if the device supports NeroJTAG
+// Check to see if the device supports NeroProg
 //
 DLLEXPORT(bool) flIsNeroCapable(struct FLContext *handle) {
 	return handle->isNeroCapable;

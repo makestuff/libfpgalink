@@ -186,7 +186,7 @@ static FLStatus doSend(
 	FLStatus returnCode = FL_SUCCESS;
 	int uStatus = usbBulkWrite(
 		handle->device,
-		handle->jtagOutEP,    // write to out endpoint
+		handle->progOutEP,    // write to out endpoint
 		sendPtr,              // write from send buffer
 		chunkSize,            // write this many bytes
 		5000,                 // timeout in milliseconds
@@ -205,7 +205,7 @@ static FLStatus doReceive(
 	FLStatus returnCode = FL_SUCCESS;
 	int uStatus = usbBulkRead(
 		handle->device,
-		handle->jtagInEP,    // read from in endpoint
+		handle->progInEP,    // read from in endpoint
 		receivePtr,          // read into the receive buffer
 		chunkSize,           // read this many bytes
 		5000,                // timeout in milliseconds
