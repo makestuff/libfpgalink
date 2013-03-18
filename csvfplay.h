@@ -18,21 +18,14 @@
 #define CSVFPLAY_H
 
 #include <makestuff.h>
+#include "libfpgalink.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-	// Forward declaration of NeroContext struct
-	struct FLContext;
-
-	// csvfPlay() may return any NeroStatus code, plus these
-	#define CPLAY_COMPARE_ERR     100
-	#define CPLAY_UNKNOWN_CMD_ERR 101
-	#define CPLAY_HEADER_ERR      101
-
 	// Play the uncompressed CSVF stream into the JTAG port.
-	int csvfPlay(
+	FLStatus csvfPlay(
 		struct FLContext *handle, const uint8 *csvfData, bool isCompressed, const char **error
 	) WARN_UNUSED_RESULT;
 

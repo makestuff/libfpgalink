@@ -43,9 +43,9 @@ static bool tdoMatchFailed(
 
 // Play the uncompressed CSVF stream into the JTAG port.
 //
-int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed, const char **error) {
-	int returnCode;
-	NeroStatus nStatus;
+FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
 	uint8 thisByte, numBits;
 	uint32 numBytes;
 	uint8 *tdoPtr, *tdiPtr;
@@ -64,13 +64,13 @@ int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed,
 	uint8 *tdiAll;
 	struct Context cp;
 
-	nStatus = neroClockFSM(handle, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
-	CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+	fStatus = neroClockFSM(handle, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
+	CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 
 	if ( csvfInitReader(&cp, csvfData, isCompressed) ) {
 		// Header byte may be used for something later. For now, ensure it's zero.
 		errRender(error, "csvfPlay(): Bad CSVF header!");
-		FAIL(CPLAY_HEADER_ERR);
+		FAIL(FL_FILE_ERR);
 	}
 
 	thisByte = csvfGetByte(&cp);
@@ -102,8 +102,8 @@ int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed,
 			break;
 
 		case XSIR:
-			nStatus = neroClockFSM(handle, 0x00000003, 4, error);  // -> Shift-IR
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+			fStatus = neroClockFSM(handle, 0x00000003, 4, error);  // -> Shift-IR
+			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			numBits = csvfGetByte(&cp);
 			#ifdef DEBUG
 				printf("XSIR(%02X, ", numBits);
@@ -120,13 +120,13 @@ int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed,
 			#ifdef DEBUG
 				printf(")\n");
 			#endif
-			nStatus = neroShift(handle, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			nStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+			fStatus = neroShift(handle, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
+			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			fStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
+			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			if ( xruntest ) {
-				nStatus = neroClocks(handle, xruntest, error);
-				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+				fStatus = neroClocks(handle, xruntest, error);
+				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			}
 			break;
 
@@ -148,15 +148,15 @@ int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed,
 			numBytes = bitsToBytes(xsdrSize);
 			i = 0;
 			do {
-				nStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
-				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-				nStatus = neroShift(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
-				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-				nStatus = neroClockFSM(handle, 0x0000001A, 6, error);  // -> Run-Test/Idle
-				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+				fStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
+				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+				fStatus = neroShift(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
+				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+				fStatus = neroClockFSM(handle, 0x0000001A, 6, error);  // -> Run-Test/Idle
+				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 				if ( xruntest ) {
-					nStatus = neroClocks(handle, xruntest, error);
-					CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+					fStatus = neroClocks(handle, xruntest, error);
+					CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 				}
 				i++;
 				#ifdef DEBUG
@@ -175,7 +175,7 @@ int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed,
 					error,
 					"csvfPlay(): XSDRTDO failed:\n  Got: %s\n  Mask: %s\n  Expecting: %s",
 					data, mask, expected);
-				FAIL(CPLAY_COMPARE_ERR);
+				FAIL(FL_PROG_SVF_COMPARE);
 			}
 			break;
 
@@ -184,32 +184,31 @@ int csvfPlay(struct FLContext *handle, const uint8 *csvfData, bool isCompressed,
 				// TODO: Need to print actual TDO data too
 				printf("XSDR(%08X)\n", xsdrSize);
 			#endif
-			nStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+			fStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
+			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			tdiAll = malloc(numBytes);
 			tdiPtr = tdiAll;
 			while ( numBytes-- ) {
 				*tdiPtr++ = csvfGetByte(&cp);
 			}
-			nStatus = neroShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
+			fStatus = neroShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
 			free(tdiAll);
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
-			nStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
-			CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			fStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
+			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			if ( xruntest ) {
-				nStatus = neroClocks(handle, xruntest, error);
-				CHECK_STATUS(nStatus, "csvfPlay()", nStatus);
+				fStatus = neroClocks(handle, xruntest, error);
+				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			}
 			break;
 
 		default:
 			errRender(error, "csvfPlay(): Unsupported command 0x%02X", thisByte);
-			FAIL(CPLAY_UNKNOWN_CMD_ERR);
+			FAIL(FL_PROG_SVF_UNKNOWN_CMD);
 		}
 		thisByte = csvfGetByte(&cp);
 	}
-	returnCode = NERO_SUCCESS;
 cleanup:
 	return returnCode;
 }

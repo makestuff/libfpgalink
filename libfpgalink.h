@@ -62,7 +62,14 @@ extern "C" {
 		FL_UNSUPPORTED_SIZE_ERR, ///< The XSVF file requires more buffer space than is available.
 		FL_SVF_PARSE_ERR,        ///< The SVF file was not parseable.
 		FL_CONF_FORMAT,          ///< The supplied programing config was not parseable.
-		FL_PORTMAP,              ///< There was a problem remapping ports for programming.
+		FL_PROG_PORTMAP,         ///< There was a problem remapping ports for programming.
+		FL_PROG_SEND,            ///< There was a problem sending data during programming.
+		FL_PROG_RECV,            ///< There was a problem receiving data during programming.
+		FL_PROG_SHIFT,           ///< There was a problem with the requested shift operation.
+		FL_PROG_JTAG_FSM,        ///< There was a problem navigating the JTAG state machine.
+		FL_PROG_SVF_COMPARE,     ///< An SVF compare operation failed.
+		FL_PROG_SVF_UNKNOWN_CMD, ///< An unknown SVF command was encountered.
+		FL_PROG_CLOCKS,          ///< There was a problem issuing clocks during programming.
 		FL_INTERNAL_ERR          ///< An internal error occurred. Please report it!
 	} FLStatus;
 	//@}
