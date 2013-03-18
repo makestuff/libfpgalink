@@ -35,9 +35,6 @@ static NeroStatus doSend(
 static NeroStatus doReceive(
 	struct FLContext *handle, uint8 *receivePtr, uint16 chunkSize, const char **error);
 
-
-
-
 // Shift data into and out of JTAG chain.
 //   In pointer may be ZEROS (shift in zeros) or ONES (shift in ones).
 //   Out pointer may be NULL (not interested in data shifted out of the chain).
@@ -849,15 +846,32 @@ DLLEXPORT(FLStatus) flScanChain(
 	uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
 	const char **error)
 {
-	FLStatus returnCode;
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
 	NeroStatus nStatus;
+	uint8 maskList[5], ddrList[5], portList[5], mask;
 	uint32 i = 0;
 	union {
 		uint32 idCode;
 		uint8 bytes[4];
 	} u;
-	nStatus = neroInitialise(handle, portConfig, error);
-	CHECK_STATUS(nStatus, "flScanChain()", FL_JTAG_ERR);
+	fStatus = jtagConfigPorts(handle, portConfig, portConfig, maskList, ddrList, portList, error);
+	CHECK_STATUS(fStatus, "jProgram()", fStatus);
+
+	for ( i = 0; i < 5; i++ ) {
+		mask = maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask, ddrList[i], portList[i],
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "jProgram()", fStatus);
+		}
+	}
+
+	i = 0;
 	nStatus = neroClockFSM(handle, 0x0000005F, 9, error);  // Reset TAP, goto Shift-DR
 	CHECK_STATUS(nStatus, "flScanChain()", FL_JTAG_ERR);
 	for ( ; ; ) {
@@ -878,8 +892,22 @@ DLLEXPORT(FLStatus) flScanChain(
 	if ( numDevices ) {
 		*numDevices = i;
 	}
-	returnCode = FL_SUCCESS;
+
+	for ( i = 0; i < 5; i++ ) {
+		mask = maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask,
+				0x00,
+				0x00,
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "flScanChain()", fStatus);
+		}
+	}
+
 cleanup:
-	nStatus = neroClose(handle, NULL);
 	return returnCode;
 }
