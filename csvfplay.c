@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <makestuff.h>
 #include <liberror.h>
-#include "nero.h"
+#include "private.h"
 #include "vendorCommands.h"
 #include "xsvf.h"
 #include "csvfplay.h"

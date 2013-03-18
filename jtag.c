@@ -19,7 +19,6 @@
 #include <makestuff.h>
 #include <libusbwrap.h>
 #include <liberror.h>
-#include "nero.h"
 #include "libfpgalink.h"
 #include "private.h"
 #include "csvfplay.h"

@@ -128,6 +128,36 @@ extern "C" {
 		struct Buffer *dest, const char **error
 	) WARN_UNUSED_RESULT;
 
+	// ----------------------------------------------------------------------------------------------
+	// NeroPROG JTAG stuff
+	// ----------------------------------------------------------------------------------------------
+
+	// Return the number of bytes necessary to store x number of bits
+	#define bitsToBytes(x) ((x>>3) + (x&7 ? 1 : 0))
+
+	// Shift "numBits" bits from "inData" into TDI, at the same time shifting the same number of
+	// bits from TDO into "outData". If "isLast" is true, leave Shift-DR state on final bit. If you
+	// want inData to be all zeros or all ones, you can use ZEROS or ONES respectively. This is more
+	// efficient than physically sending an array containing all zeros or all 0xFFs.
+	FLStatus neroShift(
+		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
+		const char **error
+	) WARN_UNUSED_RESULT;
+
+	// Special values for inData parameter of neroShift() declared above
+	#define ZEROS (const uint8*)NULL
+	#define ONES (ZEROS - 1)
+	
+	// Clock "transitionCount" bits from "bitPattern" into TMS, starting with the LSB.
+	FLStatus neroClockFSM(
+		struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error
+	) WARN_UNUSED_RESULT;
+	
+	// Toggle TCK "numClocks" times.
+	FLStatus neroClocks(
+		struct FLContext *handle, uint32 numClocks, const char **error
+	) WARN_UNUSED_RESULT;
+
 #ifdef __cplusplus
 }
 #endif
