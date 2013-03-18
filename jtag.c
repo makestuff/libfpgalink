@@ -23,7 +23,6 @@
 #include "private.h"
 #include "csvfplay.h"
 #include "vendorCommands.h"
-#include "prog.h"
 
 static FLStatus beginShift(
 	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error);

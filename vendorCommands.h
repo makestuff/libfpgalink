@@ -34,4 +34,25 @@
 // Bits in the mode word
 #define MODE_JTAG      (1<<0)
 
+typedef enum {
+	PATCH_TDO,
+	PATCH_TDI,
+	PATCH_TMS,
+	PATCH_TCK,
+	PATCH_D8
+} PatchOp;
+
+typedef enum {
+	PROG_NOP,
+	PROG_JTAG_ISSENDING_ISRECEIVING,
+	PROG_JTAG_ISSENDING_NOTRECEIVING,
+	PROG_JTAG_NOTSENDING_ISRECEIVING,
+	PROG_JTAG_NOTSENDING_NOTRECEIVING,
+	PROG_PARALLEL,
+	PROG_SERIAL
+} ProgOp;
+
+#define bmISLAST       (1<<0)
+#define bmSENDONES     (1<<1)
+
 #endif
