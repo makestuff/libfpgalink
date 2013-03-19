@@ -243,7 +243,7 @@ static FLStatus portMap(struct FLContext *handle, PatchOp patchOp, uint8 port, u
 	value.bytes[1] = 0x00;
 	uStatus = usbControlWrite(
 		handle->device,
-		0x90,              // bRequest
+		CMD_PORT_MAP,      // bRequest
 		value.word,        // wValue
 		index.word,        // wIndex
 		NULL,              // no data
