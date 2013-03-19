@@ -29,6 +29,7 @@ for j in cksum/vhdl cksum/verilog fifo/vhdl fifo/verilog; do
 	mkdir -p svf
 	mkdir -p xsvf
 	mkdir -p csvf
+	mkdir -p bin
 
 	export HDL=$(basename $(pwd))
 
@@ -38,6 +39,12 @@ for j in cksum/vhdl cksum/verilog fifo/vhdl fifo/verilog; do
 		cp top_level.svf svf/fx2all-$i.svf
 		cp top_level.xsvf xsvf/fx2all-$i.xsvf
 		${X2C} top_level.svf csvf/fx2all-$i.csvf
+	done
+
+	for i in aes220; do
+		hdlmake.py -c
+		hdlmake.py -t ../../templates/fx2all/${HDL} -b $i
+		cp top_level.bin bin/fx2all-$i.bin
 	done
 
 	for i in lx9; do
