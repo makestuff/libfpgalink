@@ -28,24 +28,31 @@
 // Implementation of private functions
 // -------------------------------------------------------------------------------------------------
 
-// Kick off a shift operation on the micro. This will be followed by a bunch of sends and receives.
+// Kick off a shift operation on the micro. This will typically be followed by a bunch of sends and
+// receives on EP1OUT & EP1IN. This operation specifies the operation (i.e one of four JTAG shift
+// operations, parallel shift or serial shift. It also specifies a count, which is either a bit-
+// count or a byte-count depending on the context.
+//
+// Called by:
+//   jtagShift() -> beginShift()
+//   flProgram() -> xProgram() -> fileWrite() -> dataWrite() -> beginShift()
 //
 static FLStatus beginShift(
-	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error)
+	struct FLContext *handle, uint32 count, ProgOp progOp, uint8 mode, const char **error)
 {
 	FLStatus returnCode = FL_SUCCESS;
 	int uStatus;
 	union {
 		uint32 u32;
 		uint8 bytes[4];
-	} leNumBits;
-	leNumBits.u32 = littleEndian32(numBits);
+	} countUnion;
+	countUnion.u32 = littleEndian32(count);
 	uStatus = usbControlWrite(
 		handle->device,
 		CMD_JTAG_CLOCK_DATA,  // bRequest
 		(uint8)mode,          // wValue
 		(uint8)progOp,        // wIndex
-	   leNumBits.bytes,      // send bit count
+	   countUnion.bytes,     // send count
 		4,                    // wLength
 		5000,                 // timeout (ms)
 		error
@@ -55,7 +62,12 @@ cleanup:
 	return returnCode;
 }
 
-// Send a chunk of data to the micro.
+// Send a chunk of data to the micro on EP1OUT. The previous call to beginShift() specifies what the
+// micro should actually do with the data.
+//
+// Called by:
+//   jtagShift() -> doSend()
+//   flProgram() -> xProgram() -> fileWrite() -> dataWrite() -> doSend()
 //
 static FLStatus doSend(
 	struct FLContext *handle, const uint8 *sendPtr, uint16 chunkSize, const char **error)
@@ -74,7 +86,11 @@ cleanup:
 	return returnCode;
 }
 
-// Receive a chunk of data from the micro.
+// Receive a chunk of data from the micro on EP1IN. The previous call to beginShift() specifies the
+// source of the data.
+//
+// Called by:
+//   jtagShift() -> doReceive()
 //
 static FLStatus doReceive(
 	struct FLContext *handle, uint8 *receivePtr, uint16 chunkSize, const char **error)
@@ -139,6 +155,15 @@ cleanup:
 
 typedef enum {UNUSED, HIGH, LOW, INPUT} PinState;
 
+// The pinMap array describes the desired state (i.e whether high, low, input or unused) of each bit
+// on all five ports. This function uses that information to deduce mask, ddr & port bytes for each
+// of the five ports.
+//
+// Called by:
+//   flProgram() -> xProgram() -> makeMasks()
+//   jtagOpen() -> makeMasks()
+//   flPortConfig() -> makeMasks()
+//
 static void makeMasks(const PinState *pinMap, uint8 *mask, uint8 *ddr, uint8 *port) {
 	int i, j;
 	for ( i = 0; i < 5; i++ ) {
@@ -160,6 +185,16 @@ static void makeMasks(const PinState *pinMap, uint8 *mask, uint8 *ddr, uint8 *po
 	}
 }
 
+// This function parses a comma-separated list of ports with a suffix representing the desired state
+// of the port, e.g "A0+,B5-,D7/" means "PA0 is an output driven high, PB5 is an output driven low,
+// and PD7 is an input". The result is recorded in the pinMap array, which is assumed to be of
+// length 5*8=40. The parse stops when it encounters something other than a comma separator, and the
+// location of that character stored in *endPtr.
+//
+// Called by:
+//   xProgram() -> populateMap()
+//   flPortConfig() -> populateMap()
+//
 static FLStatus populateMap(const char *portConfig, const char *ptr, const char **endPtr, PinState *pinMap, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	uint8 thisPort, thisBit;
@@ -187,6 +222,14 @@ cleanup:
 	return returnCode;
 }
 
+// This function re-maps the port used by the micro for one of the five PatchOp operations, which
+// are currently the four JTAG pins TDO, TDI, TMS & TCK plus the parallel programming port. For
+// serial programming we re-use the TDI bit for DIN and the TCK bit for CCLK.
+//
+// Called by:
+//   xProgram() -> portMap()
+//   jtagOpen() -> portMap()
+//
 static FLStatus portMap(struct FLContext *handle, PatchOp patchOp, uint8 port, uint8 bit, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	union {
@@ -213,6 +256,14 @@ cleanup:
 	return returnCode;
 }
 
+// The bits in each byte of a programming file may need to be swapped before sending to the micro;
+// this function makes a translation map for efficient bit-swapping. If bitOrder = {0,1,2,3,4,5,6,7}
+// then the resulting translation map does nothing. If bitOrder = {7,6,5,4,3,2,1,0} then the
+// resulting translation map mirrors the bits.
+//
+// Called by:
+//   xProgram() -> makeLookup()
+//
 static void makeLookup(const uint8 bitOrder[8], uint8 lookupTable[256]) {
 	uint8 thisByte;
 	uint16 i;
@@ -230,6 +281,13 @@ static void makeLookup(const uint8 bitOrder[8], uint8 lookupTable[256]) {
 	}
 }	
 
+// For serial & parallel programming, when the FPGA is ready to accept data, this function sends it,
+// one 64-byte block at a time, with a bit-transformation applied to each block.
+//
+// Called by:
+//   xProgram() -> fileWrite() -> dataWrite()
+//   xProgram() -> dataWrite()
+//
 static FLStatus dataWrite(struct FLContext *handle, ProgOp progOp, const uint8 *buf, uint32 len, const uint8 lookupTable[256], const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	uint16 chunkSize;
@@ -251,6 +309,11 @@ cleanup:
 	return returnCode;
 }
 
+// This function just loads binary data from the specified file and sends it to the micro.
+//
+// Called by:
+//   xProgram() -> fileWrite()
+//
 static FLStatus fileWrite(struct FLContext *handle, ProgOp progOp, const char *fileName, const uint8 lookupTable[256], const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
@@ -271,6 +334,11 @@ cleanup:
 	return returnCode;
 }
 
+// This function performs either a serial or a parallel programming operation on Xilinx FPGAs.
+//
+// Called by:
+//   flProgram() -> xProgram()
+//
 static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *portConfig, const char *progFile, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
@@ -482,6 +550,11 @@ cleanup:
 	return returnCode;
 }
 
+// This function plays the specified SVF, XSVF or CSVF file into the attached FPGA.
+//
+// Called by:
+//   flProgram() -> jProgram() -> playSVF()
+//
 static FLStatus playSVF(struct FLContext *handle, const char *svfFile, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
@@ -515,6 +588,11 @@ cleanup:
 	return returnCode;
 }
 
+// Program a device over JTAG.
+//
+// Called by:
+//   flProgram() -> jProgram()
+//
 static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
@@ -564,7 +642,10 @@ cleanup:
 }
 
 // Reverse the array in-place by swapping the outer items and progressing inward until we meet in
-// the middle
+// the middle.
+//
+// Called by:
+//   jtagScanChain()
 //
 static void swap(uint32 *array, uint32 numWritten) {
 	uint32 *hiPtr = array + numWritten - 1;  // last one
