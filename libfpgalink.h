@@ -194,7 +194,7 @@ extern "C" {
 	 *
 	 * \b NeroJTAG is a simple JTAG-over-USB protocol, currently implemented for Atmel AVR and
 	 * Cypress FX2. It uses bulk endpoints 2 and 4. An affirmative response means you can call
-	 * \c flPlaySVF() and \c flScanChain().
+	 * \c flPlaySVF() and \c jtagScanChain().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
 	 *
@@ -439,7 +439,7 @@ extern "C" {
 	 *     - \c FL_PROTOCOL_ERR if the device does not support \b NeroJTAG.
 	 *     - \c FL_JTAG_ERR if an error occurred during the JTAG operation.
 	 */
-	DLLEXPORT(FLStatus) flScanChain(
+	DLLEXPORT(FLStatus) jtagScanChain(
 		struct FLContext *handle, const char *portConfig,
 		uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
 		const char **error
