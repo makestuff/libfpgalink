@@ -24,129 +24,6 @@
 #include "csvfplay.h"
 #include "vendorCommands.h"
 
-static FLStatus beginShift(
-	struct FLContext *handle, uint32 numBits, ProgOp progOp, uint8 mode, const char **error);
-
-static FLStatus doSend(
-	struct FLContext *handle, const uint8 *sendPtr, uint16 chunkSize, const char **error);
-
-static FLStatus doReceive(
-	struct FLContext *handle, uint8 *receivePtr, uint16 chunkSize, const char **error);
-
-// Shift data into and out of JTAG chain.
-//   In pointer may be ZEROS (shift in zeros) or ONES (shift in ones).
-//   Out pointer may be NULL (not interested in data shifted out of the chain).
-//
-FLStatus neroShift(
-	struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
-	const char **error)
-{
-	FLStatus returnCode, nStatus;
-	uint32 numBytes = bitsToBytes(numBits);
-	uint16 chunkSize;
-	uint8 mode = 0x00;
-	bool isSending = false;
-
-	if ( inData == ONES ) {
-		mode |= bmSENDONES;
-	} else if ( inData != ZEROS ) {
-		isSending = true;
-	}
-	if ( isLast ) {
-		mode |= bmISLAST;
-	}
-	if ( isSending ) {
-		if ( outData ) {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-			while ( numBytes ) {
-				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
-				nStatus = doSend(handle, inData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SEND);
-				inData += chunkSize;
-				nStatus = doReceive(handle, outData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_RECV);
-				outData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		} else {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-			while ( numBytes ) {
-				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
-				nStatus = doSend(handle, inData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SEND);
-				inData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		}
-	} else {
-		if ( outData ) {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-			while ( numBytes ) {
-				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
-				nStatus = doReceive(handle, outData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_RECV);
-				outData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		} else {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-		}
-	}
-	return FL_SUCCESS;
-cleanup:
-	return returnCode;
-}
-
-// Apply the supplied bit pattern to TMS, to move the TAP to a specific state.
-//
-FLStatus neroClockFSM(
-	struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error)
-{
-	FLStatus returnCode = FL_SUCCESS;
-	int uStatus;
-	union {
-		uint32 u32;
-		uint8 bytes[4];
-	} lePattern;
-	lePattern.u32 = littleEndian32(bitPattern);
-	uStatus = usbControlWrite(
-		handle->device,
-		CMD_JTAG_CLOCK_FSM,       // bRequest
-		(uint16)transitionCount,  // wValue
-		0x0000,                   // wIndex
-		lePattern.bytes,          // bit pattern
-		4,                        // wLength
-		5000,                     // timeout (ms)
-		error
-	);
-	CHECK_STATUS(uStatus, "neroClockFSM()", FL_PROG_JTAG_FSM);
-cleanup:
-	return returnCode;
-}
-
-// Cycle the TCK line for the given number of times.
-//
-FLStatus neroClocks(struct FLContext *handle, uint32 numClocks, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
-	int uStatus = usbControlWrite(
-		handle->device,
-		CMD_JTAG_CLOCK,    // bRequest
-		numClocks&0xFFFF,  // wValue
-		numClocks>>16,     // wIndex
-		NULL,              // no data
-		0,                 // wLength
-		5000,              // timeout (ms)
-		error
-	);
-	CHECK_STATUS(uStatus, "neroClocks()", FL_PROG_CLOCKS);
-cleanup:
-	return returnCode;
-}
-
 // -------------------------------------------------------------------------------------------------
 // Implementation of private functions
 // -------------------------------------------------------------------------------------------------
@@ -215,10 +92,6 @@ static FLStatus doReceive(
 cleanup:
 	return returnCode;
 }
-
-
-
-
 
 #define GET_CHAR(func) \
 	ch = *ptr; \
@@ -758,6 +631,138 @@ cleanup:
 	return returnCode;
 }
 
+// Shift data into and out of JTAG chain.
+//   In pointer may be ZEROS (shift in zeros) or ONES (shift in ones).
+//   Out pointer may be NULL (not interested in data shifted out of the chain).
+//
+FLStatus neroShift(
+	struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
+	const char **error)
+{
+	FLStatus returnCode, nStatus;
+	uint32 numBytes = bitsToBytes(numBits);
+	uint16 chunkSize;
+	uint8 mode = 0x00;
+	bool isSending = false;
+
+	if ( inData == ONES ) {
+		mode |= bmSENDONES;
+	} else if ( inData != ZEROS ) {
+		isSending = true;
+	}
+	if ( isLast ) {
+		mode |= bmISLAST;
+	}
+	if ( isSending ) {
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SEND);
+				inData += chunkSize;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_RECV);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		} else {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SEND);
+				inData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		}
+	} else {
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_RECV);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		} else {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
+		}
+	}
+	return FL_SUCCESS;
+cleanup:
+	return returnCode;
+}
+
+// Reverse the array in-place by swapping the outer items and progressing inward until we meet in
+// the middle
+//
+static void swap(uint32 *array, uint32 numWritten) {
+	uint32 *hiPtr = array + numWritten - 1;  // last one
+	uint32 *loPtr = array; // first one
+	uint32 temp;
+	while ( loPtr < hiPtr ) {
+		temp = *loPtr;
+		*loPtr++ = *hiPtr;
+		*hiPtr-- = temp;
+	}
+}	
+
+// -------------------------------------------------------------------------------------------------
+// Implementation of public functions
+// -------------------------------------------------------------------------------------------------
+
+// Apply the supplied bit pattern to TMS, to move the TAP to a specific state.
+//
+DLLEXPORT(FLStatus) neroClockFSM(
+	struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error)
+{
+	FLStatus returnCode = FL_SUCCESS;
+	int uStatus;
+	union {
+		uint32 u32;
+		uint8 bytes[4];
+	} lePattern;
+	lePattern.u32 = littleEndian32(bitPattern);
+	uStatus = usbControlWrite(
+		handle->device,
+		CMD_JTAG_CLOCK_FSM,       // bRequest
+		(uint16)transitionCount,  // wValue
+		0x0000,                   // wIndex
+		lePattern.bytes,          // bit pattern
+		4,                        // wLength
+		5000,                     // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "neroClockFSM()", FL_PROG_JTAG_FSM);
+cleanup:
+	return returnCode;
+}
+
+// Cycle the TCK line for the given number of times.
+//
+DLLEXPORT(FLStatus) neroClocks(struct FLContext *handle, uint32 numClocks, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	int uStatus = usbControlWrite(
+		handle->device,
+		CMD_JTAG_CLOCK,    // bRequest
+		numClocks&0xFFFF,  // wValue
+		numClocks>>16,     // wIndex
+		NULL,              // no data
+		0,                 // wLength
+		5000,              // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, "neroClocks()", FL_PROG_CLOCKS);
+cleanup:
+	return returnCode;
+}
+
 DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	const char algoVendor = portConfig[0];
@@ -816,20 +821,6 @@ DLLEXPORT(FLStatus) flPortConfig(struct FLContext *handle, const char *portConfi
 cleanup:
 	return returnCode;
 }
-
-// Reverse the array in-place by swapping the outer items and progressing inward until we meet in
-// the middle
-//
-static void swap(uint32 *array, uint32 numWritten) {
-	uint32 *hiPtr = array + numWritten - 1;  // last one
-	uint32 *loPtr = array; // first one
-	uint32 temp;
-	while ( loPtr < hiPtr ) {
-		temp = *loPtr;
-		*loPtr++ = *hiPtr;
-		*hiPtr-- = temp;
-	}
-}	
 
 // Scan the JTAG chain and return an array of IDCODEs
 //
