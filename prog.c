@@ -14,7 +14,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#                             include <stdio.h>
 #include <string.h>
 #include <makestuff.h>
 #include <libusbwrap.h>
@@ -324,7 +323,6 @@ static FLStatus fileWrite(struct FLContext *handle, ProgOp progOp, const char *f
 		errRender(error, "fileWrite(): Unable to read from %s", fileName);
 		FAIL(FL_JTAG_ERR);
 	}
-	printf("Loaded %d bytes\n", fileLen);
 	fStatus = dataWrite(handle, progOp, fileData, fileLen, lookupTable, error);
 	CHECK_STATUS(fStatus, "fileWrite()", fStatus);
 cleanup:
@@ -417,12 +415,6 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 
 	makeMasks(pinMap, maskList, ddrList, portList);
 
-	for ( i = 0; i < 5; i++ ) {
-		if ( maskList[i] ) {
-			printf("Port %c: {mask: %02X, ddr: %02X, port: %02X}\n", i + 'A', maskList[i], ddrList[i], portList[i]);
-		}
-	}
-
 	// Map the CCLK bit & the SelectMAP data bus
 	fStatus = portMap(handle, PATCH_TCK, cclkPort, cclkBit, error);
 	CHECK_STATUS(fStatus, "xProgram()", fStatus);
@@ -447,12 +439,8 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	} while ( tempByte & (initMask | doneMask) );
 
-	printf("Asserted PROG, saw INIT & DONE low: FPGA is in INIT mode\n");
-
 	fStatus = flFifoMode(handle, false, error);
 	CHECK_STATUS(fStatus, "xProgram()", fStatus);
-
-	printf("Disabled FIFO mode\n");
 
 	for ( i = 0; i < 5; i++ ) {
 		mask = maskList[i];
@@ -474,8 +462,6 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		}
 	}
 
-	printf("Configured ports\n");
-
 	do {
 		fStatus = flPortAccess(
 			handle, progPort,  // deassert PROG
@@ -488,12 +474,8 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	} while ( !(tempByte & initMask) );
 
-	printf("Deasserted PROG, saw INIT go high: FPGA is ready for data\n");
-
 	fStatus = fileWrite(handle, progOp, progFile, lookupTable, error);
 	CHECK_STATUS(fStatus, "xProgram()", fStatus);
-
-	printf("Finished sending data\n");
 
 	for ( i = 0;; ) {
 		fStatus = flPortAccess(
@@ -524,8 +506,6 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		}
 	}
 
-	printf("Saw DONE go high\n");
-
 	for ( i = 0; i < 5; i++ ) {
 		mask = maskList[i];
 		if ( mask ) {
@@ -540,11 +520,6 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 			CHECK_STATUS(fStatus, "xProgram()", fStatus);
 		}
 	}
-	printf("De-configured ports\n");
-
-	//fStatus = flFifoMode(handle, true, error);
-	//CHECK_STATUS(fStatus, "xProgram()", fStatus);
-	//printf("Enabled FIFO mode again\n");
 
 cleanup:
 	return returnCode;
@@ -598,11 +573,9 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	FLStatus fStatus;
 	const char *ptr = portConfig + 1;
 	char ch;
-	int i;
 	EXPECT_CHAR(':', "jProgram");
 	fStatus = jtagOpen(handle, portConfig, ptr - portConfig, error);
 	CHECK_STATUS(fStatus, "jProgram()", fStatus);
-	printf("Configured ports\n");
 
 	ptr += 8;
 	ch = *ptr;
@@ -621,21 +594,11 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 		FAIL(FL_CONF_FORMAT);
 	}
 
-	printf("progFile = %s\n", progFile);
-
-	for ( i = 0; i < 5; i++ ) {
-
-		if ( handle->maskList[i] ) {
-			printf("Port %c: {mask: %02X, ddr: %02X, port: %02X}\n", i + 'A', handle->maskList[i], handle->ddrList[i], handle->portList[i]);
-		}
-	}
-
 	fStatus = playSVF(handle, progFile, error);
 	CHECK_STATUS(fStatus, "jProgram()", fStatus);
 
 	fStatus = jtagClose(handle, error);
 	CHECK_STATUS(fStatus, "jProgram()", fStatus);
-	printf("De-configured ports\n");
 
 cleanup:
 	return returnCode;
@@ -863,7 +826,6 @@ DLLEXPORT(FLStatus) jtagScanChain(
 	} u;
 	fStatus = jtagOpen(handle, portConfig, 0, error);
 	CHECK_STATUS(fStatus, "jtagScanChain()", fStatus);
-	printf("Configured ports\n");
 
 	i = 0;
 	nStatus = jtagClockFSM(handle, 0x0000005F, 9, error);  // Reset TAP, goto Shift-DR
