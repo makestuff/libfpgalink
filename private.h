@@ -42,11 +42,9 @@ extern "C" {
 		bool isNeroCapable;
 		uint8 progOutEP;
 		uint8 progInEP;
-		//uint16 endpointSize;
-		//uint8 masks[4];
-		//uint8 ports[4];
-		//bool usesCustomPorts;
-
+		uint8 maskList[5];
+		uint8 ddrList[5];
+		uint8 portList[5];
 	};
 
 	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will

@@ -63,7 +63,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 	uint8 *tdiAll;
 	const uint8 *ptr = csvfData;
 
-	fStatus = neroClockFSM(handle, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
+	fStatus = jtagClockFSM(handle, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
 	CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 
 	thisByte = *ptr++;
@@ -101,7 +101,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			break;
 
 		case XSIR:
-			fStatus = neroClockFSM(handle, 0x00000003, 4, error);  // -> Shift-IR
+			fStatus = jtagClockFSM(handle, 0x00000003, 4, error);  // -> Shift-IR
 			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			numBits = *ptr++;
 			#ifdef DEBUG
@@ -119,12 +119,12 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			#ifdef DEBUG
 				printf(")\n");
 			#endif
-			fStatus = neroShift(handle, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
+			fStatus = jtagShift(handle, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
 			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
-			fStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
+			fStatus = jtagClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			if ( xruntest ) {
-				fStatus = neroClocks(handle, xruntest, error);
+				fStatus = jtagClocks(handle, xruntest, error);
 				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			}
 			break;
@@ -153,14 +153,14 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			numBytes = bitsToBytes(xsdrSize);
 			i = 0;
 			do {
-				fStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
+				fStatus = jtagClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
 				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
-				fStatus = neroShift(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
+				fStatus = jtagShift(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
 				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
-				fStatus = neroClockFSM(handle, 0x0000001A, 6, error);  // -> Run-Test/Idle
+				fStatus = jtagClockFSM(handle, 0x0000001A, 6, error);  // -> Run-Test/Idle
 				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 				if ( xruntest ) {
-					fStatus = neroClocks(handle, xruntest, error);
+					fStatus = jtagClocks(handle, xruntest, error);
 					CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 				}
 				i++;
@@ -189,7 +189,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 				// TODO: Need to print actual TDO data too
 				printf("XSDR(%08X)\n", xsdrSize);
 			#endif
-			fStatus = neroClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
+			fStatus = jtagClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
 			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			numBytes = bitsToBytes(xsdrSize);
 			tdiAll = malloc(numBytes);
@@ -197,13 +197,13 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			while ( numBytes-- ) {
 				*tdiPtr++ = *ptr++;
 			}
-			fStatus = neroShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
+			fStatus = jtagShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
 			free(tdiAll);
 			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
-			fStatus = neroClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
+			fStatus = jtagClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			if ( xruntest ) {
-				fStatus = neroClocks(handle, xruntest, error);
+				fStatus = jtagClocks(handle, xruntest, error);
 				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
 			}
 			break;

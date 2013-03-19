@@ -693,26 +693,34 @@ extern "C" {
 		struct FLContext *handle, const char *portConfig, const char **error
 	) WARN_UNUSED_RESULT;
 
-	// Special values for inData parameter of neroShift() declared below
+	// Special values for inData parameter of jtagShift() declared below
 	#define ZEROS (const uint8*)NULL
 	#define ONES (ZEROS - 1)
+
+	DLLEXPORT(FLStatus) jtagOpen(
+		struct FLContext *handle, const char *portConfig, uint32 index, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) jtagClose(
+		struct FLContext *handle, const char **error
+	) WARN_UNUSED_RESULT;
 
 	// Shift "numBits" bits from "inData" into TDI, at the same time shifting the same number of
 	// bits from TDO into "outData". If "isLast" is true, leave Shift-DR state on final bit. If you
 	// want inData to be all zeros or all ones, you can use ZEROS or ONES respectively. This is more
 	// efficient than physically sending an array containing all zeros or all 0xFFs.
-	DLLEXPORT(FLStatus) neroShift(
+	DLLEXPORT(FLStatus) jtagShift(
 		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
 		const char **error
 	) WARN_UNUSED_RESULT;
 	
 	// Clock "transitionCount" bits from "bitPattern" into TMS, starting with the LSB.
-	DLLEXPORT(FLStatus) neroClockFSM(
+	DLLEXPORT(FLStatus) jtagClockFSM(
 		struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error
 	) WARN_UNUSED_RESULT;
 	
 	// Toggle TCK "numClocks" times.
-	DLLEXPORT(FLStatus) neroClocks(
+	DLLEXPORT(FLStatus) jtagClocks(
 		struct FLContext *handle, uint32 numClocks, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}

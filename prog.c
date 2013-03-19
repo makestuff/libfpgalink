@@ -474,43 +474,10 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	}
 	printf("De-configured ports\n");
 
-	fStatus = flFifoMode(handle, true, error);
-	CHECK_STATUS(fStatus, "xProgram()", fStatus);
+	//fStatus = flFifoMode(handle, true, error);
+	//CHECK_STATUS(fStatus, "xProgram()", fStatus);
+	//printf("Enabled FIFO mode again\n");
 
-	printf("Enabled FIFO mode again\n");
-
-cleanup:
-	return returnCode;
-}
-
-static FLStatus jtagConfigPorts(struct FLContext *handle, const char *portConfig, const char *ptr, uint8 *maskList, uint8 *ddrList, uint8 *portList, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
-	FLStatus fStatus;
-	uint8 thisPort, thisBit;
-	PinState pinMap[5*8] = {0,};
-	char ch;
-
-	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TDO
-	SET_BIT(thisPort, thisBit, INPUT, "jtagConfigPorts");
-	fStatus = portMap(handle, PATCH_TDO, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
-
-	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TDI
-	SET_BIT(thisPort, thisBit, LOW, "jtagConfigPorts");
-	fStatus = portMap(handle, PATCH_TDI, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
-
-	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TMS
-	SET_BIT(thisPort, thisBit, LOW, "jtagConfigPorts");
-	fStatus = portMap(handle, PATCH_TMS, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
-
-	GET_PAIR(thisPort, thisBit, "jtagConfigPorts");        // TCK
-	SET_BIT(thisPort, thisBit, LOW, "jtagConfigPorts");
-	fStatus = portMap(handle, PATCH_TCK, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, "jtagConfigPorts()", fStatus);
-
-	makeMasks(pinMap, maskList, ddrList, portList);
 cleanup:
 	return returnCode;
 }
@@ -552,12 +519,13 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	FLStatus returnCode = FL_SUCCESS;
 	FLStatus fStatus;
 	const char *ptr = portConfig + 1;
-	uint8 maskList[5], ddrList[5], portList[5], mask;
 	char ch;
 	int i;
 	EXPECT_CHAR(':', "jProgram");
-	fStatus = jtagConfigPorts(handle, portConfig, ptr, maskList, ddrList, portList, error);
+	fStatus = jtagOpen(handle, portConfig, ptr - portConfig, error);
 	CHECK_STATUS(fStatus, "jProgram()", fStatus);
+	printf("Configured ports\n");
+
 	ptr += 8;
 	ch = *ptr;
 	if ( ch == ':' ) {
@@ -578,123 +546,19 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	printf("progFile = %s\n", progFile);
 
 	for ( i = 0; i < 5; i++ ) {
-		if ( maskList[i] ) {
-			printf("Port %c: {mask: %02X, ddr: %02X, port: %02X}\n", i + 'A', maskList[i], ddrList[i], portList[i]);
+
+		if ( handle->maskList[i] ) {
+			printf("Port %c: {mask: %02X, ddr: %02X, port: %02X}\n", i + 'A', handle->maskList[i], handle->ddrList[i], handle->portList[i]);
 		}
 	}
-
-	fStatus = flFifoMode(handle, false, error);
-	CHECK_STATUS(fStatus, "jProgram()", fStatus);
-
-	printf("Disabled FIFO mode\n");
-
-	for ( i = 0; i < 5; i++ ) {
-		mask = maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, i,
-				mask, ddrList[i], portList[i],
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, "jProgram()", fStatus);
-		}
-	}
-
-	printf("Configured ports\n");
 
 	fStatus = playSVF(handle, progFile, error);
 	CHECK_STATUS(fStatus, "jProgram()", fStatus);
 
-	for ( i = 0; i < 5; i++ ) {
-		mask = maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, i,
-				mask,
-				0x00,
-				0x00,
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, "jProgram()", fStatus);
-		}
-	}
+	fStatus = jtagClose(handle, error);
+	CHECK_STATUS(fStatus, "jProgram()", fStatus);
 	printf("De-configured ports\n");
 
-	fStatus = flFifoMode(handle, true, error);
-	CHECK_STATUS(fStatus, "jProgram()", fStatus);
-
-	printf("Enabled FIFO mode again\n");
-
-cleanup:
-	return returnCode;
-}
-
-// Shift data into and out of JTAG chain.
-//   In pointer may be ZEROS (shift in zeros) or ONES (shift in ones).
-//   Out pointer may be NULL (not interested in data shifted out of the chain).
-//
-FLStatus neroShift(
-	struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
-	const char **error)
-{
-	FLStatus returnCode, nStatus;
-	uint32 numBytes = bitsToBytes(numBits);
-	uint16 chunkSize;
-	uint8 mode = 0x00;
-	bool isSending = false;
-
-	if ( inData == ONES ) {
-		mode |= bmSENDONES;
-	} else if ( inData != ZEROS ) {
-		isSending = true;
-	}
-	if ( isLast ) {
-		mode |= bmISLAST;
-	}
-	if ( isSending ) {
-		if ( outData ) {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-			while ( numBytes ) {
-				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
-				nStatus = doSend(handle, inData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SEND);
-				inData += chunkSize;
-				nStatus = doReceive(handle, outData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_RECV);
-				outData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		} else {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-			while ( numBytes ) {
-				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
-				nStatus = doSend(handle, inData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SEND);
-				inData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		}
-	} else {
-		if ( outData ) {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-			while ( numBytes ) {
-				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
-				nStatus = doReceive(handle, outData, chunkSize, error);
-				CHECK_STATUS(nStatus, "neroShift()", FL_PROG_RECV);
-				outData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		} else {
-			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
-			CHECK_STATUS(nStatus, "neroShift()", FL_PROG_SHIFT);
-		}
-	}
-	return FL_SUCCESS;
 cleanup:
 	return returnCode;
 }
@@ -717,9 +581,147 @@ static void swap(uint32 *array, uint32 numWritten) {
 // Implementation of public functions
 // -------------------------------------------------------------------------------------------------
 
+DLLEXPORT(FLStatus) jtagOpen(struct FLContext *handle, const char *portConfig, uint32 index, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
+	uint8 thisPort, thisBit, mask;
+	PinState pinMap[5*8] = {0,};
+	const char *ptr = portConfig + index;
+	char ch;
+	int i;
+
+	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TDO
+	SET_BIT(thisPort, thisBit, INPUT, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TDO, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagOpen()", fStatus);
+
+	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TDI
+	SET_BIT(thisPort, thisBit, LOW, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TDI, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagOpen()", fStatus);
+
+	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TMS
+	SET_BIT(thisPort, thisBit, LOW, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TMS, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagOpen()", fStatus);
+
+	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TCK
+	SET_BIT(thisPort, thisBit, LOW, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TCK, thisPort, thisBit, error);
+	CHECK_STATUS(fStatus, "jtagOpen()", fStatus);
+
+	makeMasks(pinMap, handle->maskList, handle->ddrList, handle->portList);
+
+	for ( i = 0; i < 5; i++ ) {
+		mask = handle->maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask, handle->ddrList[i], handle->portList[i],
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "jtagOpen()", fStatus);
+		}
+	}
+cleanup:
+	return returnCode;
+}
+
+DLLEXPORT(FLStatus) jtagClose(struct FLContext *handle, const char **error) {
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
+	uint8 mask;
+	int i;
+	for ( i = 0; i < 5; i++ ) {
+		mask = handle->maskList[i];
+		if ( mask ) {
+			fStatus = flPortAccess(
+				handle, i,
+				mask,
+				0x00,
+				0x00,
+				NULL,
+				error
+			);
+			CHECK_STATUS(fStatus, "jProgram()", fStatus);
+		}
+	}
+cleanup:
+	return returnCode;
+}
+
+// Shift data into and out of JTAG chain.
+//   In pointer may be ZEROS (shift in zeros) or ONES (shift in ones).
+//   Out pointer may be NULL (not interested in data shifted out of the chain).
+//
+DLLEXPORT(FLStatus) jtagShift(
+	struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
+	const char **error)
+{
+	FLStatus returnCode, nStatus;
+	uint32 numBytes = bitsToBytes(numBits);
+	uint16 chunkSize;
+	uint8 mode = 0x00;
+	bool isSending = false;
+
+	if ( inData == ONES ) {
+		mode |= bmSENDONES;
+	} else if ( inData != ZEROS ) {
+		isSending = true;
+	}
+	if ( isLast ) {
+		mode |= bmISLAST;
+	}
+	if ( isSending ) {
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_SEND);
+				inData += chunkSize;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_RECV);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		} else {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doSend(handle, inData, chunkSize, error);
+				CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_SEND);
+				inData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		}
+	} else {
+		if ( outData ) {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_SHIFT);
+			while ( numBytes ) {
+				chunkSize = (numBytes >= 64) ? 64 : (uint16)numBytes;
+				nStatus = doReceive(handle, outData, chunkSize, error);
+				CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_RECV);
+				outData += chunkSize;
+				numBytes -= chunkSize;
+			}
+		} else {
+			nStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
+			CHECK_STATUS(nStatus, "jtagShift()", FL_PROG_SHIFT);
+		}
+	}
+	return FL_SUCCESS;
+cleanup:
+	return returnCode;
+}
+
 // Apply the supplied bit pattern to TMS, to move the TAP to a specific state.
 //
-DLLEXPORT(FLStatus) neroClockFSM(
+DLLEXPORT(FLStatus) jtagClockFSM(
 	struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error)
 {
 	FLStatus returnCode = FL_SUCCESS;
@@ -739,14 +741,14 @@ DLLEXPORT(FLStatus) neroClockFSM(
 		5000,                     // timeout (ms)
 		error
 	);
-	CHECK_STATUS(uStatus, "neroClockFSM()", FL_PROG_JTAG_FSM);
+	CHECK_STATUS(uStatus, "jtagClockFSM()", FL_PROG_JTAG_FSM);
 cleanup:
 	return returnCode;
 }
 
 // Cycle the TCK line for the given number of times.
 //
-DLLEXPORT(FLStatus) neroClocks(struct FLContext *handle, uint32 numClocks, const char **error) {
+DLLEXPORT(FLStatus) jtagClocks(struct FLContext *handle, uint32 numClocks, const char **error) {
 	FLStatus returnCode = FL_SUCCESS;
 	int uStatus = usbControlWrite(
 		handle->device,
@@ -758,7 +760,55 @@ DLLEXPORT(FLStatus) neroClocks(struct FLContext *handle, uint32 numClocks, const
 		5000,              // timeout (ms)
 		error
 	);
-	CHECK_STATUS(uStatus, "neroClocks()", FL_PROG_CLOCKS);
+	CHECK_STATUS(uStatus, "jtagClocks()", FL_PROG_CLOCKS);
+cleanup:
+	return returnCode;
+}
+
+// Scan the JTAG chain and return an array of IDCODEs
+//
+DLLEXPORT(FLStatus) jtagScanChain(
+	struct FLContext *handle, const char *portConfig,
+	uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
+	const char **error)
+{
+	FLStatus returnCode = FL_SUCCESS;
+	FLStatus fStatus;
+	FLStatus nStatus;
+	uint32 i = 0;
+	union {
+		uint32 idCode;
+		uint8 bytes[4];
+	} u;
+	fStatus = jtagOpen(handle, portConfig, 0, error);
+	CHECK_STATUS(fStatus, "jtagScanChain()", fStatus);
+	printf("Configured ports\n");
+
+	i = 0;
+	nStatus = jtagClockFSM(handle, 0x0000005F, 9, error);  // Reset TAP, goto Shift-DR
+	CHECK_STATUS(nStatus, "jtagScanChain()", FL_JTAG_ERR);
+	for ( ; ; ) {
+		nStatus = jtagShift(handle, 32, ZEROS, u.bytes, false, error);
+		CHECK_STATUS(nStatus, "jtagScanChain()", FL_JTAG_ERR);
+		if ( u.idCode == 0x00000000 || u.idCode == 0xFFFFFFFF ) {
+			break;
+		}
+		if ( deviceArray && i < arraySize ) {
+			deviceArray[i] = littleEndian32(u.idCode);
+		}
+		i++;
+	}
+	if ( deviceArray && i ) {
+		// The IDCODEs we have are in reverse order, so swap them to get the correct chain order.
+		swap(deviceArray, (i > arraySize) ? arraySize : i);
+	}
+	if ( numDevices ) {
+		*numDevices = i;
+	}
+
+	fStatus = jtagClose(handle, error);
+	CHECK_STATUS(fStatus, "jtagScanChain()", fStatus);
+
 cleanup:
 	return returnCode;
 }
@@ -818,79 +868,6 @@ DLLEXPORT(FLStatus) flPortConfig(struct FLContext *handle, const char *portConfi
 			CHECK_STATUS(fStatus, "flPortConfig()", fStatus);
 		}
 	}
-cleanup:
-	return returnCode;
-}
-
-// Scan the JTAG chain and return an array of IDCODEs
-//
-DLLEXPORT(FLStatus) flScanChain(
-	struct FLContext *handle, const char *portConfig,
-	uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
-	const char **error)
-{
-	FLStatus returnCode = FL_SUCCESS;
-	FLStatus fStatus;
-	FLStatus nStatus;
-	uint8 maskList[5], ddrList[5], portList[5], mask;
-	uint32 i = 0;
-	union {
-		uint32 idCode;
-		uint8 bytes[4];
-	} u;
-	fStatus = jtagConfigPorts(handle, portConfig, portConfig, maskList, ddrList, portList, error);
-	CHECK_STATUS(fStatus, "jProgram()", fStatus);
-
-	for ( i = 0; i < 5; i++ ) {
-		mask = maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, i,
-				mask, ddrList[i], portList[i],
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, "jProgram()", fStatus);
-		}
-	}
-
-	i = 0;
-	nStatus = neroClockFSM(handle, 0x0000005F, 9, error);  // Reset TAP, goto Shift-DR
-	CHECK_STATUS(nStatus, "flScanChain()", FL_JTAG_ERR);
-	for ( ; ; ) {
-		nStatus = neroShift(handle, 32, ZEROS, u.bytes, false, error);
-		CHECK_STATUS(nStatus, "flScanChain()", FL_JTAG_ERR);
-		if ( u.idCode == 0x00000000 || u.idCode == 0xFFFFFFFF ) {
-			break;
-		}
-		if ( deviceArray && i < arraySize ) {
-			deviceArray[i] = littleEndian32(u.idCode);
-		}
-		i++;
-	}
-	if ( deviceArray && i ) {
-		// The IDCODEs we have are in reverse order, so swap them to get the correct chain order.
-		swap(deviceArray, (i > arraySize) ? arraySize : i);
-	}
-	if ( numDevices ) {
-		*numDevices = i;
-	}
-
-	for ( i = 0; i < 5; i++ ) {
-		mask = maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, i,
-				mask,
-				0x00,
-				0x00,
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, "flScanChain()", fStatus);
-		}
-	}
-
 cleanup:
 	return returnCode;
 }
