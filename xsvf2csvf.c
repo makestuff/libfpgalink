@@ -171,6 +171,7 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			} else {
 				// The last mask was not all zeros, so we must honour the XSDRTDO's tdoExpected bytes.
 				if ( numBytes > BUF_SIZE ) {
+					errRender(error, "xsvfSwapBytes(): Previous mask was nonzero, but no room to compare %d bytes", numBytes);
 					FAIL(FL_UNSUPPORTED_SIZE_ERR);
 				}
 				if ( numBytes > *maxBufSize ) {
@@ -277,6 +278,7 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			// there's an attempt to switch the XENDIR state to PAUSE_IR.
 			thisByte = getNextByte(xc);
 			if ( thisByte ) {
+				errRender(error, "xsvfSwapBytes(): Only XENDIR(TAPSTATE_RUN_TEST_IDLE) is supported!");
 				FAIL(FL_UNSUPPORTED_DATA_ERR);
 			}
 			break;
@@ -286,12 +288,14 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			// there's an attempt to switch the XENDDR state to PAUSE_DR.
 			thisByte = getNextByte(xc);
 			if ( thisByte ) {
+				errRender(error, "xsvfSwapBytes(): Only XENDDR(TAPSTATE_RUN_TEST_IDLE) is supported!");
 				FAIL(FL_UNSUPPORTED_DATA_ERR);
 			}
 			break;
 
 		default:
 			// All other commands are unsupported, so fail if they're encountered.
+			errRender(error, "xsvfSwapBytes(): Unsupported command 0x%02X!", thisByte);
 			FAIL(FL_UNSUPPORTED_CMD_ERR);
 		}
 		thisByte = getNextByte(xc);
