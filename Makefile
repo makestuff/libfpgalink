@@ -52,7 +52,7 @@ hdl:
 	./hdlbuild.sh $(X2C)
 
 $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
-	make -C $<
+	make AS8051=asx8051 -C $<
 
 tests: FORCE
 	make -C tests-unit rel
