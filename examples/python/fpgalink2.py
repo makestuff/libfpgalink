@@ -56,10 +56,10 @@ fpgalink.flLoadFile.argtypes = [c_char_p, POINTER(uint32)]
 fpgalink.flLoadFile.restype = POINTER(uint8)
 fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
-fpgalink.flScanChain.argtypes = [FLHandle, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
-fpgalink.flScanChain.restype = FLStatus
 fpgalink.flPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flPortAccess.restype = FLStatus
+fpgalink.flPortConfig.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+fpgalink.flPortConfig.restype = FLStatus
 
 # Connection Lifecycle
 fpgalink.flOpen.argtypes = [c_char_p, POINTER(FLHandle), POINTER(ErrorString)]
@@ -76,16 +76,34 @@ fpgalink.flIsCommCapable.argtypes = [FLHandle]
 fpgalink.flIsCommCapable.restype = uint8
 
 # CommFPGA Operations
+fpgalink.flFifoMode.argtypes = [FLHandle, uint8, POINTER(ErrorString)]
+fpgalink.flFifoMode.restype = FLStatus
 fpgalink.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flIsFPGARunning.restype = FLStatus
 fpgalink.flWriteChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flWriteChannel.restype = FLStatus
 fpgalink.flReadChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flReadChannel.restype = FLStatus
+fpgalink.flCleanWriteBuffer.argtypes = [FLHandle]
+fpgalink.flCleanWriteBuffer.restype = None
+fpgalink.flAppendWriteChannelCommand.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flAppendWriteChannelCommand.restype = FLStatus
+fpgalink.flPlayWriteBuffer.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
+fpgalink.flPlayWriteBuffer.restype = FLStatus
 
-# NeroJTAG Operations
-fpgalink.flPlayXSVF.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
-fpgalink.flPlayXSVF.restype = FLStatus
+# NeroProg Operations
+fpgalink.flProgram.argtypes = [FLHandle, c_char_p, c_char_p, POINTER(ErrorString)]
+fpgalink.flProgram.restype = FLStatus
+fpgalink.jtagScanChain.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
+fpgalink.jtagScanChain.restype = FLStatus
+fpgalink.jtagOpen.argtypes = [FLHandle, c_char_p, uint32, POINTER(ErrorString)]
+fpgalink.jtagOpen.restype = FLStatus
+fpgalink.jtagClose.argtypes = [FLHandle, POINTER(ErrorString)]
+fpgalink.jtagClose.restype = FLStatus
+fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
+fpgalink.jtagClockFSM.restype = FLStatus
+fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
+fpgalink.jtagClocks.restype = FLStatus
 
 # FX2LP Firmware Operations
 fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
@@ -98,10 +116,6 @@ fpgalink.flLoadCustomFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorStrin
 fpgalink.flLoadCustomFirmware.restype = FLStatus
 fpgalink.flFlashCustomFirmware.argtypes = [FLHandle, c_char_p, uint32, POINTER(ErrorString)]
 fpgalink.flFlashCustomFirmware.restype = FLStatus
-fpgalink.flCleanWriteBuffer.argtypes = [FLHandle]
-fpgalink.flCleanWriteBuffer.restype = None
-fpgalink.flAppendWriteChannelCommand.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flAppendWriteChannelCommand.restype = FLStatus
 
 # Open a connection to the FPGALink device
 def flOpen(vp):
@@ -150,20 +164,6 @@ def flIsCommCapable(handle):
     else:
         return False
 
-# Scan the JTAG chain
-def flScanChain(handle):
-    error = ErrorString()
-    ChainType = (uint32 * 16)  # Guess there are fewer than 16 devices
-    chain = ChainType()
-    length = uint32(0)
-    status = fpgalink.flScanChain(handle, byref(length), chain, 16, byref(error))
-    if ( length > 16 ):
-        # We know exactly how many devices there are, so try again
-        ChainType = (uint32 * length.value)
-        chain = ChainType()
-        status = fpgalink.flScanChain(handle, None, chain, length, byref(error))
-    return chain
-
 # Access the I/O ports on the micro
 def flPortAccess(handle, portSelect, mask, ddrWrite, portWrite):
     error = ErrorString()
@@ -174,6 +174,24 @@ def flPortAccess(handle, portSelect, mask, ddrWrite, portWrite):
         fpgalink.flFreeError(error)
         raise FLException(s)
     return portRead.value
+
+# Access the I/O ports on the micro
+def flPortConfig(handle, portConfig):
+    error = ErrorString()
+    status = fpgalink.flPortConfig(handle, portConfig.encode('ascii'), byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+# Set the FIFO mode
+def flFifoMode(handle, fifoMode):
+    error = ErrorString()
+    status = fpgalink.flFifoMode(handle, fifoMode, byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
 
 # Return true if the FPGA is actually running
 def flIsFPGARunning(handle):
@@ -237,15 +255,6 @@ def flReadChannel(handle, timeout, chan, count = 1):
         raise FLException(s)
     return returnValue
 
-# Play an XSVF file into the JTAG chain
-def flPlayXSVF(handle, xsvfFile):
-    error = ErrorString()
-    status = fpgalink.flPlayXSVF(handle, xsvfFile.encode('ascii'), byref(error))
-    if ( status != FL_SUCCESS ):
-        s = str(error.value)
-        fpgalink.flFreeError(error)
-        raise FLException(s)
-
 # Load standard firmware into the FX2LP chip
 def flLoadStandardFirmware(curVidPid, newVidPid):
     error = ErrorString()
@@ -302,24 +311,56 @@ def flInitialise(debugLevel):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
+# Program a device using the given config string and file
+def flProgram(handle, progConfig, progFile = None):
+    error = ErrorString()
+    if ( progFile != None ):
+        progFile = progFile.encode('ascii')
+    status = fpgalink.flProgram(handle, progConfig.encode('ascii'), progFile, byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+# Scan the JTAG chain
+def jtagScanChain(handle, portConfig):
+    error = ErrorString()
+    ChainType = (uint32 * 16)  # Guess there are fewer than 16 devices
+    chain = ChainType()
+    length = uint32(0)
+    status = fpgalink.jtagScanChain(handle, portConfig, byref(length), chain, 16, byref(error))
+    if ( length > 16 ):
+        # We know exactly how many devices there are, so try again
+        ChainType = (uint32 * length.value)
+        chain = ChainType()
+        status = fpgalink.jtagScanChain(handle, portConfig, None, chain, length, byref(error))
+    return chain
+
+# Open a JTAG port
+#def jtagOpen(handle, portConfig, index, progFile):
+#    error = ErrorString()
+#    status = fpgalink.jtagOpen(handle, portConfig.encode('ascii'), index, byref(error))
+#    if ( status != FL_SUCCESS ):
+#        s = str(error.value)
+#        fpgalink.flFreeError(error)
+#        raise FLException(s)
+
 flInitialise(0)
 
 # Main function if we're not loaded as a module
 if __name__ == "__main__":
     print "FPGALink Python Example Copyright (C) 2011-2012 Chris McClelland\n"
     parser = argparse.ArgumentParser(description='Load FX2LP firmware, load the FPGA, interact with the FPGA.')
-    parser.add_argument('-p', action="store_true", default=False, help="FPGA is powered from USB (Nexys2 only!)")
-    parser.add_argument('-s', action="store_true", default=False, help="scan the JTAG chain")
-    parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="renumerated vendor and product ID of the FPGALink device")
-    parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="initial vendor and product ID of the (FX2LP-based) FPGALink device")
-    parser.add_argument('-x', action="store", nargs=1, metavar="<xsvfFile>", help="SVF, XSVF or CSVF file to play into the JTAG chain")
+    parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="vendor ID and product ID (e.g 04B4:8613)")
+    parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="VID, PID and optional dev ID (e.g 1D50:602B:0001)")
+    parser.add_argument('-w', action="store", nargs=1, metavar="<port[,port]*>", help="write/configure digital ports")
+    parser.add_argument('-r', action="store_true", default=False, help="read digital ports")
+    parser.add_argument('-q', action="store", nargs=1, metavar="<jtagPorts>", help="query the JTAG chain")
+    parser.add_argument('-p', action="store", nargs=1, metavar="<config>", help="program a device")
     parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to channel 0")
     argList = parser.parse_args()
     handle = FLHandle()
     try:
-        if ( argList.j and not argList.i ):
-            raise FLException("You can't specify -j without -i")
-
         vp = argList.v[0]
         print "Attempting to open connection to FPGALink device %s..." % vp
         try:
@@ -339,16 +380,21 @@ if __name__ == "__main__":
             else:
                 raise FLException("Could not open FPGALink device at %s and no initial VID:PID was supplied" % vp)
         
-        if ( argList.p ):
-            print "Connecting USB power to FPGA..."
-            flPortAccess(handle, 3, 0x80, 0x80, 0x80);
+        if ( argList.w ):
+            print "Configuring ports..."
+            flPortConfig(handle, argList.w[0]);
             fpgalink.flSleep(100)
+
+        if ( argList.r ):
+            print "State of port lines:"
+            for i in range(5):
+                print "  %c: %02X" % (chr(65+i), flPortAccess(handle, i, 0x00, 0x00, 0x00))
 
         isNeroCapable = flIsNeroCapable(handle)
         isCommCapable = flIsCommCapable(handle)
-        if ( argList.s ):
+        if ( argList.q ):
             if ( isNeroCapable ):
-                chain = flScanChain(handle)
+                chain = flScanChain(handle, argList.q[0])
                 if ( len(chain) > 0 ):
                     print "The FPGALink device at %s scanned its JTAG chain, yielding:" % vp
                     for i in chain:
@@ -358,13 +404,13 @@ if __name__ == "__main__":
             else:
                 raise FLException("JTAG chain scan requested but FPGALink device at %s does not support NeroJTAG" % vp)
         
-        if ( argList.x ):
-            xsvfFile = argList.x[0]
-            print "Playing \"%s\" into the JTAG chain on FPGALink device %s..." % (xsvfFile, vp)
+        if ( argList.p ):
+            progConfig = argList.p[0]
+            print "Programming device with config %s..." % progConfig
             if ( isNeroCapable ):
-                flPlayXSVF(handle, xsvfFile)
+                flProgram(handle, progConfig)
             else:
-                raise FLException("XSVF play requested but device at %s does not support NeroJTAG" % vp)
+                raise FLException("Device program requested but device at %s does not support NeroProg" % vp)
         
         if ( argList.f and not(isCommCapable) ):
             raise FLException("Data file load requested but device at %s does not support CommFPGA" % vp)
