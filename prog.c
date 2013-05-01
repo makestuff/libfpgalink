@@ -205,10 +205,10 @@ static FLStatus populateMap(const char *portConfig, const char *ptr, const char 
 			SET_BIT(thisPort, thisBit, HIGH, "populateMap");
 		} else if ( ch == '-' ) {
 			SET_BIT(thisPort, thisBit, LOW, "populateMap");
-		} else if ( ch == '/' ) {
+		} else if ( ch == '?' ) {
 			SET_BIT(thisPort, thisBit, INPUT, "populateMap");
 		} else {
-			errRender(error, "populateMap(): Expecting '+', '-' or '/' at char %d", ptr-portConfig);
+			errRender(error, "populateMap(): Expecting '+', '-' or '?' at char %d", ptr-portConfig);
 			FAIL(FL_CONF_FORMAT);
 		}
 		ptr++;
@@ -688,7 +688,7 @@ DLLEXPORT(FLStatus) jtagClose(struct FLContext *handle, const char **error) {
 				NULL,
 				error
 			);
-			CHECK_STATUS(fStatus, "jProgram()", fStatus);
+			CHECK_STATUS(fStatus, "jtagClose()", fStatus);
 		}
 	}
 cleanup:
