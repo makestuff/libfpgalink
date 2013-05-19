@@ -17,19 +17,41 @@
 #include <avr/io.h>
 #include <avr/wdt.h>
 #include <avr/power.h>
+#include <avr/io.h>
 #include <string.h>
 #include <LUFA/Version.h>
 #include <LUFA/Drivers/USB/USB.h>
 #include "makestuff.h"
 #include "desc.h"
-#include "jtag.h"
+#include "prog.h"
 #include "../../vendorCommands.h"
-//#include <usart.h>
+#include "debug.h"
 
 #define EPP_ADDRSTB (1<<4)
 #define EPP_DATASTB (1<<5)
 #define EPP_WRITE   (1<<6)
 #define EPP_WAIT    (1<<7)
+
+static uint8 m_fifoMode = 0;
+
+void fifoSetEnabled(uint8 mode) {
+	m_fifoMode = mode;
+	switch(mode) {
+	case 0:
+		// Port C and D inputs, pull-ups off
+		DDRC = 0x00;
+		DDRD = 0x00;
+		PORTC = 0x00;
+		PORTD = 0x00;
+		break;
+	case 1:
+		// EPP_WAIT pulled-up input, other port C lines outputs, high
+		PORTC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE | EPP_WAIT);
+		DDRC &= ~EPP_WAIT;
+		DDRC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
+		break;
+	}
+}
 
 void doComms(void) {
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
@@ -100,28 +122,30 @@ void doComms(void) {
 				Endpoint_ClearIN();
 			}
 			
-			// Get last few bytes of data from FPGA
-			for ( i = 0; i < mod64; i++ ) {
-				// Wait for FPGA to assert eppWait
-				while ( PINC & EPP_WAIT );
+			if ( mod64 ) {
+				// Get last few bytes of data from FPGA
+				for ( i = 0; i < mod64; i++ ) {
+					// Wait for FPGA to assert eppWait
+					while ( PINC & EPP_WAIT );
+					
+					// Put byte on port D, strobe a data read
+					PORTC &= ~EPP_DATASTB;
+					
+					// Wait for FPGA to deassert eppWait
+					while ( !(PINC & EPP_WAIT) );
+					
+					// Sample data lines
+					buf[i] = PIND;
+					
+					// Signal FPGA that it's OK to end cycle
+					PORTC |= EPP_DATASTB;
+				}
 				
-				// Put byte on port D, strobe a data read
-				PORTC &= ~EPP_DATASTB;
-				
-				// Wait for FPGA to deassert eppWait
-				while ( !(PINC & EPP_WAIT) );
-				
-				// Sample data lines
-				buf[i] = PIND;
-				
-				// Signal FPGA that it's OK to end cycle
-				PORTC |= EPP_DATASTB;
+				// And send it to the host
+				while ( !Endpoint_IsINReady() );
+				Endpoint_Write_Stream_LE(buf, mod64, NULL);
+				Endpoint_ClearIN();
 			}
-			
-			// And send it to the host
-			while ( !Endpoint_IsINReady() );
-			Endpoint_Write_Stream_LE(buf, mod64, NULL);
-			Endpoint_ClearIN();
 		} else {
 			// The host is writing a channel ----------------------------------------------------------
 
@@ -148,21 +172,23 @@ void doComms(void) {
 			}
 			
 			// Get last few bytes of data from host
-			Endpoint_Read_Stream_LE(buf, mod64, NULL);
-			Endpoint_ClearOUT();
-			for ( i = 0; i < mod64; i++ ) {
-				// Wait for FPGA to assert eppWait
-				while ( PINC & EPP_WAIT );
-				
-				// Put byte on port D, strobe a data write
-				PORTD = buf[i];
-				PORTC &= ~EPP_DATASTB;
-				
-				// Wait for FPGA to deassert eppWait
-				while ( !(PINC & EPP_WAIT) );
-				
-				// Signal FPGA that it's OK to end cycle
-				PORTC |= EPP_DATASTB;
+			if ( mod64 ) {
+				Endpoint_Read_Stream_LE(buf, mod64, NULL);
+				Endpoint_ClearOUT();
+				for ( i = 0; i < mod64; i++ ) {
+					// Wait for FPGA to assert eppWait
+					while ( PINC & EPP_WAIT );
+					
+					// Put byte on port D, strobe a data write
+					PORTD = buf[i];
+					PORTC &= ~EPP_DATASTB;
+					
+					// Wait for FPGA to deassert eppWait
+					while ( !(PINC & EPP_WAIT) );
+					
+					// Signal FPGA that it's OK to end cycle
+					PORTC |= EPP_DATASTB;
+				}
 			}
 
 			DDRD = 0x00;         // stop driving port D
@@ -178,30 +204,71 @@ int main(void) {
 	MCUSR &= ~(1 << WDRF);
 	wdt_disable();
 	clock_prescale_set(clock_div_1);
+	PORTB = 0x00;
 	PORTC = 0x00;
+	PORTD = 0x00;
+	DDRB = 0x00;
 	DDRC = 0x00;
 	DDRD = 0x00;
-	jtagSetEnabled(false);
-
-	// Initialise EPP control outputs, enable eppWait pull-up
-	PORTC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE | EPP_WAIT);
-	
-	// Drive EPP control outputs
-	DDRC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
-	
-	//usartInit(115200);
-	//usartSendFlashString(PSTR("MakeStuff FPGALink/AVR v1.0...\r"));
 
 	sei();
+	#ifdef DEBUG
+		debugInit();
+		debugSendFlashString(PSTR("MakeStuff FPGALink/AVR v1.1...\r"));
+	#endif
 	USB_Init();
 	for ( ; ; ) {
 		USB_USBTask();
-		if ( jtagIsShiftPending() ) {
-			jtagShiftExecute();
-		} else if ( !jtagIsEnabled() ) {
+		switch ( m_fifoMode ) {
+		case 0:
+			progShiftExecute();
+			break;
+		case 1:
 			doComms();
+			break;
 		}
 	}
+}
+
+#define MODE_FIFO (1<<1)
+
+#define updateRegister(reg, val) tempByte = reg; tempByte &= ~mask; tempByte |= val; reg = tempByte
+
+uint8 portAccess(uint8 portSelect, uint8 mask, uint8 ddrWrite, uint8 portWrite) {
+	uint8 tempByte = 0x00;
+	switch ( portSelect ) {
+
+#ifdef HAS_PORTA
+	case 0:
+		updateRegister(PORTA, portWrite);
+		updateRegister(DDRA, ddrWrite);
+		tempByte = PINA;
+		break;
+#endif
+	case 1:
+		updateRegister(PORTB, portWrite);
+		updateRegister(DDRB, ddrWrite);
+		tempByte = PINB;
+		break;
+	case 2:
+		updateRegister(PORTC, portWrite);
+		updateRegister(DDRC, ddrWrite);
+		tempByte = PINC;
+		break;
+	case 3:
+		updateRegister(PORTD, portWrite);
+		updateRegister(DDRD, ddrWrite);
+		tempByte = PIND;
+		break;
+#ifdef HAS_PORTE
+	case 4:
+		updateRegister(PORTE, portWrite);
+		updateRegister(DDRE, ddrWrite);
+		tempByte = PINE;
+		break;
+#endif
+	}
+	return tempByte;
 }
 
 // Called when a vendor command is received
@@ -211,14 +278,14 @@ void EVENT_USB_Device_ControlRequest(void) {
 	case CMD_MODE_STATUS:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			// Enable/disable JTAG mode
-			uint16 wBits = USB_ControlRequest.wValue;
-			uint16 wMask = USB_ControlRequest.wIndex;
-			Endpoint_ClearSETUP();
-			if ( wMask & MODE_JTAG ) {
-				// When in JTAG mode, the JTAG lines are driven; tristate otherwise
-				jtagSetEnabled(wBits & MODE_JTAG ? true : false);
+			const uint16 wBits = USB_ControlRequest.wValue;
+			const uint16 wMask = USB_ControlRequest.wIndex;
+			if ( wMask & MODE_FIFO ) {
+				// Enable or disable FIFO mode
+				Endpoint_ClearSETUP();
+				fifoSetEnabled(wBits & MODE_FIFO ? 1 : 0);
+				Endpoint_ClearStatusStage();
 			}
-			Endpoint_ClearStatusStage();
 		} else if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
 			uint8 statusBuffer[16];
 			Endpoint_ClearSETUP();
@@ -248,7 +315,17 @@ void EVENT_USB_Device_ControlRequest(void) {
 			uint32 numBits;
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&numBits, 4);
-			jtagShiftBegin(numBits, (uint8)USB_ControlRequest.wValue);
+			#ifdef DEBUG
+				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_DATA("));
+				debugSendLongHex(numBits);
+				debugSendByte(',');
+				debugSendWordHex(USB_ControlRequest.wIndex);
+				debugSendByte(',');
+				debugSendWordHex(USB_ControlRequest.wValue);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
+			progShiftBegin(numBits, (ProgOp)USB_ControlRequest.wIndex, (uint8)USB_ControlRequest.wValue);
 			Endpoint_ClearStatusStage();
 			// Now that numBits & flagByte are set, this operation will continue in mainLoop()...
 		}
@@ -261,7 +338,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&bitPattern, 4);
 			Endpoint_ClearStatusStage();
-			jtagClockFSM(bitPattern, transitionCount);
+			progClockFSM(bitPattern, transitionCount);
 		}
 		break;
 
@@ -271,7 +348,47 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Endpoint_ClearSETUP();
 			numCycles <<= 16;
 			numCycles |= USB_ControlRequest.wValue;
-			jtagClocks(numCycles);
+			progClocks(numCycles);
+			Endpoint_ClearStatusStage();
+		}
+		break;
+
+	case CMD_PORT_IO:
+		if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
+			const uint8 portSelect = USB_ControlRequest.wIndex & 0x00FF;
+			const uint8 mask = USB_ControlRequest.wIndex >> 8;
+			uint8 ddrWrite = USB_ControlRequest.wValue & 0x00FF;
+			uint8 portWrite = USB_ControlRequest.wValue >> 8;
+			uint8 response;
+			if (
+				portSelect >= 
+					#ifdef HAS_PORTA
+						0
+					#else
+						1
+					#endif
+				&& portSelect <=
+					#ifdef HAS_PORTE
+						4
+					#else
+						3
+					#endif
+			) {
+				portWrite &= mask;
+				ddrWrite &= mask;
+
+				// Get the state of the port lines:
+				Endpoint_ClearSETUP();
+				response = portAccess(portSelect, mask, ddrWrite, portWrite);
+				Endpoint_Write_Control_Stream_LE(&response, 1);
+				Endpoint_ClearStatusStage();
+			}
+		}
+		break;
+
+	case CMD_PORT_MAP:
+		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
+			Endpoint_ClearSETUP();
 			Endpoint_ClearStatusStage();
 		}
 		break;
@@ -287,18 +404,16 @@ void EVENT_USB_Device_Disconnect(void) {
 }
 
 void EVENT_USB_Device_ConfigurationChanged(void) {
-	if ( !(Endpoint_ConfigureEndpoint(OUT_ENDPOINT_ADDR,
+	if ( !(Endpoint_ConfigureEndpoint(ENDPOINT_DIR_OUT | OUT_ENDPOINT_ADDR,
 	                                  EP_TYPE_BULK,
-	                                  ENDPOINT_DIR_OUT,
 	                                  ENDPOINT_SIZE,
-	                                  ENDPOINT_BANK_SINGLE)) )
+	                                  1)) )
 	{
 	}
-	if ( !(Endpoint_ConfigureEndpoint(IN_ENDPOINT_ADDR,
+	if ( !(Endpoint_ConfigureEndpoint(ENDPOINT_DIR_IN | IN_ENDPOINT_ADDR,
 	                                  EP_TYPE_BULK,
-	                                  ENDPOINT_DIR_IN,
 	                                  ENDPOINT_SIZE,
-	                                  ENDPOINT_BANK_SINGLE)) )
+	                                  1)) )
 	{
 	}
 }
