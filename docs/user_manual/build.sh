@@ -27,3 +27,4 @@ make
 cp paper.pdf ../vhdl_paper.pdf
 cp mobile.pdf ../vhdl_mobile.pdf
 rm -f top_level.tex top_level_vhdl.tex
+rm -rf code/vhdl code/verilog
