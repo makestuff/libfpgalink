@@ -35,7 +35,7 @@ uint8 = c_ubyte
 ErrorString = c_char_p
 
 # Get DLL
-if ( sys.platform == "linux2" ):
+if ( sys.platform.startswith("linux") ):
     cdll.LoadLibrary("libfpgalink.so")
     fpgalink = CDLL("libfpgalink.so")
 elif ( sys.platform == "darwin" ):
@@ -44,6 +44,8 @@ elif ( sys.platform == "darwin" ):
 elif ( sys.platform == "win32" ):
     windll.LoadLibrary("libfpgalink.dll")
     fpgalink = WinDLL("libfpgalink.dll")
+else:
+    raise FLException("Unrecognised platform: " + sys.platform)
 
 # Miscellaneous Functions
 fpgalink.flInitialise.argtypes = [c_int, POINTER(ErrorString)]
