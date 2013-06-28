@@ -681,7 +681,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flFifoMode(
-		struct FLContext *handle, bool fifoMode, const char **error
+		struct FLContext *handle, uint8 fifoMode, const char **error
 	) WARN_UNUSED_RESULT;
 
 

@@ -439,7 +439,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		CHECK_STATUS(fStatus, "xProgram()", fStatus);
 	} while ( tempByte & (initMask | doneMask) );
 
-	fStatus = flFifoMode(handle, false, error);
+	fStatus = flFifoMode(handle, 0x00, error);
 	CHECK_STATUS(fStatus, "xProgram()", fStatus);
 
 	for ( i = 0; i < 5; i++ ) {
