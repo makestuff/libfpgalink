@@ -23,12 +23,7 @@
 #include <liberror.h>
 #include "../firmware.h"
 
-#define CHECK(condition, retCode) \
-	if ( condition ) { \
-		FAIL(retCode); \
-	}
-
-void dumpBytes(const uint8 *ptr, uint16 numBytes) {
+void dumpBytes(const uint8 *ptr, uint32 numBytes) {
 	const uint8 *const end = ptr + numBytes;
 	uint8 count = 1;
 	printf("\t0x%02X", *ptr++);
@@ -60,9 +55,9 @@ void dumpWords(const uint16 *ptr, uint16 numWords) {
 }
 
 int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
-	int returnCode = 0;
-	uint16 i;
-	uint16 vp = 0;
+	int retVal = 0;
+	uint32 i;
+	uint32 vp = 0;
 
 	for ( i = 1; i < buf->length; i++ ) {
 		if (
@@ -71,7 +66,7 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 		{
 			if ( vp ) {
 				fprintf(stderr, "%s: Refusing to override VID:PID@%04X with %04X\n", progName, vp, i);
-				FAIL(22);
+				FAIL(9, cleanup);
 			}
 			vp = i;
 			i += 3;
@@ -79,7 +74,7 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 	}
 	if ( !vp ) {
 		fprintf(stderr, "%s: Not enough occurrances of vp\n", progName);
-		FAIL(44);
+		FAIL(10, cleanup);
 	}
 
 	printf("/*\n * THIS FILE IS MACHINE-GENERATED! DO NOT EDIT IT!\n */\n");
@@ -91,7 +86,7 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 	printf("\tdata, %d, 0x%04X\n", buf->length, vp);
 	printf("};\n");
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 static void usage(const char *progName) {
@@ -99,7 +94,7 @@ static void usage(const char *progName) {
 }
 
 int main(int argc, const char *argv[]) {
-	int returnCode = 0;
+	int retVal = 0;
 	struct Buffer data = {0,};
 	struct Buffer mask = {0,};
 	struct Buffer i2c = {0,};
@@ -111,7 +106,7 @@ int main(int argc, const char *argv[]) {
 
 	if ( argc != 4 ) {
 		usage(argv[0]);
-		FAIL(1);
+		FAIL(1, cleanup);
 	}
 
 	if ( strstr(argv[2], "WithBoot") ) {
@@ -123,32 +118,32 @@ int main(int argc, const char *argv[]) {
 	}
 
 	bStatus = bufInitialise(&data, 0x4000, 0x00, &error);
-	CHECK(bStatus, 2);
+	CHECK_STATUS(bStatus, 2, cleanup);
 	bStatus = bufInitialise(&mask, 0x4000, 0x00, &error);
-	CHECK(bStatus, 3);
+	CHECK_STATUS(bStatus, 3, cleanup);
 	bStatus = bufReadFromIntelHexFile(&data, &mask, argv[1], &error);
-	CHECK(bStatus, 4);
+	CHECK_STATUS(bStatus, 4, cleanup);
 
 	if ( !strcmp("iic", argv[3]) ) {
 		// Get i2c records
 		bStatus = bufInitialise(&i2c, 0x4000, 0x00, &error);
-		CHECK(bStatus, 8);
+		CHECK_STATUS(bStatus, 5, cleanup);
 		i2cInitialise(&i2c, 0x0000, 0x0000, 0x0000, configByte);
 		iStatus = i2cWritePromRecords(&i2c, &data, &mask, &error);
-		CHECK(iStatus, 9);
+		CHECK_STATUS(iStatus, 6, cleanup);
 		iStatus = i2cFinalise(&i2c, &error);
-		CHECK(iStatus, 10);
+		CHECK_STATUS(iStatus, 7, cleanup);
 
 		// Dump the code
 		dStatus = dumpCode(argv[0], argv[2], &i2c);
-		CHECK(dStatus, dStatus);
+		CHECK_STATUS(dStatus, dStatus, cleanup);
 	} else if ( !strcmp("bix", argv[3]) ) {
 		// Dump the code
 		dStatus = dumpCode(argv[0], argv[2], &data);
-		CHECK(dStatus, dStatus);
+		CHECK_STATUS(dStatus, dStatus, cleanup);
 	} else {
 		usage(argv[0]);
-		FAIL(14);
+		FAIL(8, cleanup);
 	}
 
 cleanup:
@@ -159,5 +154,5 @@ cleanup:
 	bufDestroy(&i2c);
 	bufDestroy(&mask);
 	bufDestroy(&data);
-	return returnCode;
+	return retVal;
 }

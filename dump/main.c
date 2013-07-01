@@ -94,7 +94,7 @@ int main(int argc, const char *argv[]) {
 			printf("XSIR(");
 			byte = *++p;
 			printf("%02X, ", byte);
-			numBytes = bitsToBytes(byte);
+			numBytes = bitsToBytes((uint32)byte);
 			while ( numBytes ) {
 				printf("%02X", *++p);
 				numBytes--;

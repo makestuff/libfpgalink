@@ -52,7 +52,7 @@ DLLEXPORT(uint8*) flLoadFile(const char *name, uint32 *length) {
 	}
 	
 	fseek(file, 0, SEEK_END);
-	fileLen = ftell(file);
+	fileLen = (size_t)ftell(file);
 	fseek(file, 0, SEEK_SET);
 
 	// Allocate enough space for an extra byte just in case the file size is odd

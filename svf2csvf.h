@@ -46,7 +46,6 @@ extern "C" {
 		uint32 lastRunTestValue;
 	};
 
-	#define bitsToBytes(x) (((x)>>3) + ((x)&7 ? 1 : 0))
 	#define CHOMP() while ( *p == ' ' || *p == '\t' || *p == '\r' ) { p++; }
 	
 	FLStatus headTail(

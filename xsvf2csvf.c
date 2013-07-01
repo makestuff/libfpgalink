@@ -19,8 +19,7 @@
 #include <libbuffer.h>
 #include <liberror.h>
 #include "xsvf.h"
-
-#define bitsToBytes(x) ((x>>3) + (x&7 ? 1 : 0))
+#include "private.h"
 
 #define ENABLE_SWAP
 #define BUF_SIZE 128
@@ -42,12 +41,12 @@ static uint8 getNextByte(XC *xc) {
 // "outBuf". If ENABLE_SWAP is undefined, no swapping is done.
 //
 static FLStatus swapBytes(XC *xc, uint32 numBytes, struct Buffer *outBuf, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	uint8 *ptr;
 	BufferStatus bStatus;
 	#ifdef ENABLE_SWAP
 		bStatus = bufAppendConst(outBuf, 0x00, numBytes, error);
-		CHECK_STATUS(bStatus, "swapBytes()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "swapBytes()");
 		ptr = outBuf->data + outBuf->length - 1;
 		while ( numBytes-- ) {
 			*ptr-- = getNextByte(xc);
@@ -55,26 +54,26 @@ static FLStatus swapBytes(XC *xc, uint32 numBytes, struct Buffer *outBuf, const 
 	#else
 		const uint32 initLength = outBuf->length;
 		bStatus = bufAppendConst(outBuf, 0x00, numBytes, error);
-		CHECK_STATUS(bStatus, "swapBytes()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "swapBytes()");
 		ptr = outBuf->data + initLength - 1;
 		while ( numBytes-- ) {
 			*ptr++ = getNextByte(xc);
 		}
 	#endif
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 // Reverse and interleave the incoming tdi, tdoExpected arrays:
 // 0123456789ABCDEFGHIJ -> 9J8I7H6G5F4E3D2C1B0A
 //
 static FLStatus swapAndInterleaveBytes(XC *xc, uint32 numBytes, struct Buffer *outBuf, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	uint8 *ptr;
 	BufferStatus bStatus;
 	uint32 i = numBytes;
 	bStatus = bufAppendConst(outBuf, 0x00, numBytes*2, error);
-	CHECK_STATUS(bStatus, "swapAndInterleaveBytes()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "swapAndInterleaveBytes()");
 	ptr = outBuf->data + outBuf->length - 2;
 	while ( i-- ) {
 		*ptr = getNextByte(xc);
@@ -87,24 +86,24 @@ static FLStatus swapAndInterleaveBytes(XC *xc, uint32 numBytes, struct Buffer *o
 		ptr -= 2;
 	}
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 static FLStatus sendXSize(struct Buffer *outBuf, uint32 xSize, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	BufferStatus bStatus;
 	bStatus = bufAppendByte(outBuf, XSDRSIZE, error);
-	CHECK_STATUS(bStatus, "sendXSize()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "sendXSize()");
 	bStatus = bufAppendLongBE(outBuf, xSize, error);
-	CHECK_STATUS(bStatus, "sendXSize()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "sendXSize()");
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 // Parse the XSVF, reversing the byte-ordering of all the bytestreams.
 //
 static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize, const char **error) {
-	FLStatus fStatus, returnCode = FL_SUCCESS;
+	FLStatus fStatus, retVal = FL_SUCCESS;
 	uint32 newXSize = 0, curXSize = 0, totOffset = 0;
 	uint32 numBytes;
 	BufferStatus bStatus;
@@ -131,9 +130,9 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			initLength = outBuf->length;
 			numBytes = bitsToBytes(curXSize);
 			bStatus = bufAppendByte(outBuf, XTDOMASK, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			fStatus = swapBytes(xc, numBytes, outBuf, error);
-			CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 			p = outBuf->data + initLength + 1;
 			end = outBuf->data + outBuf->length;
 			while ( *p == 0 && p < end ) p++;
@@ -162,25 +161,24 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 				// The last mask was all zeros, so replace this XSDRTDO with an XSDR and throw away
 				// the tdoExpected bytes.
 				bStatus = bufAppendByte(outBuf, XSDR, error);
-				CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 				fStatus = swapBytes(xc, numBytes, outBuf, error);
-				CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 				while ( numBytes-- ) {
 					getNextByte(xc);
 				}
 			} else {
 				// The last mask was not all zeros, so we must honour the XSDRTDO's tdoExpected bytes.
-				if ( numBytes > BUF_SIZE ) {
-					errRender(error, "xsvfSwapBytes(): Previous mask was nonzero, but no room to compare %d bytes", numBytes);
-					FAIL(FL_UNSUPPORTED_SIZE_ERR);
-				}
+				CHECK_STATUS(
+					numBytes > BUF_SIZE, FL_UNSUPPORTED_SIZE_ERR, cleanup,
+					"xsvfSwapBytes(): Previous mask was nonzero, but no room to compare %d bytes", numBytes);
 				if ( numBytes > *maxBufSize ) {
 					*maxBufSize = numBytes;
 				}
 				bStatus = bufAppendByte(outBuf, XSDRTDO, error);
-				CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 				fStatus = swapAndInterleaveBytes(xc, numBytes, outBuf, error);
-				CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 			}
 			break;
 
@@ -192,26 +190,26 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 		case XRUNTEST:
 			// Copy the XRUNTEST bytes as-is.
 			bStatus = bufAppendByte(outBuf, XRUNTEST, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			bStatus = bufAppendByte(outBuf, getNextByte(xc), error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			bStatus = bufAppendByte(outBuf, getNextByte(xc), error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			bStatus = bufAppendByte(outBuf, getNextByte(xc), error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			bStatus = bufAppendByte(outBuf, getNextByte(xc), error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			break;
 
 		case XSIR:
 			// Swap the XSIR bytes.
 			bStatus = bufAppendByte(outBuf, XSIR, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			thisByte = getNextByte(xc);
 			bStatus = bufAppendByte(outBuf, thisByte, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
-			fStatus = swapBytes(xc, bitsToBytes(thisByte), outBuf, error);
-			CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
+			fStatus = swapBytes(xc, (uint32)bitsToBytes(thisByte), outBuf, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 			break;
 
 		case XSDRSIZE:
@@ -232,9 +230,9 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 				sendXSize(outBuf, curXSize, error);
 			}
 			bStatus = bufAppendByte(outBuf, XSDR, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			fStatus = swapBytes(xc, bitsToBytes(curXSize), outBuf, error);
-			CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 			break;
 
 		case XSDRB:
@@ -243,27 +241,27 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			sendXSize(outBuf, curXSize, error);
 			totOffset = outBuf->length - 4; // each subsequent XSDRC & XSDRE updates this XSDRSIZE
 			bStatus = bufAppendByte(outBuf, XSDR, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			fStatus = swapBytes(xc, bitsToBytes(newXSize), outBuf, error);
-			CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 			break;
 
 		case XSDRC:
 			// Just add the XSDRC data to the end of the previous XSDR
 			curXSize += newXSize;
 			bStatus = bufWriteLongBE(outBuf, totOffset, curXSize, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			fStatus = swapBytes(xc, bitsToBytes(newXSize), outBuf, error);
-			CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 			break;
 
 		case XSDRE:
 			// Just add the XSDRE data to the end of the previous XSDR
 			curXSize += newXSize;
 			bStatus = bufWriteLongBE(outBuf, totOffset, curXSize, error);
-			CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 			fStatus = swapBytes(xc, bitsToBytes(newXSize), outBuf, error);
-			CHECK_STATUS(fStatus, "xsvfSwapBytes()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "xsvfSwapBytes()");
 			break;
 
 		case XSTATE:
@@ -277,52 +275,51 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			// Only the default XENDIR state (TAPSTATE_RUN_TEST_IDLE) is supported. Fail fast if
 			// there's an attempt to switch the XENDIR state to PAUSE_IR.
 			thisByte = getNextByte(xc);
-			if ( thisByte ) {
-				errRender(error, "xsvfSwapBytes(): Only XENDIR(TAPSTATE_RUN_TEST_IDLE) is supported!");
-				FAIL(FL_UNSUPPORTED_DATA_ERR);
-			}
+			CHECK_STATUS(
+				thisByte, FL_UNSUPPORTED_DATA_ERR, cleanup,
+				"xsvfSwapBytes(): Only XENDIR(TAPSTATE_RUN_TEST_IDLE) is supported!");
 			break;
 
 		case XENDDR:
 			// Only the default XENDDR state (TAPSTATE_RUN_TEST_IDLE) is supported. Fail fast if
 			// there's an attempt to switch the XENDDR state to PAUSE_DR.
 			thisByte = getNextByte(xc);
-			if ( thisByte ) {
-				errRender(error, "xsvfSwapBytes(): Only XENDDR(TAPSTATE_RUN_TEST_IDLE) is supported!");
-				FAIL(FL_UNSUPPORTED_DATA_ERR);
-			}
+			CHECK_STATUS(
+				thisByte, FL_UNSUPPORTED_DATA_ERR, cleanup,
+				"xsvfSwapBytes(): Only XENDDR(TAPSTATE_RUN_TEST_IDLE) is supported!");
 			break;
 
 		default:
 			// All other commands are unsupported, so fail if they're encountered.
-			errRender(error, "xsvfSwapBytes(): Unsupported command 0x%02X!", thisByte);
-			FAIL(FL_UNSUPPORTED_CMD_ERR);
+			CHECK_STATUS(
+				true, FL_UNSUPPORTED_CMD_ERR, cleanup,
+				"xsvfSwapBytes(): Unsupported command 0x%02X!", thisByte);
 		}
 		thisByte = getNextByte(xc);
 	}
 
 	// Add the XCOMPLETE command
 	bStatus = bufAppendByte(outBuf, XCOMPLETE, error);
-	CHECK_STATUS(bStatus, "xsvfSwapBytes()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "xsvfSwapBytes()");
 
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 DLLEXPORT(FLStatus) flLoadXsvfAndConvertToCsvf(
 	const char *xsvfFile, struct Buffer *csvfBuf, uint32 *maxBufSize, const char **error)
 {
-	FLStatus fStatus, returnCode = FL_SUCCESS;
+	FLStatus fStatus, retVal = FL_SUCCESS;
 	BufferStatus bStatus;
 	XC xc;
 	xc.offset = 0;
 	bStatus = bufInitialise(&xc.xsvfBuf, 0x20000, 0, error);
-	CHECK_STATUS(bStatus, "flLoadXsvfAndConvertToCsvf()", FL_BUF_INIT_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "flLoadXsvfAndConvertToCsvf()");
 	bStatus = bufAppendFromBinaryFile(&xc.xsvfBuf, xsvfFile, error);
-	CHECK_STATUS(bStatus, "flLoadXsvfAndConvertToCsvf()", FL_BUF_LOAD_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_LOAD_ERR, cleanup, "flLoadXsvfAndConvertToCsvf()");
 	fStatus = xsvfSwapBytes(&xc, csvfBuf, maxBufSize, error);
-	CHECK_STATUS(fStatus, "flLoadXsvfAndConvertToCsvf()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadXsvfAndConvertToCsvf()");
 cleanup:
 	bufDestroy(&xc.xsvfBuf);
-	return returnCode;
+	return retVal;
 }

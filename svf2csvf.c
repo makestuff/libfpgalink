@@ -21,6 +21,7 @@
 #include <liberror.h>
 #include "svf2csvf.h"
 #include "xsvf.h"
+#include "private.h"
 
 static FLStatus shiftLeft(
 	struct Buffer *buffer, uint32 numBits, uint32 shiftCount, const char **error
@@ -44,13 +45,13 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) WARN_UNUSED_
 
 static bool getHexNibble(char hexDigit, uint8 *nibble) {
 	if ( hexDigit >= '0' && hexDigit <= '9' ) {
-		*nibble = hexDigit - '0';
+		*nibble = (uint8)(hexDigit - '0');
 		return false;
 	} else if ( hexDigit >= 'a' && hexDigit <= 'f' ) {
-		*nibble = hexDigit - 'a' + 10;
+		*nibble = (uint8)(hexDigit - 'a' + 10);
 		return false;
 	} else if ( hexDigit >= 'A' && hexDigit <= 'F' ) {
-		*nibble = hexDigit - 'A' + 10;
+		*nibble = (uint8)(hexDigit - 'A' + 10);
 		return false;
 	} else {
 		return true;
@@ -61,7 +62,7 @@ static int getHexByte(const char *p, uint8 *byte) {
 	uint8 upperNibble;
 	uint8 lowerNibble;
 	if ( !getHexNibble(p[0], &upperNibble) && !getHexNibble(p[1], &lowerNibble) ) {
-		*byte = (upperNibble << 4) | lowerNibble;
+		*byte = (uint8)((upperNibble << 4) | lowerNibble);
 		byte += 2;
 		return 0;
 	} else {
@@ -84,82 +85,81 @@ static uint32 readLongBE(const uint8 *p) {
 FLStatus readBytes(
 	struct Buffer *buffer, const char *hexDigits, const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	uint32 length = (uint32)strlen(hexDigits);
 	uint8 *p = buffer->data;
 	BufferStatus bStatus;
-	if ( length & 1 ) {
-		errRender(error, "readBytes(): I need an even number of hex digits");
-		FAIL(FL_SVF_PARSE_ERR);
-	}
+	CHECK_STATUS(
+		length & 1, FL_SVF_PARSE_ERR, cleanup,
+		"readBytes(): I need an even number of hex digits");
 	bufZeroLength(buffer);
 	length >>= 1;  // Number of bytes
 	bStatus = bufAppendConst(buffer, 0x00, length, error);
-	CHECK_STATUS(bStatus, "readBytes()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "readBytes()");
 	while ( length-- ) {
-		CHECK_STATUS(getHexByte(hexDigits, p++), "readBytes()", FL_SVF_PARSE_ERR);
+		CHECK_STATUS(getHexByte(hexDigits, p++), FL_SVF_PARSE_ERR, cleanup, "readBytes()");
 		hexDigits += 2;
 	}
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 static FLStatus shiftLeft(
 	struct Buffer *buffer, uint32 numBits, uint32 shiftCount, const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	uint32 shiftBytes = shiftCount>>3;
 	uint32 shiftBits = shiftCount&7;
 	uint16 accum;
 	const uint8 *p = buffer->data;
 	const uint8 *const end = buffer->data + buffer->length;
 	struct Buffer newBuffer = {0,};
-	BufferStatus status;
+	BufferStatus bStatus;
 	if ( shiftBits ) {
-		status = bufInitialise(&newBuffer, 1024, 0x00, error);
-		CHECK_STATUS(status, "shiftLeft()", FL_BUF_INIT_ERR);
+		bStatus = bufInitialise(&newBuffer, 1024, 0x00, error);
+		CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "shiftLeft()");
 		numBits &= 7;  // Now the number of significant bits in first byte.
 		if ( numBits ) {
 			numBits = 8 - numBits; // Now the number of insignificant bits in first byte.
 		}
 		accum = p[0];
 		if ( p < end ) {
-			accum >>= 8-shiftBits;
+			accum = (uint16)(accum >> (8-shiftBits));
 			if ( shiftBits > numBits ) {
 				// We're shifting by more than the number of insignificant bits
-				status = bufAppendByte(&newBuffer, (uint8)(accum&0xFF), error);
-				CHECK_STATUS(status, "shiftLeft()", FL_BUF_APPEND_ERR);
+				bStatus = bufAppendByte(&newBuffer, (uint8)(accum&0xFF), error);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "shiftLeft()");
 			}
-			accum = (p[0]<<8) + p[1];
+			accum = (uint16)((p[0]<<8) + p[1]);
 			p++;
 			while ( p < end ) {
-				accum >>= 8-shiftBits;
-				status = bufAppendByte(&newBuffer, (uint8)(accum&0xFF), error);
-				CHECK_STATUS(status, "shiftLeft()", FL_BUF_APPEND_ERR);
-				accum = (p[0]<<8) + p[1];
+				accum = (uint16)(accum >> (8-shiftBits));
+				bStatus = bufAppendByte(&newBuffer, (uint8)(accum&0xFF), error);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "shiftLeft()");
+				accum = (uint16)((p[0]<<8) + p[1]);
 				p++;
 			}
 		}
 		accum &= 0xFF00;
-		accum >>= 8-shiftBits;
-		status = bufAppendByte(&newBuffer, (uint8)(accum&0xFF), error);
-		CHECK_STATUS(status, "shiftLeft()", FL_BUF_APPEND_ERR);
+		accum = (uint16)(accum >> (8-shiftBits));
+		bStatus = bufAppendByte(&newBuffer, (uint8)(accum&0xFF), error);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "shiftLeft()");
 		bufSwap(&newBuffer, buffer);
 	}
 	if ( shiftBytes ) {
-		status = bufAppendConst(buffer, 0x00, shiftBytes, error);
-		CHECK_STATUS(status, "shiftLeft()", FL_BUF_APPEND_ERR);
+		bStatus = bufAppendConst(buffer, 0x00, shiftBytes, error);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "shiftLeft()");
 	}
 cleanup:
 	bufDestroy(&newBuffer);
-	return returnCode;
+	return retVal;
 }
 
 FLStatus headTail(
 	struct Buffer *dataBuf, struct Buffer *headBuf, struct Buffer *tailBuf,
 	uint32 dataBits, uint32 headBits, uint32 tailBits, const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS, fStatus;
+	FLStatus retVal = FL_SUCCESS, fStatus;
 	const uint8 *src = headBuf->data;
 	const uint8 *dstEnd;
 	uint8 *dst;
@@ -168,7 +168,7 @@ FLStatus headTail(
 
 	// Shift data left by headBits
 	fStatus = shiftLeft(dataBuf, dataBits, headBits, error);
-	CHECK_STATUS(fStatus, "headTail()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "headTail()");
 
 	//dumpSimple(dataBuf->data, dataBuf->length);
 
@@ -188,7 +188,7 @@ FLStatus headTail(
 		// Shift the tail to align with the MSB of the data
 		if ( tailShift ) {
 			fStatus = shiftLeft(tailBuf, tailBits, tailShift, error);
-			CHECK_STATUS(fStatus, "headTail()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "headTail()");
 		}
 
 		// How much data do we need to copy from the tail?
@@ -197,50 +197,49 @@ FLStatus headTail(
 
 		// Init new buffer
 		bStatus = bufInitialise(&newBuffer, 1024, 0x00, error);
-		CHECK_STATUS(bStatus, "headTail()", FL_BUF_INIT_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "headTail()");
 
 		dataBits += tailBits;
 		if ( bitsToBytes(dataBits) == dataBuf->length + bytesFromTail ) {
 			// There's no overlap, so copy back-to-back
 			bStatus = bufAppendBlock(&newBuffer, src, bytesFromTail, error);
-			CHECK_STATUS(bStatus, "headTail()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "headTail()");
 			bStatus = bufAppendByte(&newBuffer, *dataBuf->data, error);
-			CHECK_STATUS(bStatus, "headTail()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "headTail()");
 		} else if ( bitsToBytes(dataBits) == dataBuf->length + bytesFromTail - 1 ) {
 			// There's a single byte overlap, so OR the overlap byte
 			bytesFromTail--;
 			bStatus = bufAppendBlock(&newBuffer, src, bytesFromTail, error);
-			CHECK_STATUS(bStatus, "headTail()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "headTail()");
 			src += bytesFromTail;
 			bStatus = bufAppendByte(&newBuffer, *src | *dataBuf->data, error);
-			CHECK_STATUS(bStatus, "headTail()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "headTail()");
 		} else {
 			// Ooops, this should never happen!
-			errRender(error, "headTail(): Internal error");
-			FAIL(FL_INTERNAL_ERR);
+			CHECK_STATUS(true, FL_INTERNAL_ERR, cleanup, "headTail(): Internal error");
 		}
 		bStatus = bufAppendBlock(&newBuffer, dataBuf->data+1, dataBuf->length-1, error);
-		CHECK_STATUS(bStatus, "headTail()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "headTail()");
 		bufSwap(&newBuffer, dataBuf);
 	}
 	
 cleanup:
 	bufDestroy(&newBuffer);
-	return returnCode;
+	return retVal;
 }
 
 static FLStatus initBitStore(struct BitStore *store, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	BufferStatus bStatus;
 	store->numBits = 0;
 	bStatus = bufInitialise(&store->tdi, 1024, 0x00, error);
-	CHECK_STATUS(bStatus, "initBitStore()", FL_BUF_INIT_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "initBitStore()");
 	bStatus = bufInitialise(&store->tdo, 1024, 0x00, error);
-	CHECK_STATUS(bStatus, "initBitStore()", FL_BUF_INIT_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "initBitStore()");
 	bStatus = bufInitialise(&store->mask, 1024, 0x00, error);
-	CHECK_STATUS(bStatus, "initBitStore()", FL_BUF_INIT_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "initBitStore()");
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 static void destroyBitStore(struct BitStore *store) {
@@ -251,29 +250,29 @@ static void destroyBitStore(struct BitStore *store) {
 }
 
 FLStatus cxtInitialise(struct ParseContext *cxt, const char **error) {
-	FLStatus returnCode = FL_SUCCESS, fStatus;
+	FLStatus retVal = FL_SUCCESS, fStatus;
 	BufferStatus bStatus;
 	fStatus = initBitStore(&cxt->dataHead, error);
-	CHECK_STATUS(fStatus, "cxtInitialise()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "cxtInitialise()");
 	fStatus = initBitStore(&cxt->dataBody, error);
-	CHECK_STATUS(fStatus, "cxtInitialise()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "cxtInitialise()");
 	fStatus = initBitStore(&cxt->dataTail, error);
-	CHECK_STATUS(fStatus, "cxtInitialise()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "cxtInitialise()");
 	fStatus = initBitStore(&cxt->insnHead, error);
-	CHECK_STATUS(fStatus, "cxtInitialise()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "cxtInitialise()");
 	fStatus = initBitStore(&cxt->insnBody, error);
-	CHECK_STATUS(fStatus, "cxtInitialise()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "cxtInitialise()");
 	fStatus = initBitStore(&cxt->insnTail, error);
-	CHECK_STATUS(fStatus, "cxtInitialise()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "cxtInitialise()");
 	cxt->curLength = 0;
 	bStatus = bufInitialise(&cxt->curMaskBuf, 1024, 0x00, error);
-	CHECK_STATUS(bStatus, "cxtInitialise()", FL_BUF_INIT_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "cxtInitialise()");
 	cxt->curMaskBits = 0;
 	cxt->lastCmdOffset = 0;
 	cxt->lastRunTestOffset = 0;
 	cxt->lastRunTestValue = 0;
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 void cxtDestroy(struct ParseContext *cxt) {
@@ -301,7 +300,7 @@ static FLStatus processLine(
 	uint32 newLength, const char *tdi, const char *tdo, const char *mask,
 	const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS, fStatus;
+	FLStatus retVal = FL_SUCCESS, fStatus;
 	BufferStatus bStatus;
 
 	// The TDI & MASK values are remembered; the TDO value defaults to all zeros. If the length
@@ -309,7 +308,7 @@ static FLStatus processLine(
 	bufZeroLength(&store->tdo);
 	if ( newLength ) {
 		bStatus = bufAppendConst(&store->tdo, 0x00, bitsToBytes(newLength), error);
-		CHECK_STATUS(bStatus, "processLine()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "processLine()");
 	}
 	if ( store->numBits != newLength ) {
 		// The length changed, so we can't reuse previous values, and new TDI data is required:
@@ -319,27 +318,27 @@ static FLStatus processLine(
 		bufZeroLength(&store->mask);
 		if ( newLength ) {
 			bStatus = bufAppendConst(&store->tdi, 0x00, bitsToBytes(newLength), error);
-			CHECK_STATUS(bStatus, "processLine()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "processLine()");
 			bStatus = bufAppendConst(&store->mask, 0x00, bitsToBytes(newLength), error);
-			CHECK_STATUS(bStatus, "processLine()", FL_BUF_APPEND_ERR);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "processLine()");
 		}
 	}
 	store->numBits = newLength;
 	if ( tdi ) {
 		fStatus = readBytes(&store->tdi, tdi, error);
-		CHECK_STATUS(fStatus, "processLine()", fStatus);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "processLine()");
 	}
 	if ( tdo ) {
 		fStatus = readBytes(&store->tdo, tdo, error);
-		CHECK_STATUS(fStatus, "processLine()", fStatus);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "processLine()");
 	}
 	if ( mask ) {
 		fStatus = readBytes(&store->mask, mask, error);
-		CHECK_STATUS(fStatus, "processLine()", fStatus);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "processLine()");
 	}
 
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 /**
@@ -362,38 +361,38 @@ static bool isAllZero(struct Buffer *buf) {
 static FLStatus appendSwappedAndInterleaved(
 	struct Buffer *buf, const uint8 *tdi, const uint8 *exp, uint32 count, const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	BufferStatus bStatus;
 	const uint8 *tdiPtr = tdi + count - 1;
 	const uint8 *expPtr = exp + count - 1;
 	while ( count-- ) {
 		bStatus = bufAppendByte(buf, *tdiPtr--, error);
-		CHECK_STATUS(bStatus, "appendSwapped()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "appendSwapped()");
 		bStatus = bufAppendByte(buf, *expPtr--, error);
-		CHECK_STATUS(bStatus, "appendSwapped()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "appendSwapped()");
 	}
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 static FLStatus appendSwapped(
 	struct Buffer *buf, const uint8 *src, uint32 count, const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	BufferStatus bStatus;
 	src += count - 1;
 	while ( count-- ) {
 		bStatus = bufAppendByte(buf, *src--, error);
-		CHECK_STATUS(bStatus, "appendSwapped()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "appendSwapped()");
 	}
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 FLStatus insertRunTestBefore(
 	struct Buffer *buf, uint32 offset, uint32 count,
 	uint32 *lastRunTestOffset, uint32 *lastRunTestValue, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	BufferStatus bStatus;
 	bool needFollowingZero = true;
 	if ( offset - 5 == *lastRunTestOffset ) {
@@ -411,7 +410,7 @@ FLStatus insertRunTestBefore(
 		const uint8 *src;
 		uint8 *dst;
 		bStatus = bufAppendConst(buf, 0x00, 5, error);
-		CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
 		dst = buf->data + oldLength + 4;
 		src = dst - 5;
 		while ( numBytes-- ) {
@@ -421,18 +420,18 @@ FLStatus insertRunTestBefore(
 	}
 	*lastRunTestValue = count;
 	bStatus = bufWriteLongBE(buf, offset+1, count, error);
-	CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
 	if ( needFollowingZero ) {
 		*lastRunTestOffset = buf->length;
 		bStatus = bufAppendByte(buf, XRUNTEST, error);
-		CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
 		bStatus = bufAppendConst(buf, 0x00, 4, error);
-		CHECK_STATUS(bStatus, "insertRunTestBefore()", FL_BUF_APPEND_ERR);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
 	} else {
 		*lastRunTestOffset = buf->length - 5;
 	}
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 /**
@@ -442,7 +441,7 @@ FLStatus parseLine(
 	struct ParseContext *cxt, const struct Buffer *lineBuf, struct Buffer *csvfBuf,
 	uint32 *maxBufSize, const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS, fStatus;
+	FLStatus retVal = FL_SUCCESS, fStatus;
 	BufferStatus bStatus;
 	char *const line = (char *)lineBuf->data;
 	char *const lineEnd = (char *)lineBuf->data + lineBuf->length - 1;  // Space for NUL-terminator
@@ -471,22 +470,22 @@ FLStatus parseLine(
 			p += 3;
 			CHOMP();
 		} else {
-			errRender(error, "parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK|SEC [ENDSTATE IDLE]\"");
-			FAIL(FL_SVF_PARSE_ERR);
+			CHECK_STATUS(
+				true, FL_SVF_PARSE_ERR, cleanup,
+				"parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK|SEC [ENDSTATE IDLE]\"");
 		}
 		if ( !strncmp(p, "ENDSTATE IDLE", 13) ) {
 			p += 13;
 		}
 		CHOMP();
-		if ( p != lineEnd ) {
-			errRender(error, "parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK [ENDSTATE IDLE]\"");
-			FAIL(FL_SVF_PARSE_ERR);
-		}
+		CHECK_STATUS(
+			p != lineEnd, FL_SVF_PARSE_ERR, cleanup,
+			"parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK [ENDSTATE IDLE]\"");
 		fStatus = insertRunTestBefore(
 			csvfBuf, cxt->lastCmdOffset, (uint32)count,
 			&cxt->lastRunTestOffset, &cxt->lastRunTestOffset, error
 		);
-		CHECK_STATUS(fStatus, "parseLine()", fStatus);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 	} else if (
 		(line[0] == 'H' || line[0] == 'S' || line[0] == 'T') &&
 		(line[1] == 'I' || line[1] == 'D') &&
@@ -512,7 +511,7 @@ FLStatus parseLine(
 			break;
 		}
 		CHOMP();
-		length = strtoul(p, &tmp, 10);
+		length = (uint32)strtoul(p, &tmp, 10);
 		p = tmp;
 		CHOMP();
 		while ( *p ) {
@@ -520,10 +519,9 @@ FLStatus parseLine(
 				p += 3;
 				CHOMP();
 				#define EXPECT_CHAR(x, y) \
-					if ( *p != x ) { \
-						errRender(error, "parseLine(): %sR must be of the form \"%sR ... " y "\"", line, line); \
-						FAIL(FL_SVF_PARSE_ERR);						\
-					}
+					CHECK_STATUS( \
+						*p != x, FL_SVF_PARSE_ERR, cleanup, \
+						"parseLine(): %sR must be of the form \"%sR ... " y "\"", line, line);
 				#define FIX_ODD(x) \
 					if ( strlen(x) & 1 ) { \
 						x--; \
@@ -574,8 +572,9 @@ FLStatus parseLine(
 				*p++ = '\0';
 				FIX_ODD(mask);
 			} else {
-				errRender(error, "parseLine(): Junk in [HTS][IR]R line at column %d", p-line);
-				FAIL(FL_SVF_PARSE_ERR);
+				CHECK_STATUS(
+					true, FL_SVF_PARSE_ERR, cleanup,
+					"parseLine(): Junk in [HTS][IR]R line at column %d", p-line);
 			}
 			CHOMP();
 		}
@@ -584,31 +583,31 @@ FLStatus parseLine(
 			switch ( op ) {
 			case HEAD:
 				fStatus = processLine(&cxt->dataHead, length, tdi, tdo, mask, error);
-				CHECK_STATUS(fStatus, "parseLine()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				break;
 			case TAIL:
 				fStatus = processLine(&cxt->dataTail, length, tdi, tdo, mask, error);
-				CHECK_STATUS(fStatus, "parseLine()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				break;
 			case BODY:
 				fStatus = processLine(&cxt->dataBody, length, tdi, tdo, mask, error);
-				CHECK_STATUS(fStatus, "parseLine()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				if (
 					cxt->dataHead.numBits + cxt->dataBody.numBits + cxt->dataTail.numBits
 					!= cxt->curLength
 				) {
 					cxt->curLength = cxt->dataHead.numBits + cxt->dataBody.numBits + cxt->dataTail.numBits;
 					bStatus = bufAppendByte(csvfBuf, XSDRSIZE, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					bStatus = bufAppendLongBE(csvfBuf, cxt->curLength, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				}
 				bStatus = bufDeepCopy(&tmpHead, &cxt->dataHead.mask, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufDeepCopy(&tmpBody1, &cxt->dataBody.mask, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufDeepCopy(&tmpTail, &cxt->dataTail.mask, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				fStatus = headTail(
 					&tmpBody1, &tmpHead, &tmpTail,
 					cxt->dataBody.numBits, cxt->dataHead.numBits, cxt->dataTail.numBits,
@@ -621,18 +620,18 @@ FLStatus parseLine(
 				) {
 					// New mask is nonzero and different from the last one sent
 					bStatus = bufAppendByte(csvfBuf, XTDOMASK, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
-					CHECK_STATUS(fStatus, "parseLine()", fStatus);
+					CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				}
 				bufSwap(&cxt->curMaskBuf, &tmpBody1);
 
 				bStatus = bufDeepCopy(&tmpHead, &cxt->dataHead.tdi, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufDeepCopy(&tmpBody1, &cxt->dataBody.tdi, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufDeepCopy(&tmpTail, &cxt->dataTail.tdi, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				fStatus = headTail(
 					&tmpBody1, &tmpHead, &tmpTail,
 					cxt->dataBody.numBits, cxt->dataHead.numBits, cxt->dataTail.numBits,
@@ -640,16 +639,16 @@ FLStatus parseLine(
 				cxt->lastCmdOffset = csvfBuf->length;
 				if ( zeroMask || !tdo ) {
 					bStatus = bufAppendByte(csvfBuf, XSDR, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
-					CHECK_STATUS(fStatus, "parseLine()", fStatus);
+					CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				} else {
 					bStatus = bufDeepCopy(&tmpHead, &cxt->dataHead.tdo, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					bStatus = bufDeepCopy(&tmpBody2, &cxt->dataBody.tdo, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					bStatus = bufDeepCopy(&tmpTail, &cxt->dataTail.tdo, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					fStatus = headTail(
 						&tmpBody2, &tmpHead, &tmpTail,
 						cxt->dataBody.numBits, cxt->dataHead.numBits, cxt->dataTail.numBits,
@@ -658,9 +657,9 @@ FLStatus parseLine(
 						*maxBufSize = tmpBody2.length;
 					}
 					bStatus = bufAppendByte(csvfBuf, XSDRTDO, error);
-					CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					fStatus = appendSwappedAndInterleaved(csvfBuf, tmpBody1.data, tmpBody2.data, tmpBody2.length, error);
-					CHECK_STATUS(fStatus, "parseLine()", fStatus);
+					CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				}
 				break;
 			}
@@ -668,45 +667,46 @@ FLStatus parseLine(
 			switch ( op ) {
 			case HEAD:
 				fStatus = processLine(&cxt->insnHead, length, tdi, tdo, mask, error);
-				CHECK_STATUS(fStatus, "parseLine()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				break;
 			case TAIL:
 				fStatus = processLine(&cxt->insnTail, length, tdi, tdo, mask, error);
-				CHECK_STATUS(fStatus, "parseLine()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				break;
 			case BODY:
 				fStatus = processLine(&cxt->insnBody, length, tdi, tdo, mask, error);
-				CHECK_STATUS(fStatus, "parseLine()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				bStatus = bufDeepCopy(&tmpHead, &cxt->insnHead.tdi, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufDeepCopy(&tmpBody1, &cxt->insnBody.tdi, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufDeepCopy(&tmpTail, &cxt->insnTail.tdi, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				fStatus = headTail(
 					&tmpBody1, &tmpHead, &tmpTail,
 					cxt->insnBody.numBits, cxt->insnHead.numBits, cxt->insnTail.numBits,
 					error);
 				cxt->lastCmdOffset = csvfBuf->length;
 				bStatus = bufAppendByte(csvfBuf, XSIR, error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufAppendByte(csvfBuf, (uint8)(cxt->insnBody.numBits + cxt->insnHead.numBits + cxt->insnTail.numBits), error);
-				CHECK_STATUS(bStatus, "parseLine()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
-				CHECK_STATUS(fStatus, "parseLine()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				break;
 			}
 		}
 	} else {
-		errRender(error, "parseLine(): Unrecognised command \"%s\"\n", line);
-		FAIL(FL_SVF_PARSE_ERR);
+		CHECK_STATUS(
+			true, FL_SVF_PARSE_ERR, cleanup,
+			"parseLine(): Unrecognised command \"%s\"\n", line);
 	}
 cleanup:
 	bufDestroy(&tmpHead);
 	bufDestroy(&tmpBody1);
 	bufDestroy(&tmpBody2);
 	bufDestroy(&tmpTail);
-	return returnCode;
+	return retVal;
 }
 
 #define COPY_BLOCK(x) i = x; while ( i-- ) *dst++ = *src++
@@ -714,7 +714,7 @@ cleanup:
 // Remove duplicate XRUNTEST commands.
 //
 static FLStatus postProcess(struct Buffer *buf, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	BufferStatus bStatus;
 	int pass;
 	for ( pass = 0; pass < 2; pass++ ) {
@@ -748,7 +748,7 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 					if ( seenShiftCommands ) {
 						// There have been some shift commands (XSIR,XSDR,XSDRTDO) since last XRUNTEST,
 						// so we can't deduplicate anything.
-						runTestOffset = src - buf->data - 1;
+						runTestOffset = (size_t)(src - buf->data - 1);
 						*dst++ = XRUNTEST;
 						COPY_BLOCK(4);
 						seenShiftCommands = false;
@@ -756,7 +756,7 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 						// There have only been non-shift commands (XSDRSIZE,XTDOMASK) since last time,
 						// so we can do some deduplication.
 						bStatus = bufWriteLongBE(buf, (uint32)runTestOffset + 1, readLongBE(src), error);
-						CHECK_STATUS(bStatus, "postProcess()", FL_BUF_APPEND_ERR);
+						CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "postProcess()");
 						src += 4;
 					}
 				} else {
@@ -793,8 +793,9 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 				COPY_BLOCK(numBytes);
 				break;
 			default:
-				errRender(error, "postProcess(): Unrecognised CSVF command (cmd=0x%02X, srcOffset=%d)!", thisByte, src - buf->data);
-				FAIL(FL_INTERNAL_ERR);
+				CHECK_STATUS(
+					true, FL_INTERNAL_ERR, cleanup,
+					"postProcess(): Unrecognised CSVF command (cmd=0x%02X, srcOffset=%d)!", thisByte, src - buf->data);
 			}
 			thisByte = *src++;
 		}
@@ -807,13 +808,13 @@ static FLStatus postProcess(struct Buffer *buf, const char **error) {
 		}
 	}
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	const char *svfFile, struct Buffer *csvfBuf, uint32 *maxBufSize, const char **error)
 {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	struct Buffer lineBuf = {0,};
 	BufferStatus bStatus;
 	FLStatus fStatus;
@@ -824,15 +825,15 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 
 	// Always set XRUNTEST to 0 first
 	bStatus = bufAppendByte(csvfBuf, XRUNTEST, error);
-	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
 	bStatus = bufAppendConst(csvfBuf, 0x00, 4, error);
-	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
 
 	// Initialise context and line buffer
 	fStatus = cxtInitialise(&cxt, error);
-	CHECK_STATUS(fStatus, "flLoadSvfAndConvertToCsvf()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadSvfAndConvertToCsvf()");
 	bStatus = bufInitialise(&lineBuf, 1024, 0x00, error);
-	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_INIT_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
 	
 	// Load SVF file
 	buffer = flLoadFile(svfFile, &fileLength);
@@ -840,7 +841,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 		//errRender(error, "flLoadSvfAndConvertToCsvf(): Unable to load SVF file %s", svfFile);
 		errRenderStd(error);
 		errPrefix(error, "flLoadSvfAndConvertToCsvf()");
-		FAIL(FL_BUF_LOAD_ERR);
+		FAIL(FL_BUF_LOAD_ERR, cleanup);
 	}
 	end = buffer + fileLength;
 	p = buffer;
@@ -872,29 +873,29 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 				} while ( *p == ' ' || *p == '\t' || *p == '\r' );
 				p++; // go back to first space char
 				bStatus = bufAppendBlock(&lineBuf, line, (uint32)(p - line), error);
-				CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
+				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
 				while ( p < end && *p != '\n' ) {
 					p++;
 				}
 				p++; // Skip over CR
 				if ( gotSemicolon ) {
 					bStatus = bufAppendByte(&lineBuf, '\0', error);
-					CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
+					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
 					fStatus = parseLine(&cxt, &lineBuf, csvfBuf, maxBufSize, error);
-					CHECK_STATUS(fStatus, "flLoadSvfAndConvertToCsvf()", fStatus);
+					CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadSvfAndConvertToCsvf()");
 					bufZeroLength(&lineBuf);
 				}
 			}
 		}
 	}
 	bStatus = bufAppendByte(csvfBuf, 0x00, error);
-	CHECK_STATUS(bStatus, "flLoadSvfAndConvertToCsvf()", FL_BUF_APPEND_ERR);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
 	fStatus = postProcess(csvfBuf, error);
-	CHECK_STATUS(fStatus, "flLoadSvfAndConvertToCsvf()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadSvfAndConvertToCsvf()");
 
 cleanup:
 	cxtDestroy(&cxt);
 	bufDestroy(&lineBuf);
 	flFreeFile((void*)buffer);
-	return returnCode;
+	return retVal;
 }	

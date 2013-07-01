@@ -43,7 +43,7 @@ static bool tdoMatchFailed(
 // Play the CSVF stream into the JTAG port.
 //
 FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **error) {
-	FLStatus returnCode = FL_SUCCESS;
+	FLStatus retVal = FL_SUCCESS;
 	FLStatus fStatus;
 	uint8 thisByte, numBits;
 	uint32 numBytes;
@@ -64,7 +64,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 	const uint8 *ptr = csvfData;
 
 	fStatus = jtagClockFSM(handle, 0x0000001F, 6, error);  // Reset TAP, goto Run-Test/Idle
-	CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 
 	thisByte = *ptr++;
 	while ( thisByte != XCOMPLETE ) {
@@ -102,12 +102,12 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 
 		case XSIR:
 			fStatus = jtagClockFSM(handle, 0x00000003, 4, error);  // -> Shift-IR
-			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			numBits = *ptr++;
 			#ifdef DEBUG
 				printf("XSIR(%02X, ", numBits);
 			#endif
-			numBytes = bitsToBytes(numBits);
+				numBytes = bitsToBytes((uint32)numBits);
 			tdiPtr = tdiData;
 			while ( numBytes-- ) {
 				thisByte = *ptr++;
@@ -120,12 +120,12 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 				printf(")\n");
 			#endif
 			fStatus = jtagShift(handle, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
-			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			fStatus = jtagClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
-			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			if ( xruntest ) {
 				fStatus = jtagClocks(handle, xruntest, error);
-				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			}
 			break;
 
@@ -154,14 +154,14 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			i = 0;
 			do {
 				fStatus = jtagClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
-				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 				fStatus = jtagShift(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
-				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 				fStatus = jtagClockFSM(handle, 0x0000001A, 6, error);  // -> Run-Test/Idle
-				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 				if ( xruntest ) {
 					fStatus = jtagClocks(handle, xruntest, error);
-					CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+					CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 				}
 				i++;
 				#ifdef DEBUG
@@ -176,11 +176,10 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 				dumpSimple(tdoData, numBytes, data);
 				dumpSimple(tdoMask, numBytes, mask);
 				dumpSimple(tdoExpected, numBytes, expected);
-				errRender(
-					error,
+				CHECK_STATUS(
+					true, FL_PROG_SVF_COMPARE, cleanup,
 					"csvfPlay(): XSDRTDO failed:\n  Got: %s\n  Mask: %s\n  Expecting: %s",
 					data, mask, expected);
-				FAIL(FL_PROG_SVF_COMPARE);
 			}
 			break;
 
@@ -190,7 +189,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 				printf("XSDR(%08X)\n", xsdrSize);
 			#endif
 			fStatus = jtagClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
-			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			numBytes = bitsToBytes(xsdrSize);
 			tdiAll = malloc(numBytes);
 			tdiPtr = tdiAll;
@@ -199,23 +198,24 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			}
 			fStatus = jtagShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
 			free(tdiAll);
-			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			fStatus = jtagClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
-			CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			if ( xruntest ) {
 				fStatus = jtagClocks(handle, xruntest, error);
-				CHECK_STATUS(fStatus, "csvfPlay()", fStatus);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			}
 			break;
 
 		default:
-			errRender(error, "csvfPlay(): Unsupported command 0x%02X", thisByte);
-			FAIL(FL_PROG_SVF_UNKNOWN_CMD);
+			CHECK_STATUS(
+				true, FL_PROG_SVF_UNKNOWN_CMD, cleanup,
+				"csvfPlay(): Unsupported command 0x%02X", thisByte);
 		}
 		thisByte = *ptr++;
 	}
 cleanup:
-	return returnCode;
+	return retVal;
 }
 
 // -------------------------------------------------------------------------------------------------

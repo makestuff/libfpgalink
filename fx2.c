@@ -29,108 +29,103 @@
 DLLEXPORT(FLStatus) flLoadStandardFirmware(
 	const char *curVidPid, const char *newVidPid, const char **error)
 {
-	FLStatus flStatus, returnCode;
+	FLStatus flStatus, retVal = FL_SUCCESS;
 	struct Buffer ramBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
 	struct USBDevice *device = NULL;
-	int uStatus;
+	USBStatus uStatus;
 	uint16 newVid, newPid, newDid;
-	if ( !usbValidateVidPid(newVidPid) ) {
-		errRender(error, "flLoadStandardFirmware(): The supplied VID:PID:DID \"%s\" is invalid; it should look like 1D50:602B or 1D50:602B:0001", newVidPid);
-		FAIL(FL_USB_ERR);
-	}
+	CHECK_STATUS(
+		!usbValidateVidPid(newVidPid), FL_USB_ERR, cleanup,
+		"flLoadStandardFirmware(): The supplied VID:PID:DID \"%s\" is invalid; it should look like 1D50:602B or 1D50:602B:0001",
+		newVidPid);
 	newVid = (uint16)strtoul(newVidPid, NULL, 16);
 	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
-	newDid = (strlen(newVidPid) == 14) ? (uint16)strtoul(newVidPid+10, NULL, 16) : 0x0000;
+	newDid = (uint16)((strlen(newVidPid) == 14) ? strtoul(newVidPid+10, NULL, 16) : 0x0000);
 	uStatus = usbOpenDevice(curVidPid, 1, 0, 0, &device, error);
-	CHECK_STATUS(uStatus, "flLoadStandardFirmware()", FL_USB_ERR);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flLoadStandardFirmware()");
 	bStatus = bufInitialise(&ramBuf, 0x4000, 0x00, error);
-	CHECK_STATUS(bStatus, "flLoadStandardFirmware()", FL_ALLOC_ERR);
+	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flLoadStandardFirmware()");
 	flStatus = copyFirmwareAndRewriteIDs(
 		&ramFirmware, newVid, newPid, newDid,
 		&ramBuf, error);
-	CHECK_STATUS(flStatus, "flLoadStandardFirmware()", flStatus);
+	CHECK_STATUS(flStatus, flStatus, cleanup, "flLoadStandardFirmware()");
 	fxStatus = fx2WriteRAM(device, ramBuf.data, ramBuf.length, error);
-	CHECK_STATUS(fxStatus, "flLoadStandardFirmware()", FL_FX2_ERR);
-	returnCode = FL_SUCCESS;
+	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flLoadStandardFirmware()");
 cleanup:
 	bufDestroy(&ramBuf);
 	if ( device ) {
 		usbCloseDevice(device, 0);
 	}
-	return returnCode;
+	return retVal;
 }
 
+// Write the standard firmware into the FX2's external EEPROM
 DLLEXPORT(FLStatus) flFlashStandardFirmware(
 	struct FLContext *handle, const char *newVidPid, const char **error)
 {
-	FLStatus flStatus, returnCode;
+	FLStatus flStatus, retVal = FL_SUCCESS;
 	struct Buffer i2cBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
 	uint16 newVid, newPid, newDid;
-	if ( !usbValidateVidPid(newVidPid) ) {
-		errRender(error, "flFlashStandardFirmware(): The supplied new VID:PID \"%s\" is invalid; it should look like 1D50:602B or 1D50:602B:0001", newVidPid);
-		FAIL(FL_USB_ERR);
-	}
+	CHECK_STATUS(
+		!usbValidateVidPid(newVidPid), FL_USB_ERR, cleanup,
+		"flFlashStandardFirmware(): The supplied new VID:PID \"%s\" is invalid; it should look like 1D50:602B or 1D50:602B:0001",
+		newVidPid);
 	newVid = (uint16)strtoul(newVidPid, NULL, 16);
 	newPid = (uint16)strtoul(newVidPid+5, NULL, 16);
-	newDid = (strlen(newVidPid) == 14) ? (uint16)strtoul(newVidPid+10, NULL, 16) : 0x0000;
+	newDid = (uint16)((strlen(newVidPid) == 14) ? strtoul(newVidPid+10, NULL, 16) : 0x0000);
 	bStatus = bufInitialise(&i2cBuf, 0x4000, 0x00, error);
-	CHECK_STATUS(bStatus, "flFlashStandardFirmware()", FL_ALLOC_ERR);
+	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flFlashStandardFirmware()");
 	flStatus = copyFirmwareAndRewriteIDs(
 		&eepromNoBootFirmware, newVid, newPid, newDid,
 		&i2cBuf, error);
-	CHECK_STATUS(flStatus, "flFlashStandardFirmware()", flStatus);
+	CHECK_STATUS(flStatus, flStatus, cleanup, "flFlashStandardFirmware()");
 
 	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, i2cBuf.length, error);
-	CHECK_STATUS(fxStatus, "flFlashStandardFirmware()", FL_FX2_ERR);
-
-	returnCode = FL_SUCCESS;
-
+	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flFlashStandardFirmware()");
 cleanup:
 	bufDestroy(&i2cBuf);
-	return returnCode;
+	return retVal;
 }
 
 // Load custom firmware (.hex) into the FX2's RAM
 DLLEXPORT(FLStatus) flLoadCustomFirmware(
 	const char *curVidPid, const char *fwFile, const char **error)
 {
-	FLStatus returnCode;
+	FLStatus retVal = FL_SUCCESS;
 	struct Buffer fwBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
 	struct USBDevice *device = NULL;
-	int uStatus;
+	USBStatus uStatus;
 	const char *const ext = fwFile + strlen(fwFile) - 4;
-	if ( strcmp(".hex", ext) ) {
-		errRender(error, "flLoadCustomFirmware(): Filename should have .hex extension");
-		FAIL(FL_FILE_ERR);
-	}
+	CHECK_STATUS(
+		strcmp(".hex", ext), FL_FILE_ERR, cleanup,
+		"flLoadCustomFirmware(): Filename should have .hex extension");
 	uStatus = usbOpenDevice(curVidPid, 1, 0, 0, &device, error);
-	CHECK_STATUS(uStatus, "flLoadCustomFirmware()", FL_USB_ERR);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flLoadCustomFirmware()");
 	bStatus = bufInitialise(&fwBuf, 8192, 0x00, error);
-	CHECK_STATUS(bStatus, "flLoadCustomFirmware()", FL_ALLOC_ERR);
+	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flLoadCustomFirmware()");
 	bStatus = bufReadFromIntelHexFile(&fwBuf, NULL, fwFile, error);
-	CHECK_STATUS(bStatus, "flLoadCustomFirmware()", FL_FILE_ERR);
+	CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flLoadCustomFirmware()");
 	fxStatus = fx2WriteRAM(device, fwBuf.data, fwBuf.length, error);
-	CHECK_STATUS(fxStatus, "flLoadCustomFirmware()", FL_FX2_ERR);
-	returnCode = FL_SUCCESS;
+	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flLoadCustomFirmware()");
 cleanup:
 	bufDestroy(&fwBuf);
 	if ( device ) {
 		usbCloseDevice(device, 0);
 	}
-	return returnCode;
+	return retVal;
 }
 
 // Flash custom firmware (.hex or .iic) into the FX2's EEPROM
 DLLEXPORT(FLStatus) flFlashCustomFirmware(
 	struct FLContext *handle, const char *fwFile, uint32 eepromSize, const char **error)
 {
-	FLStatus returnCode;
+	FLStatus retVal = FL_SUCCESS;
 	struct Buffer fwData = {0,};
 	struct Buffer fwMask = {0,};
 	struct Buffer iicBuf = {0,};
@@ -138,87 +133,79 @@ DLLEXPORT(FLStatus) flFlashCustomFirmware(
 	FX2Status fxStatus;
 	I2CStatus iStatus;
 	const char *const ext = fwFile + strlen(fwFile) - 4;
-	if ( strcmp(".hex", ext) && strcmp(".iic", ext) ) {
-		errRender(error, "flFlashCustomFirmware(): Filename should have .hex or .iic extension");
-		FAIL(FL_FX2_ERR);
-	}
+	const bool isHex = (strcmp(".hex", ext) == 0);
+	const bool isI2C = (strcmp(".iic", ext) == 0);
+	CHECK_STATUS(
+		!isHex && !isI2C, FL_FX2_ERR, cleanup,
+		"flFlashCustomFirmware(): Filename should have .hex or .iic extension");
 	bStatus = bufInitialise(&iicBuf, 8192, 0x00, error);
-	CHECK_STATUS(bStatus, "flFlashCustomFirmware()", FL_ALLOC_ERR);
-	if ( !strcmp(".hex", ext) ) {
+	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flFlashCustomFirmware()");
+	if ( isHex ) {
 		// Load the .hex file, populate iicBuf:
 		bStatus = bufInitialise(&fwData, 8192, 0x00, error);
-		CHECK_STATUS(bStatus, "flFlashCustomFirmware()", FL_ALLOC_ERR);
+		CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flFlashCustomFirmware()");
 		bStatus = bufInitialise(&fwMask, 8192, 0x00, error);
-		CHECK_STATUS(bStatus, "flFlashCustomFirmware()", FL_ALLOC_ERR);
+		CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flFlashCustomFirmware()");
 		bStatus = bufReadFromIntelHexFile(&fwData, &fwMask, fwFile, error);
-		CHECK_STATUS(bStatus, "flFlashCustomFirmware()", FL_FILE_ERR);
+		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flFlashCustomFirmware()");
 		iStatus = i2cWritePromRecords(&iicBuf, &fwData, &fwMask, error);
-		CHECK_STATUS(iStatus, "flFlashCustomFirmware()", FL_FX2_ERR);
-	} else if ( !strcmp(".iic", ext) ) {
+		CHECK_STATUS(iStatus, FL_FX2_ERR, cleanup, "flFlashCustomFirmware()");
+	} else if ( isI2C ) {
 		// Load the .iic file into the iicBuf:
 		bStatus = bufAppendFromBinaryFile(&iicBuf, fwFile, error);
-		CHECK_STATUS(bStatus, "flFlashCustomFirmware()", FL_FILE_ERR);
+		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flFlashCustomFirmware()");
 	}
-	if ( iicBuf.length > (eepromSize << 7) ) {
-		errRender(
-			error,
-			"flFlashCustomFirmware(): Cannot load %lu bytes into an %lukbit EEPROM!",
-			iicBuf.length, eepromSize);
-		FAIL(FL_FX2_ERR);
-	}
+	CHECK_STATUS(
+		iicBuf.length > (eepromSize << 7), FL_FX2_ERR, cleanup,
+		"flFlashCustomFirmware(): Cannot load %lu bytes into an %lukbit EEPROM!",
+		iicBuf.length, eepromSize);
 	fxStatus = fx2WriteEEPROM(handle->device, iicBuf.data, iicBuf.length, error);
-	CHECK_STATUS(fxStatus, "flFlashCustomFirmware()", FL_FX2_ERR);
-	returnCode = FL_SUCCESS;
+	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flFlashCustomFirmware()");
 cleanup:
 	bufDestroy(&iicBuf);
 	bufDestroy(&fwMask);
 	bufDestroy(&fwData);
-	return returnCode;
+	return retVal;
 }
 
 // Save the EEPROM to an .iic file
 DLLEXPORT(FLStatus) flSaveFirmware(
 	struct FLContext *handle, uint32 eepromSize, const char *saveFile, const char **error)
 {
-	FLStatus returnCode;
+	FLStatus retVal = FL_SUCCESS;
 	struct Buffer i2cBuf = {0,};
 	BufferStatus bStatus;
 	FX2Status fxStatus;
 	const char *const ext = saveFile + strlen(saveFile) - 4;
-	if ( strcmp(".iic", ext) ) {
-		errRender(error, "flSaveFirmware(): Filename should have .iic extension");
-		FAIL(FL_FX2_ERR);
-	}
+	CHECK_STATUS(
+		strcmp(".iic", ext), FL_FX2_ERR, cleanup,
+		"flSaveFirmware(): Filename should have .iic extension");
 	eepromSize <<= 7;  // convert from kbits to bytes
 	bStatus = bufInitialise(&i2cBuf, eepromSize, 0x00, error);
-	CHECK_STATUS(bStatus, "flSaveFirmware()", FL_ALLOC_ERR);
+	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flSaveFirmware()");
 	fxStatus = fx2ReadEEPROM(handle->device, eepromSize, &i2cBuf, error);
-	CHECK_STATUS(fxStatus, "flSaveFirmware()", FL_FX2_ERR);
+	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flSaveFirmware()");
 	bStatus = bufWriteBinaryFile(&i2cBuf, saveFile, 0UL, i2cBuf.length, error);
-	CHECK_STATUS(bStatus, "flSaveFirmware()", FL_FILE_ERR);
-	returnCode = FL_SUCCESS;
+	CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flSaveFirmware()");
 cleanup:
 	bufDestroy(&i2cBuf);
-	return returnCode;
+	return retVal;
 }
 
 FLStatus copyFirmwareAndRewriteIDs(
 	const struct FirmwareInfo *fwInfo, uint16 vid, uint16 pid, uint16 did,
 	struct Buffer *dest, const char **error)
 {
-	FLStatus returnCode;  // Can return FL_ALLOC_ERR, FL_FX2_ERR and FL_INTERNAL_ERR
+	FLStatus retVal = FL_SUCCESS;  // Can return FL_ALLOC_ERR, FL_FX2_ERR and FL_INTERNAL_ERR
 	BufferStatus bStatus;
 	bStatus = bufAppendBlock(dest, fwInfo->data, fwInfo->length, error);
-	CHECK_STATUS(bStatus, "copyFirmwareAndRewriteIDs()", FL_ALLOC_ERR);
-
+	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "copyFirmwareAndRewriteIDs()");
 	dest->data[fwInfo->vp]     = (uint8)(vid & 0xFF);
 	dest->data[fwInfo->vp + 1] = (uint8)(vid >> 8);
 	dest->data[fwInfo->vp + 2] = (uint8)(pid & 0xFF);
 	dest->data[fwInfo->vp + 3] = (uint8)(pid >> 8);
 	dest->data[fwInfo->vp + 4] = (uint8)(did & 0xFF);
 	dest->data[fwInfo->vp + 5] = (uint8)(did >> 8);
-
-	returnCode = FL_SUCCESS;
 cleanup:
-	return returnCode;
+	return retVal;
 }

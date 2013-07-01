@@ -22,13 +22,8 @@
 #include <liberror.h>
 #include "../private.h"
 
-#define CHECK(condition, retCode) \
-	if ( condition ) { \
-		FAIL(retCode); \
-	}
-
 int main(int argc, const char *argv[]) {
-	int returnCode = 0;
+	int retVal = 0;
 	struct Buffer csvfBuf = {0,};
 	BufferStatus bStatus;
 	FLStatus fStatus;
@@ -36,27 +31,27 @@ int main(int argc, const char *argv[]) {
 	uint32 csvfBufSize = 0;
 	const char *srcFile, *dstFile;
 	const char *ext;
-	if ( argc != 3 ) {
+   if ( argc != 3 ) {
 		fprintf(stderr, "Synopsis: %s [-u] <src.xsvf|src.svf> <dst.csvf>\n", argv[0]);
-		FAIL(1);
+		FAIL(1, cleanup);
 	}
 	srcFile = argv[1];
 	dstFile = argv[2];
 	ext = srcFile + strlen(srcFile) - 5;
 	bStatus = bufInitialise(&csvfBuf, 10240, 0x00, &error);
-	CHECK(bStatus, 2);
+	CHECK_STATUS(bStatus, 2, cleanup);
 	if ( strcmp(".svf", ext+1) == 0 ) {
 		fStatus = flLoadSvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
 	} else if ( strcmp(".xsvf", ext) == 0 ) {
 		fStatus = flLoadXsvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
 	} else {
 		fprintf(stderr, "Source filename should have an .svf or an .xsvf extension\n");
-		FAIL(3);
+		FAIL(3, cleanup);
 	}
-	CHECK(fStatus, 4);
+	CHECK_STATUS(fStatus, 4, cleanup);
 	printf("CSVF_BUF_SIZE = %d\n", csvfBufSize);
 	bStatus = bufWriteBinaryFile(&csvfBuf, dstFile, 0, csvfBuf.length, &error);
-	CHECK(bStatus, 6);
+	CHECK_STATUS(bStatus, 6, cleanup);
 
 cleanup:
 	bufDestroy(&csvfBuf);
@@ -64,5 +59,5 @@ cleanup:
 		fprintf(stderr, "%s\n", error);
 		bufFreeError(error);
 	}
-	return returnCode;
+	return retVal;
 }

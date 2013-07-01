@@ -131,7 +131,7 @@ extern "C" {
 	// ----------------------------------------------------------------------------------------------
 
 	// Return the number of bytes necessary to store x number of bits
-	#define bitsToBytes(x) ((x>>3) + (x&7 ? 1 : 0))
+	#define bitsToBytes(x) (((x)>>3) + ((x)&7 ? 1 : 0))
 
 #ifdef __cplusplus
 }
