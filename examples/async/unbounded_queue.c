@@ -5,21 +5,19 @@
 #include "thread.h"
 #include <makestuff.h>
 
-#define CHECK(condition, retCode, label) if ( condition ) { returnCode = retCode; goto label; }
-
 int queueInit(struct UnboundedQueue *self, size_t capacity) {
-	int returnCode;
+	int retVal;
 	int status;
 	self->itemArray = (Item *)malloc(capacity * sizeof(Item));
-	CHECK(self->itemArray == NULL, ENOMEM, exit);
+	CHECK_STATUS(self->itemArray == NULL, ENOMEM, exit);
 	self->capacity = capacity;
 	self->pushIndex = 0;
 	self->popIndex = 0;
 	self->numItems = 0;
 	status = threadMutexInit(&self->mutex);
-	CHECK(status, status, cleanMem);
+	CHECK_STATUS(status, status, cleanMem);
 	status = threadCondInit(&self->blocker);
-	CHECK(status, status, cleanMutex);
+	CHECK_STATUS(status, status, cleanMutex);
 	return 0;
 cleanMutex:
 	threadMutexDestroy(&self->mutex);
@@ -27,7 +25,7 @@ cleanMem:
 	free((void*)self->itemArray);
 	self->itemArray = NULL;
 exit:
-	return returnCode;
+	return retVal;
 }
 
 void queueDestroy(struct UnboundedQueue *self) {
@@ -41,7 +39,7 @@ void queueDestroy(struct UnboundedQueue *self) {
 // Everything is preserved if a realloc() fails
 //
 int queuePut(struct UnboundedQueue *self, Item item) {
-	int returnCode = 0;
+	int retVal = 0;
 	threadMutexLock(&self->mutex);
 	if ( self->numItems == self->capacity ) {
 		size_t i;
@@ -51,7 +49,7 @@ int queuePut(struct UnboundedQueue *self, Item item) {
 		const size_t secondHalfLength = self->popIndex;
 		const size_t newCapacity = 2 * self->capacity;
 		newArray = (Item *)malloc(newCapacity * sizeof(Item));
-		CHECK(newArray == NULL, ENOMEM, unlock);
+		CHECK_STATUS(newArray == NULL, ENOMEM, unlock);
 		for ( i = 0; i < newCapacity; i++ ) {
 			newArray[i] = (Item)(-1);
 		}
@@ -76,7 +74,7 @@ int queuePut(struct UnboundedQueue *self, Item item) {
 	threadCondSignal(&self->blocker);  // wake up consumer
 unlock:
 	threadMutexUnlock(&self->mutex);
-	return returnCode;
+	return retVal;
 }
 
 Item queueTake(struct UnboundedQueue *self) {
