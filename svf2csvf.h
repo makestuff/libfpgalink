@@ -41,12 +41,10 @@ extern "C" {
 		uint32 curLength;
 		struct Buffer curMaskBuf;
 		uint32 curMaskBits;
-		uint32 lastCmdOffset;
-		uint32 lastRunTestOffset;
-		uint32 lastRunTestValue;
+		uint32 numCommands;
 	};
 
-	#define CHOMP() while ( *p == ' ' || *p == '\t' || *p == '\r' ) { p++; }
+	#define CHOMP() while ( *p == ' ' || *p == '\t' ) { p++; }
 	
 	FLStatus headTail(
 		struct Buffer *dataBuf, struct Buffer *hdrBuf, struct Buffer *tailBuf,
@@ -70,11 +68,12 @@ extern "C" {
 		uint32 *maxBufSize, const char **error
 	) WARN_UNUSED_RESULT;
 
-	FLStatus insertRunTestBefore(
-		struct Buffer *buf, uint32 offset, uint32 count,
-		uint32 *lastRunTestOffset, uint32 *lastRunTestValue,
-		const char **error
-	) WARN_UNUSED_RESULT;
+	// Reorder commands after SVF parse
+	typedef const uint8 *CmdPtr;
+	typedef const uint8 CmdArray[];
+	void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex);
+	const char *getCmdName(CmdPtr cmd);
+	uint32 readLongBE(const uint8 *p);
 
 #ifdef __cplusplus
 }

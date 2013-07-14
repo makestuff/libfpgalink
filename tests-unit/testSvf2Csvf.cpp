@@ -27,7 +27,7 @@ using namespace std;
 void testReadBytes(struct Buffer *buf, const char *expected) {
 	FLStatus fStatus;
 	char result[1024];
-	const uint32 expectedLength = strlen(expected)/2;
+	const uint32 expectedLength = (uint32)strlen(expected)/2;
 	bufZeroLength(buf);
 	fStatus = readBytes(buf, expected, NULL);
 	CHECK_EQUAL(FL_SUCCESS, fStatus);
@@ -538,7 +538,7 @@ void parseString(ParseContext *cxt, const char *str, struct Buffer *csvfBuf) {
 	Buffer line;
 	BufferStatus bStatus;
 	FLStatus fStatus;
-	const uint32 lineLen = strlen(str) + 1;
+	const uint32 lineLen = (uint32)strlen(str) + 1;
 	bStatus = bufInitialise(&line, lineLen, 0, NULL);
 	CHECK_EQUAL(BUF_SUCCESS, bStatus);
 	bStatus = bufAppendBlock(&line, (const uint8 *)str, lineLen, NULL);
@@ -640,6 +640,7 @@ TEST(FPGALink_testParse) {
 	bufDestroy(&csvfBuf);
 }
 
+/*
 TEST(FPGALink_testInsertRunTest) {
 	FLStatus fStatus;
 	struct Buffer buf;
@@ -656,3 +657,174 @@ TEST(FPGALink_testInsertRunTest) {
 	CHECK_EQUAL(8UL+5UL+5UL, buf.length);
 	CHECK_ARRAY_EQUAL(expected, buf.data, buf.length);
 }
+*/
+
+static void compare(CmdPtr pExpected, CmdPtr pActual) {
+	const char *const sExpected = getCmdName(pExpected);
+	const char *const sActual = getCmdName(pActual);
+	uint32 expected = pExpected[0];
+	uint32 actual = pActual[0];
+	printf("  %s:%s\n", sExpected, sActual);
+	CHECK_EQUAL(sExpected, sActual);
+	if ( expected == XRUNTEST && actual == XRUNTEST ) {
+		expected = readLongBE(pExpected + 1);
+		actual = readLongBE(pActual + 1);
+		CHECK_EQUAL(expected, actual);
+	}
+}
+
+TEST(FPGALink_testProcessIndex) {
+	int i, num;
+	const CmdPtr *pExpected;
+	const CmdPtr *pActual;
+	CmdArray xruntest0  = {XRUNTEST, 0x00, 0x00, 0x00, 0x00};
+	CmdArray xruntest1  = {XRUNTEST, 0x00, 0x00, 0x00, 0x0A};
+	CmdArray xruntest2  = {XRUNTEST, 0x00, 0x00, 0x27, 0x10};
+	CmdArray xcomplete = {XCOMPLETE};
+	CmdArray xsdr      = {XSDR};
+	CmdArray xsdrsize  = {XSDRSIZE};
+	CmdArray xsdrtdo   = {XSDRTDO};
+	CmdArray xsir      = {XSIR};
+	CmdArray xtdomask  = {XTDOMASK};
+	const CmdPtr src0[] = {
+		xsir,
+		xsdrsize,
+		xtdomask,
+		xsdrtdo,
+		xsir,
+		xsdrtdo,
+		xsir,
+		xsdrtdo,
+		xsir,
+		xsir,
+		xsdrtdo,
+		xsir,
+		xruntest1,
+		xsir,
+		xsir,
+		xruntest2,
+		xsir,
+		xsdrsize,
+		xsdr,
+		xruntest1,
+		xsir,
+		xsdrsize,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr exp0[] = {
+		xruntest0,
+		xsir,
+		xsdrsize,
+		xtdomask,
+		xsdrtdo,
+		xsir,
+		xsdrtdo,
+		xsir,
+		xsdrtdo,
+		xsir,
+		xsir,
+		xsdrtdo,
+		xruntest1,
+		xsir,
+		xruntest0,
+		xsir,
+		xruntest2,
+		xsir,
+		xruntest0,
+		xsir,
+		xruntest1,
+		xsdrsize,
+		xsdr,
+		xruntest0,
+		xsir,
+		xsdrsize,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr src1[] = {
+		xsir,
+		xsdrsize,
+		xsdr,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr exp1[] = {
+		xruntest0,
+		xsir,
+		xsdrsize,
+		xsdr,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr src2[] = {
+		xsir,
+		xsdrsize,
+		xsdr,
+		xsdr,
+		xruntest1,
+		xcomplete
+	};
+	const CmdPtr exp2[] = {
+		xruntest0,
+		xsir,
+		xsdrsize,
+		xsdr,
+		xruntest1,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr src3[] = {
+		xsir,
+		xsdrsize,
+		xsdr,
+		xruntest1,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr exp3[] = {
+		xruntest0,
+		xsir,
+		xruntest1,
+		xsdrsize,
+		xsdr,
+		xruntest0,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr *const src[] = {src0, src1, src2, src3};
+	const CmdPtr *const exp[] = {exp0, exp1, exp2, exp3};
+	const uint8 *dst[1024];  // worst case 2x
+	num = sizeof(src) / sizeof(src[0]);
+	for ( i = 0; i < num; i++ ) {
+		printf("Dataset %d\n", i);
+		processIndex(src[i], dst);
+		pExpected = exp[i];
+		pActual = dst;
+		while ( **pExpected != XCOMPLETE && **pActual != XCOMPLETE ) {
+			compare(*pExpected++, *pActual++);
+		}
+		printf("  %s:%s\n", getCmdName(*pExpected), getCmdName(*pActual));
+		CHECK(**pExpected == XCOMPLETE);
+		CHECK(**pActual == XCOMPLETE);
+	}
+}
+

@@ -41,8 +41,6 @@ static FLStatus appendSwapped(
 	struct Buffer *buf, const uint8 *src, uint32 count, const char **error
 ) WARN_UNUSED_RESULT;
 
-static FLStatus postProcess(struct Buffer *buf, const char **error) WARN_UNUSED_RESULT;
-
 static bool getHexNibble(char hexDigit, uint8 *nibble) {
 	if ( hexDigit >= '0' && hexDigit <= '9' ) {
 		*nibble = (uint8)(hexDigit - '0');
@@ -70,7 +68,7 @@ static int getHexByte(const char *p, uint8 *byte) {
 	}
 }
 
-static uint32 readLongBE(const uint8 *p) {
+uint32 readLongBE(const uint8 *p) {
 	uint32 result;
 	result = p[0];
 	result <<= 8;
@@ -268,9 +266,7 @@ FLStatus cxtInitialise(struct ParseContext *cxt, const char **error) {
 	bStatus = bufInitialise(&cxt->curMaskBuf, 1024, 0x00, error);
 	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "cxtInitialise()");
 	cxt->curMaskBits = 0;
-	cxt->lastCmdOffset = 0;
-	cxt->lastRunTestOffset = 0;
-	cxt->lastRunTestValue = 0;
+	cxt->numCommands = 0;
 cleanup:
 	return retVal;
 }
@@ -389,51 +385,6 @@ cleanup:
 	return retVal;
 }
 
-FLStatus insertRunTestBefore(
-	struct Buffer *buf, uint32 offset, uint32 count,
-	uint32 *lastRunTestOffset, uint32 *lastRunTestValue, const char **error) {
-	FLStatus retVal = FL_SUCCESS;
-	BufferStatus bStatus;
-	bool needFollowingZero = true;
-	if ( offset - 5 == *lastRunTestOffset ) {
-		// Just add to the previously inserted runtest command
-		offset -= 5;
-		count += readLongBE(buf->data + offset + 1);
-	} else if ( buf->data[offset] == XRUNTEST ) {
-		count += readLongBE(buf->data + offset + 1);
-		needFollowingZero = false;
-	} else {
-		// Move the block of data from offset to the end five bytes up to make room for an XRUNTEST
-		// command.
-		const uint32 oldLength = buf->length;
-		uint32 numBytes = oldLength - offset;
-		const uint8 *src;
-		uint8 *dst;
-		bStatus = bufAppendConst(buf, 0x00, 5, error);
-		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
-		dst = buf->data + oldLength + 4;
-		src = dst - 5;
-		while ( numBytes-- ) {
-			*dst-- = *src--;
-		}
-		buf->data[offset] = XRUNTEST;
-	}
-	*lastRunTestValue = count;
-	bStatus = bufWriteLongBE(buf, offset+1, count, error);
-	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
-	if ( needFollowingZero ) {
-		*lastRunTestOffset = buf->length;
-		bStatus = bufAppendByte(buf, XRUNTEST, error);
-		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
-		bStatus = bufAppendConst(buf, 0x00, 4, error);
-		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "insertRunTestBefore()");
-	} else {
-		*lastRunTestOffset = buf->length - 5;
-	}
-cleanup:
-	return retVal;
-}
-
 /**
  * Parse the supplied SVF line, calling processLine() for shift operations as necessary.
  */
@@ -449,47 +400,63 @@ FLStatus parseLine(
 	struct Buffer tmpBody1 = {0,};
 	struct Buffer tmpBody2 = {0,};
 	struct Buffer tmpTail = {0,};
-	if ( !strncmp(line, "RUNTEST ", 8) ) {
+	if ( !strncmp(line, "RUNTEST", 7) ) {
 		// RUNTEST line is of the form "RUNTEST [IDLE] <count> TCK [ENDSTATE IDLE]"
 		const char *p = line + 7;
 		char *end;
-		double count;
+		double count1, count2;
 		CHOMP();
-		if ( !strncmp(p, "IDLE ", 5) ) {
+		if ( !strncmp(p, "IDLE", 4) ) {
 			p += 4;
 			CHOMP();
 		}
-		count = strtod(p, &end);
+		count1 = strtod(p, &end);
 		p = end;
 		CHOMP();
 		if ( !strncmp(p, "TCK", 3) ) {
 			p += 3;
 			CHOMP();
 		} else if ( !strncmp(p, "SEC", 3) ) {
-			count *= 1000000.0;
+			count1 *= 1000000.0;
 			p += 3;
 			CHOMP();
 		} else {
 			CHECK_STATUS(
 				true, FL_SVF_PARSE_ERR, cleanup,
-				"parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK|SEC [ENDSTATE IDLE]\"");
+				"parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK|SEC [<number> TCK|SEC] [ENDSTATE IDLE]\"");
+		}
+		count2 = strtod(p, &end);
+		if ( end != p ) {
+			p = end;
+			CHOMP();
+			if ( !strncmp(p, "TCK", 3) ) {
+				p += 3;
+				CHOMP();
+			} else if ( !strncmp(p, "SEC", 3) ) {
+				count2 *= 1000000.0;
+				p += 3;
+				CHOMP();
+			}
 		}
 		if ( !strncmp(p, "ENDSTATE IDLE", 13) ) {
 			p += 13;
 		}
 		CHOMP();
+		if ( count2 > count1 ) {
+			count1 = count2;
+		}
 		CHECK_STATUS(
 			p != lineEnd, FL_SVF_PARSE_ERR, cleanup,
-			"parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK [ENDSTATE IDLE]\"");
-		fStatus = insertRunTestBefore(
-			csvfBuf, cxt->lastCmdOffset, (uint32)count,
-			&cxt->lastRunTestOffset, &cxt->lastRunTestOffset, error
-		);
-		CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
+			"parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK|SEC [<number> TCK|SEC] [ENDSTATE IDLE]\"");
+		cxt->numCommands++;
+		bStatus = bufAppendByte(csvfBuf, XRUNTEST, error);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
+		bStatus = bufAppendLongBE(csvfBuf, (uint32)count1, error);
+		CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 	} else if (
 		(line[0] == 'H' || line[0] == 'S' || line[0] == 'T') &&
 		(line[1] == 'I' || line[1] == 'D') &&
-		line[2] == 'R' && line[3] == ' '
+		line[2] == 'R' && (line[3] == ' ' || line[3] == '\t')
 	) {
 		// HIR/HDR, TIR/TDR, SIR/SDR are of the form "**R <length> [TDI (<tdi>)] [TDO (<tdo>)] [MASK (<mask>)] [SMASK (<smask>)]"
 		char *p = line + 3;
@@ -597,6 +564,7 @@ FLStatus parseLine(
 					!= cxt->curLength
 				) {
 					cxt->curLength = cxt->dataHead.numBits + cxt->dataBody.numBits + cxt->dataTail.numBits;
+					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XSDRSIZE, error);
 					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					bStatus = bufAppendLongBE(csvfBuf, cxt->curLength, error);
@@ -619,6 +587,7 @@ FLStatus parseLine(
 					 memcmp(tmpBody1.data, cxt->curMaskBuf.data, tmpBody1.length))
 				) {
 					// New mask is nonzero and different from the last one sent
+					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XTDOMASK, error);
 					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
@@ -636,8 +605,8 @@ FLStatus parseLine(
 					&tmpBody1, &tmpHead, &tmpTail,
 					cxt->dataBody.numBits, cxt->dataHead.numBits, cxt->dataTail.numBits,
 					error);
-				cxt->lastCmdOffset = csvfBuf->length;
 				if ( zeroMask || !tdo ) {
+					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XSDR, error);
 					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
@@ -656,6 +625,7 @@ FLStatus parseLine(
 					if ( maxBufSize && tmpBody2.length > *maxBufSize ) {
 						*maxBufSize = tmpBody2.length;
 					}
+					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XSDRTDO, error);
 					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 					fStatus = appendSwappedAndInterleaved(csvfBuf, tmpBody1.data, tmpBody2.data, tmpBody2.length, error);
@@ -686,7 +656,7 @@ FLStatus parseLine(
 					&tmpBody1, &tmpHead, &tmpTail,
 					cxt->insnBody.numBits, cxt->insnHead.numBits, cxt->insnTail.numBits,
 					error);
-				cxt->lastCmdOffset = csvfBuf->length;
+				cxt->numCommands++;
 				bStatus = bufAppendByte(csvfBuf, XSIR, error);
 				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
 				bStatus = bufAppendByte(csvfBuf, (uint8)(cxt->insnBody.numBits + cxt->insnHead.numBits + cxt->insnTail.numBits), error);
@@ -709,105 +679,187 @@ cleanup:
 	return retVal;
 }
 
-#define COPY_BLOCK(x) i = x; while ( i-- ) *dst++ = *src++
+static const char *const cmdNames[] = {
+	"XCOMPLETE",    // 0
+	"XTDOMASK",     // 1
+	"XSIR",         // 2
+	"XSDR",         // 3
+	"XRUNTEST",     // 4
+	"ILLEGAL",      // 5
+	"ILLEGAL",      // 6
+	"XREPEAT",      // 7
+	"XSDRSIZE",     // 8
+	"XSDRTDO",      // 9
+	"XSETSDRMASKS", // A
+	"XSDRINC",      // B
+	"XSDRB",        // C
+	"XSDRC",        // D
+	"XSDRE",        // E
+	"XSDRTDOB",     // F
+	"XSDRTDOC",     // 10
+	"XSDRTDOE",     // 11
+	"XSTATE",       // 12
+	"XENDIR",       // 13
+	"XENDDR",       // 14
+	"XSIR2",        // 15
+	"XCOMMENT",     // 16
+	"XWAIT"         // 17
+};
 
-// Remove duplicate XRUNTEST commands.
-//
-static FLStatus postProcess(struct Buffer *buf, const char **error) {
-	FLStatus retVal = FL_SUCCESS;
-	BufferStatus bStatus;
-	int pass;
-	for ( pass = 0; pass < 2; pass++ ) {
-		uint8 *dst = buf->data;
-		const uint8 *src = dst;
-		uint32 tmp, i, numBytes = 0;
-		uint32 oldRunTest = 0xFFFFFFFF, newRunTest;
-		uint8 thisByte = *src++;
-		size_t runTestOffset = 0;
-		bool seenShiftCommands = true;
-		while ( thisByte != XCOMPLETE ) {
-			switch ( thisByte ) {
-			case XSDRSIZE:
-				numBytes = bitsToBytes(readLongBE(src));
-				*dst++ = XSDRSIZE;
-				COPY_BLOCK(4);
-				break;
-			case XTDOMASK:
-				*dst++ = XTDOMASK;
-				COPY_BLOCK(numBytes);
-				break;
-			case XRUNTEST:
-				if ( pass == 0 ) {
-					// In the first pass, we deduplicate XRUNTEST commands that do not have shifting
-					// commands between them.
-					// "XRUNTEST(A),XSDRSIZE(),XTDOMASK(),XRUNTEST(B) -> XRUNTEST(B),XSDRSIZE(),XTDOMASK()
-					//                "XRUNTEST(A),XSIR(),XRUNTEST(B) -> XRUNTEST(A),XSIR(),XRUNTEST(B)
-					//                "XRUNTEST(A),XSDR(),XRUNTEST(B) -> XRUNTEST(A),XSDR(),XRUNTEST(B)
-					//             "XRUNTEST(A),XSDRTDO(),XRUNTEST(B) -> XRUNTEST(A),XSDRTDO(),XRUNTEST(B)
-					//
-					if ( seenShiftCommands ) {
-						// There have been some shift commands (XSIR,XSDR,XSDRTDO) since last XRUNTEST,
-						// so we can't deduplicate anything.
-						runTestOffset = (size_t)(src - buf->data - 1);
-						*dst++ = XRUNTEST;
-						COPY_BLOCK(4);
-						seenShiftCommands = false;
-					} else {
-						// There have only been non-shift commands (XSDRSIZE,XTDOMASK) since last time,
-						// so we can do some deduplication.
-						bStatus = bufWriteLongBE(buf, (uint32)runTestOffset + 1, readLongBE(src), error);
-						CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "postProcess()");
-						src += 4;
-					}
-				} else {
-					// In the second pass, we remove XRUNTEST commands that are the same as the previous.
-					newRunTest = readLongBE(src);
-					if ( newRunTest != oldRunTest ) {
-						// This XRUNTEST is different from the old one, so copy it over...
-						*dst++ = XRUNTEST;
-						COPY_BLOCK(4);
-						oldRunTest = newRunTest;
-					} else {
-						// This XRUNTEST is the same as the last one, so drop it
-						src += 4;
-					}
-				}
-				break;
-			case XSIR:
-				seenShiftCommands = true;
-				*dst++ = XSIR;
-				i = *src++;
-				tmp = bitsToBytes(i);
-				*dst++ = (uint8)i;
-				COPY_BLOCK(tmp);
-				break;
-			case XSDRTDO:
-				seenShiftCommands = true;
-				*dst++ = XSDRTDO;
-				COPY_BLOCK(numBytes);
-				COPY_BLOCK(numBytes);
-				break;
-			case XSDR:
-				seenShiftCommands = true;
-				*dst++ = XSDR;
-				COPY_BLOCK(numBytes);
-				break;
-			default:
-				CHECK_STATUS(
-					true, FL_INTERNAL_ERR, cleanup,
-					"postProcess(): Unrecognised CSVF command (cmd=0x%02X, srcOffset=%d)!", thisByte, src - buf->data);
-			}
-			thisByte = *src++;
+const char *getCmdName(CmdPtr cmd) {
+	const uint8 op = *cmd;
+	return cmdNames[op];
+}
+
+#define GET_CMD() **ptr; if ( thisCmd == XCOMPLETE ) goto exit
+#define SET_BYTES(rt) rt.b[0] = (*ptr)[1]; rt.b[1] = (*ptr)[2]; rt.b[2] = (*ptr)[3]; rt.b[3] = (*ptr)[4]
+static const uint8 xrtZero[] = {XRUNTEST, 0, 0, 0, 0};
+static const uint32 illegal32 = 0xFFFFFFFF;
+
+void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex) {
+	union {
+		uint32 i;
+		uint8 b[4];
+	} oldrt, newrt;
+	const CmdPtr *ptr = srcIndex;
+	uint8 thisCmd = GET_CMD();
+	oldrt.i = illegal32;
+	newrt.i = 0;
+	for ( ; ; ) {
+		while ( thisCmd != XSDR && thisCmd != XSDRTDO && thisCmd != XSIR ) {
+			ptr++;
+			thisCmd = GET_CMD();
 		}
-		if ( pass == 0 && !seenShiftCommands ) {
-			buf->data[runTestOffset] = XCOMPLETE;
-			buf->length = (uint32)runTestOffset + 1;
+		ptr++;  // now points at command AFTER shift command
+		thisCmd = GET_CMD();
+		if ( thisCmd == XRUNTEST ) {
+			// There is an explicit XRUNTEST, so hoist it to the top, maybe...
+			SET_BYTES(newrt);
+			if ( newrt.i != oldrt.i ) {
+				*dstIndex++ = *ptr;
+				oldrt = newrt;
+			}
+
+			// ...then copy the commands...
+			while ( srcIndex < ptr ) {
+				*dstIndex++ = *srcIndex++;
+			}
+
+			// ...and finally get the next command
+			ptr++;  // now points at command after XRUNTEST, ready for next loop
+			srcIndex = ptr;
+			thisCmd = GET_CMD();
 		} else {
-			*dst++ = XCOMPLETE;
-			buf->length = (uint32)(dst - buf->data);
+			// There is not an explicit XRUNTEST, meaning it's implicitly zero:
+			newrt.i = 0;
+			if ( newrt.i != oldrt.i ) {
+				*dstIndex++ = xrtZero;
+				oldrt = newrt;
+			}
+
+			// Copy the backlog
+			while ( srcIndex < ptr ) {
+				*dstIndex++ = *srcIndex++;
+			}
+			srcIndex = ptr;
 		}
 	}
+exit:
+	while ( srcIndex < ptr ) {
+		*dstIndex++ = *srcIndex++;
+	}
+	*dstIndex = *ptr;
+}
+
+static FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char **error) {
+	FLStatus retVal = FL_SUCCESS;
+	const uint8 *srcIndex[cxt->numCommands];
+	const uint8 *dstIndex[3*cxt->numCommands/2]; // abs worst case {XSIR, XCOMPLETE} -> {XRUNTEST, XSIR, XCOMPLETE}
+	const uint8 *const start = csvfBuf->data;
+	const uint8 *ptr = start;
+	struct Buffer newBuf = {0,};
+	uint32 numBytes;
+	uint8 thisByte = *ptr;
+	int i = 0;
+	int offset;
+	const CmdPtr *cmdPtr;
+	BufferStatus bStatus = bufWriteBinaryFile(csvfBuf, "foo.csvf", 0, csvfBuf->length, error);
+	CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "buildIndex()");
+	bStatus = bufInitialise(&newBuf, 4*csvfBuf->length/3, 0x00, error);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+	numBytes = illegal32;
+	while ( thisByte != XCOMPLETE ) {
+		srcIndex[i++] = ptr++;
+		switch ( thisByte ) {
+		case XSDRSIZE:
+			numBytes = bitsToBytes(readLongBE(ptr));
+		case XRUNTEST:
+			ptr += 4;
+			break;
+		case XTDOMASK:
+		case XSDR:
+			CHECK_STATUS(numBytes == illegal32, FL_INTERNAL_ERR, cleanup, "buildIndex(): No XSDRSIZE before shift operation!");
+			ptr += numBytes;
+			break;
+		case XSDRTDO:
+			CHECK_STATUS(numBytes == illegal32, FL_INTERNAL_ERR, cleanup, "buildIndex(): No XSDRSIZE before shift operation!");
+			ptr += 2*numBytes;
+			break;
+		case XSIR:
+			offset = *ptr++;
+			ptr += bitsToBytes(offset);
+			break;
+		default:
+			CHECK_STATUS(
+				true, FL_INTERNAL_ERR, cleanup,
+				"buildIndex(): Unrecognised CSVF command (cmd=0x%02X, srcOffset=%d)!", thisByte, ptr - start);
+		}
+		thisByte = *ptr;
+	}
+	srcIndex[i++] = ptr++;
+	processIndex(srcIndex, dstIndex);
+	cmdPtr = dstIndex;
+	ptr = *cmdPtr;
+	thisByte = *ptr;
+	numBytes = illegal32;
+	while ( thisByte != XCOMPLETE ) {
+		switch ( thisByte ) {
+		case XSDRSIZE:
+			numBytes = bitsToBytes(readLongBE(ptr + 1));
+		case XRUNTEST:
+			bStatus = bufAppendBlock(&newBuf, ptr, 5, error);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+			break;
+		case XTDOMASK:
+		case XSDR:
+			CHECK_STATUS(numBytes == illegal32, FL_INTERNAL_ERR, cleanup, "buildIndex(): No XSDRSIZE before shift operation!");
+			bStatus = bufAppendBlock(&newBuf, ptr, numBytes + 1, error);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+			break;
+		case XSDRTDO:
+			CHECK_STATUS(numBytes == illegal32, FL_INTERNAL_ERR, cleanup, "buildIndex(): No XSDRSIZE before shift operation!");
+			bStatus = bufAppendBlock(&newBuf, ptr, 2*numBytes + 1, error);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+			break;
+		case XSIR:
+			offset = ptr[1];
+			bStatus = bufAppendBlock(&newBuf, ptr, (uint32)(bitsToBytes(offset) + 2), error);
+			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+			break;
+		default:
+			CHECK_STATUS(
+				true, FL_INTERNAL_ERR, cleanup,
+				"buildIndex(): Unrecognised CSVF command (cmd=0x%02X)!", thisByte);
+		}
+		cmdPtr++;
+		ptr = *cmdPtr;
+		thisByte = *ptr;
+	}
+	bStatus = bufAppendByte(&newBuf, XCOMPLETE, error);
+	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+	bufSwap(&newBuf, csvfBuf);
 cleanup:
+	bufDestroy(&newBuf);
 	return retVal;
 }
 
@@ -823,18 +875,12 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	bool gotSemicolon;
 	struct ParseContext cxt = {{0,},};
 
-	// Always set XRUNTEST to 0 first
-	bStatus = bufAppendByte(csvfBuf, XRUNTEST, error);
-	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
-	bStatus = bufAppendConst(csvfBuf, 0x00, 4, error);
-	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
-
 	// Initialise context and line buffer
 	fStatus = cxtInitialise(&cxt, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadSvfAndConvertToCsvf()");
 	bStatus = bufInitialise(&lineBuf, 1024, 0x00, error);
 	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
-	
+
 	// Load SVF file
 	buffer = flLoadFile(svfFile, &fileLength);
 	if ( !buffer ) {
@@ -846,7 +892,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	end = buffer + fileLength;
 	p = buffer;
 	while ( p < end ) {
-		if ( p[0] == '\n' ) {
+		if ( p[0] == '\n' || p[0] == '\r' ) {
 			p++;
 		} else if (
 			p[0] == '!' ||
@@ -856,25 +902,25 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 			!memcmp(p, "STATE", 5) ||
 			!memcmp(p, "FREQ", 4)
 		) {
-			while ( p < end && *p != '\n' ) {
+			while ( p < end && *p != '\n' && *p != '\r' ) {
 				p++;
 			}
 			p++;
 		} else {
 			CHOMP();
 			line = p;
-			while ( p < end && *p != '\n' && *p != ';' ) {
+			while ( p < end && *p != '\n' && *p != '\r' && *p != ';' ) {
 				p++;
 			}
 			gotSemicolon = (*p == ';');
-			if ( *p == '\n' || *p == ';' ) {
+			if ( *p == '\n' || *p == '\r' || *p == ';' ) {
 				do {
 					p--;
-				} while ( *p == ' ' || *p == '\t' || *p == '\r' );
+				} while ( *p == ' ' || *p == '\t' );
 				p++; // go back to first space char
 				bStatus = bufAppendBlock(&lineBuf, line, (uint32)(p - line), error);
 				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
-				while ( p < end && *p != '\n' ) {
+				while ( p < end && *p != '\n' && *p != '\r' ) {
 					p++;
 				}
 				p++; // Skip over CR
@@ -888,11 +934,11 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 			}
 		}
 	}
-	bStatus = bufAppendByte(csvfBuf, 0x00, error);
+	bStatus = bufAppendByte(csvfBuf, XCOMPLETE, error);
 	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
-	fStatus = postProcess(csvfBuf, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadSvfAndConvertToCsvf()");
 
+	fStatus = buildIndex(&cxt, csvfBuf, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadSvfAndConvertToCsvf()");
 cleanup:
 	cxtDestroy(&cxt);
 	bufDestroy(&lineBuf);
