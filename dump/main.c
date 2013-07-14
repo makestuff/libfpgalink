@@ -24,7 +24,7 @@
 #define printAddrs() if ( wantAddrs ) printf("%08tX: ", p-buffer)
 
 int main(int argc, const char *argv[]) {
-	const uint8 *buffer, *p;
+	const uint8 *buffer, *p, *savePtr;
 	uint32 length;
 	uint8 byte;
 	uint32 xsdrSize = 0;
@@ -58,13 +58,16 @@ int main(int argc, const char *argv[]) {
 			printAddrs();
 			printf("XSDRTDO(");
 			numBytes = temp = bitsToBytes(xsdrSize);
+			savePtr = p + 1;
 			while ( numBytes ) {
 				printf("%02X", *++p);
+				p++;
 				numBytes--;
 			}
 			printf(", ");
 			while ( temp ) {
-				printf("%02X", *++p);
+				printf("%02X", *++savePtr);
+				savePtr++;
 				temp--;
 			}
 			printf(")\n");
@@ -159,5 +162,6 @@ int main(int argc, const char *argv[]) {
 		}
 		byte = *++p;
 	}
+	printf("XCOMPLETE\n");
 	return 0;
 }
