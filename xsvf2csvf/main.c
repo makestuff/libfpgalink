@@ -49,7 +49,7 @@ int main(int argc, const char *argv[]) {
 		FAIL(3, cleanup);
 	}
 	CHECK_STATUS(fStatus, 4, cleanup);
-	printf("CSVF_BUF_SIZE = %d\n", csvfBufSize);
+	//printf("CSVF_BUF_SIZE = %d\n", csvfBufSize);
 	bStatus = bufWriteBinaryFile(&csvfBuf, dstFile, 0, csvfBuf.length, &error);
 	CHECK_STATUS(bStatus, 6, cleanup);
 
