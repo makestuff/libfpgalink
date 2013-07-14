@@ -711,7 +711,6 @@ const char *getCmdName(CmdPtr cmd) {
 	return cmdNames[op];
 }
 
-#define GET_CMD() **ptr; if ( thisCmd == XCOMPLETE ) goto exit
 #define SET_BYTES(rt) rt.b[0] = (*ptr)[1]; rt.b[1] = (*ptr)[2]; rt.b[2] = (*ptr)[3]; rt.b[3] = (*ptr)[4]
 static const uint8 xrtZero[] = {XRUNTEST, 0, 0, 0, 0};
 static const uint32 illegal32 = 0xFFFFFFFF;
@@ -722,16 +721,16 @@ void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex) {
 		uint8 b[4];
 	} oldrt, newrt;
 	const CmdPtr *ptr = srcIndex;
-	uint8 thisCmd = GET_CMD();
+	uint8 thisCmd = **ptr;
 	oldrt.i = illegal32;
 	newrt.i = 0;
-	for ( ; ; ) {
-		while ( thisCmd != XSDR && thisCmd != XSDRTDO && thisCmd != XSIR ) {
-			ptr++;
-			thisCmd = GET_CMD();
+	while ( thisCmd != XCOMPLETE ) {
+		while ( thisCmd != XCOMPLETE && thisCmd != XSDR && thisCmd != XSDRTDO && thisCmd != XSIR ) {
+			thisCmd = **++ptr;
 		}
-		ptr++;  // now points at command AFTER shift command
-		thisCmd = GET_CMD();
+		if ( thisCmd != XCOMPLETE ) {
+			thisCmd = **++ptr;  // now points at command AFTER shift command
+		}
 		if ( thisCmd == XRUNTEST ) {
 			// There is an explicit XRUNTEST, so hoist it to the top, maybe...
 			SET_BYTES(newrt);
@@ -748,7 +747,7 @@ void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex) {
 			// ...and finally get the next command
 			ptr++;  // now points at command after XRUNTEST, ready for next loop
 			srcIndex = ptr;
-			thisCmd = GET_CMD();
+			thisCmd = **ptr;
 		} else {
 			// There is not an explicit XRUNTEST, meaning it's implicitly zero:
 			newrt.i = 0;
@@ -763,10 +762,6 @@ void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex) {
 			}
 			srcIndex = ptr;
 		}
-	}
-exit:
-	while ( srcIndex < ptr ) {
-		*dstIndex++ = *srcIndex++;
 	}
 	*dstIndex = *ptr;
 }
