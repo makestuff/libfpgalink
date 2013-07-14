@@ -606,7 +606,7 @@ TEST(FPGALink_testParse) {
 	// HDR, HIR, SDR, SIR, TDR, TIR
 	parseString(&cxt, "HDR 8 TDI (aa)", &csvfBuf);
 	CHECK_EQUAL(
-		"8, {AA}, {00}, {00}, "    // HDR
+		"8, {AA}, {00}, {FF}, "    // HDR
 		"0, {}, {}, {}, "          // HIR
 		"0, {}, {}, {}, "          // SDR
 		"0, {}, {}, {}, "          // SIR
@@ -628,7 +628,7 @@ TEST(FPGALink_testParse) {
 	// HDR, HIR, SDR, SIR, TDR, TIR
 	parseString(&cxt, "HDR 6 TDI (3A)", &csvfBuf);
 	CHECK_EQUAL(
-		"6, {3A}, {00}, {00}, "    // HDR
+		"6, {3A}, {00}, {FF}, "    // HDR
 		"0, {}, {}, {}, "          // HIR
 		"0, {}, {}, {}, "          // SDR
 		"0, {}, {}, {}, "          // SIR
@@ -639,25 +639,6 @@ TEST(FPGALink_testParse) {
 	cxtDestroy(&cxt);
 	bufDestroy(&csvfBuf);
 }
-
-/*
-TEST(FPGALink_testInsertRunTest) {
-	FLStatus fStatus;
-	struct Buffer buf;
-	BufferStatus bStatus;
-	const uint8 initArray[] = {0xFF, 0xFE, 0xFD, 0xFC, 0xFB,                                   0xFA, 0xF9, 0xF8                                  };
-	const uint8 expected[]  = {0xFF, 0xFE, 0xFD, 0xFC, 0xFB, XRUNTEST, 0xCA, 0xFE, 0xBA, 0xBE, 0xFA, 0xF9, 0xF8, XRUNTEST, 0x00, 0x00, 0x00, 0x00};
-	uint32 lastRunTestOffset = 0xFFFFFFFF, lastRunTestValue = 0;
-	bStatus = bufInitialise(&buf, 1024, 0x00, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
-	bStatus = bufAppendBlock(&buf, initArray, 8, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
-	fStatus = insertRunTestBefore(&buf, 5UL, 0xCAFEBABEUL, &lastRunTestOffset, &lastRunTestValue, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
-	CHECK_EQUAL(8UL+5UL+5UL, buf.length);
-	CHECK_ARRAY_EQUAL(expected, buf.data, buf.length);
-}
-*/
 
 static void compare(CmdPtr pExpected, CmdPtr pActual) {
 	const char *const sExpected = getCmdName(pExpected);

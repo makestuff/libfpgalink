@@ -42,6 +42,7 @@ extern "C" {
 		struct Buffer curMaskBuf;
 		uint32 curMaskBits;
 		uint32 numCommands;
+		bool newMaskWritten;
 	};
 
 	#define CHOMP() while ( *p == ' ' || *p == '\t' ) { p++; }

@@ -267,6 +267,7 @@ FLStatus cxtInitialise(struct ParseContext *cxt, const char **error) {
 	CHECK_STATUS(bStatus, FL_BUF_INIT_ERR, cleanup, "cxtInitialise()");
 	cxt->curMaskBits = 0;
 	cxt->numCommands = 0;
+	cxt->newMaskWritten = false;
 cleanup:
 	return retVal;
 }
@@ -315,7 +316,7 @@ static FLStatus processLine(
 		if ( newLength ) {
 			bStatus = bufAppendConst(&store->tdi, 0x00, bitsToBytes(newLength), error);
 			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "processLine()");
-			bStatus = bufAppendConst(&store->mask, 0x00, bitsToBytes(newLength), error);
+			bStatus = bufAppendConst(&store->mask, 0xFF, bitsToBytes(newLength), error);
 			CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "processLine()");
 		}
 	}
@@ -582,18 +583,21 @@ FLStatus parseLine(
 					error);
 				zeroMask = isAllZero(&tmpBody1);
 				if (
-					!zeroMask &&
-					(tmpBody1.length != cxt->curMaskBuf.length ||
-					 memcmp(tmpBody1.data, cxt->curMaskBuf.data, tmpBody1.length))
+					tmpBody1.length != cxt->curMaskBuf.length ||
+					memcmp(tmpBody1.data, cxt->curMaskBuf.data, tmpBody1.length)
 				) {
+					bufSwap(&cxt->curMaskBuf, &tmpBody1);
+					cxt->newMaskWritten = false;
+				}
+				if ( !zeroMask && tdo && !cxt->newMaskWritten ) {
 					// New mask is nonzero and different from the last one sent
 					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XTDOMASK, error);
 					CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
-					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
+					fStatus = appendSwapped(csvfBuf, cxt->curMaskBuf.data, cxt->curMaskBuf.length, error);
 					CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
+					cxt->newMaskWritten = true;
 				}
-				bufSwap(&cxt->curMaskBuf, &tmpBody1);
 
 				bStatus = bufDeepCopy(&tmpHead, &cxt->dataHead.tdi, error);
 				CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "parseLine()");
