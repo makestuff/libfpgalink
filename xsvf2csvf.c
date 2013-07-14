@@ -22,7 +22,7 @@
 #include "private.h"
 
 #define ENABLE_SWAP
-#define BUF_SIZE 128
+#define BUF_SIZE 2048
 
 // Global buffer and offset used to implement the iterator
 //
