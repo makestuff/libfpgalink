@@ -63,4 +63,6 @@ typedef enum {
 	XWAIT        = 0x17
 } Command;
 
+#define BUF_SIZE 2048
+
 #endif

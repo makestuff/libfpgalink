@@ -269,40 +269,6 @@ cleanup:
 	return retVal;
 }
 
-// Configure one of the digital I/O ports on the device.
-//
-DLLEXPORT(FLStatus) flPortAccess(
-	struct FLContext *handle, uint8 portSelect, uint8 mask, uint8 ddrWrite, uint8 portWrite, uint8 *portRead, const char **error)
-{
-	FLStatus retVal = FL_SUCCESS;
-	USBStatus uStatus;
-	uint8 byte;
-	union {
-		uint16 word;
-		uint8 bytes[2];
-	} index, value;
-	index.bytes[0] = portSelect;
-	index.bytes[1] = mask;
-	value.bytes[0] = ddrWrite;
-	value.bytes[1] = portWrite;
-	uStatus = usbControlRead(
-		handle->device,
-		CMD_PORT_IO,     // bRequest
-		value.word,      // wValue
-		index.word,      // wIndex
-		&byte,           // buffer to receive current state of ports
-		1,               // wLength
-		1000,            // timeout (ms)
-		error
-	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flPortAccess()");
-	if ( portRead ) {
-		*portRead = byte;
-	}
-cleanup:
-	return retVal;
-}
-
 // Reset the USB toggle on the device by explicitly calling SET_INTERFACE. This is a dirty hack
 // that appears to be necessary when running FPGALink on a Linux VM running on a Windows host.
 //

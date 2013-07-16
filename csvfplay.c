@@ -51,14 +51,14 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 	uint8 i;
 	uint32 xsdrSize = 0;
 	uint32 xruntest = 0;
-	uint8 tdoMask[CSVF_BUF_SIZE];
-	uint8 tdiData[CSVF_BUF_SIZE];
-	uint8 tdoData[CSVF_BUF_SIZE];
-	uint8 tdoExpected[CSVF_BUF_SIZE];
+	uint8 tdoMask[BUF_SIZE];
+	uint8 tdiData[BUF_SIZE];
+	uint8 tdoData[BUF_SIZE];
+	uint8 tdoExpected[BUF_SIZE];
 	
-	char data[CSVF_BUF_SIZE*2+1];
-	char mask[CSVF_BUF_SIZE*2+1];
-	char expected[CSVF_BUF_SIZE*2+1];
+	char data[BUF_SIZE*2+1];
+	char mask[BUF_SIZE*2+1];
+	char expected[BUF_SIZE*2+1];
 	
 	uint8 *tdiAll;
 	const uint8 *ptr = csvfData;

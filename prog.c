@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdlib.h>
 #include <string.h>
 #include <makestuff.h>
 #include <libusbwrap.h>
@@ -108,34 +109,42 @@ cleanup:
 	return retVal;
 }
 
+static const char *spaces(ptrdiff_t n) {
+	const char *const s =
+		"                                                                "
+		"                                                                "
+		"                                                                "
+		"                                                                ";
+	return s + 256-n;
+}
+
 #define GET_CHAR(func) \
 	ch = *ptr; \
 	CHECK_STATUS( \
 		ch == '\0', FL_CONF_FORMAT, cleanup, \
-		func"(): Unexpected end of config string at char %d", ptr-portConfig)
+		func"(): Unexpected end of config string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig))
 
 #define EXPECT_CHAR(ex, func) \
 	GET_CHAR(func) \
 	CHECK_STATUS( \
 		ch != ex, FL_CONF_FORMAT, cleanup, \
-		func"(): Expecting "#ex" but found '%c' at char %d", ch, ptr-portConfig); \
+		func"(): Expecting "#ex":\n  %s\n  %s^", portConfig, spaces(ptr-portConfig)); \
 	ptr++
 
 #define GET_PORT(port, func) \
 	GET_CHAR(func) \
 	CHECK_STATUS( \
-		ch < 'A' || ch > 'E', FL_CONF_FORMAT, cleanup, \
-		func"(): Port '%c' is not valid at char %d", ch, ptr-portConfig); \
+		ch < 'A' || ch > 'Z', FL_CONF_FORMAT, cleanup, \
+		func"(): Port is not valid (try 'A', 'B', 'C', etc):\n  %s\n  %s^", portConfig, spaces(ptr-portConfig)); \
 	port = (uint8)(ch - 'A'); \
 	ptr++
 
 #define GET_BIT(bit, func) \
 	GET_CHAR(func) \
 	CHECK_STATUS( \
-		ch < '0' || ch > '7', FL_CONF_FORMAT, cleanup, \
-		func"(): Bit '%c' is not valid at char %d", ch, ptr-portConfig); \
-	bit = (uint8)(ch - '0'); \
-	ptr++
+		ch < '0' || ch > '9', FL_CONF_FORMAT, cleanup, \
+		func"(): Bit number is not valid:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig)); \
+	bit = (uint8)(strtoul(ptr, (char**)&ptr, 10));
 
 #define GET_PAIR(port, bit, func) \
 	GET_PORT(port, func); \
@@ -143,41 +152,11 @@ cleanup:
 
 #define SET_BIT(port, bit, status, func) \
 	CHECK_STATUS( \
-		pinMap[port*8+bit] != UNUSED, FL_CONF_FORMAT, cleanup, \
-		func"(): port '%c%d' is already used at char %d", port + 'A', bit, ptr-portConfig-2); \
-	pinMap[port*8+bit] = status
+		pinMap[port][bit] != UNUSED, FL_CONF_FORMAT, cleanup,					\
+		func"(): port '%c%d' is already used:\n  %s\n  %s^", port+'A', bit, portConfig, spaces(ptr-portConfig-1)); \
+	pinMap[port][bit] = status
 
 typedef enum {UNUSED, HIGH, LOW, INPUT} PinState;
-
-// The pinMap array describes the desired state (i.e whether high, low, input or unused) of each bit
-// on all five ports. This function uses that information to deduce mask, ddr & port bytes for each
-// of the five ports.
-//
-// Called by:
-//   flProgram() -> xProgram() -> makeMasks()
-//   jtagOpen() -> makeMasks()
-//   flPortConfig() -> makeMasks()
-//
-static void makeMasks(const PinState *pinMap, uint8 *mask, uint8 *ddr, uint8 *port) {
-	int i, j;
-	for ( i = 0; i < 5; i++ ) {
-		mask[i] = 0x00;
-		ddr[i] = 0x00;
-		port[i] = 0x00;
-		for ( j = 0; j < 8; j++ ) {
-			switch ( pinMap[i*8+j] ) {
-			case HIGH:
-				port[i] = (uint8)(port[i] | (1<<j)); // note no break
-			case LOW:
-				ddr[i] = (uint8)(ddr[i] | (1<<j)); // note no break
-			case INPUT:
-				mask[i] = (uint8)(mask[i] | (1<<j)); // note no break
-			default:
-				break;
-			}
-		}
-	}
-}
 
 // This function parses a comma-separated list of ports with a suffix representing the desired state
 // of the port, e.g "A0+,B5-,D7/" means "PA0 is an output driven high, PB5 is an output driven low,
@@ -189,7 +168,10 @@ static void makeMasks(const PinState *pinMap, uint8 *mask, uint8 *ddr, uint8 *po
 //   xProgram() -> populateMap()
 //   flPortConfig() -> populateMap()
 //
-static FLStatus populateMap(const char *portConfig, const char *ptr, const char **endPtr, PinState *pinMap, const char **error) {
+static FLStatus populateMap(
+	const char *portConfig, const char *ptr, const char **endPtr,
+	PinState pinMap[26][32], const char **error)
+{
 	FLStatus retVal = FL_SUCCESS;
 	uint8 thisPort, thisBit;
 	char ch;
@@ -225,7 +207,10 @@ cleanup:
 //   xProgram() -> portMap()
 //   jtagOpen() -> portMap()
 //
-static FLStatus portMap(struct FLContext *handle, PatchOp patchOp, uint8 port, uint8 bit, const char **error) {
+static FLStatus portMap(
+	struct FLContext *handle, PatchOp patchOp, uint8 port, uint8 bit,
+	const char **error)
+{
 	FLStatus retVal = FL_SUCCESS;
 	union {
 		uint16 word;
@@ -339,11 +324,11 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	uint8 donePort, doneBit;
 	uint8 cclkPort, cclkBit;
 	uint8 dataPort, dataBit[8];
-	uint8 maskList[5], ddrList[5], portList[5];
-	uint8 mask, ddr, port;
-	uint8 progMask, initMask, doneMask, tempByte;
+	uint8 port, bit;
+	bool initStatus, doneStatus, drive, high;
 	const char *ptr = portConfig + 2;
-	PinState pinMap[5*8] = {0,};
+	PinState pinMap[26][32] = {{0,},};
+	PinState thisPin;
 	const uint8 zeroBlock[64] = {0,};
 	uint8 lookupTable[256];
 	int i;
@@ -352,22 +337,20 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		progOp != PROG_PARALLEL && progOp != PROG_SERIAL, FL_INTERNAL_ERR, cleanup,
 		"xProgram(): unsupported ProgOp");
 	EXPECT_CHAR(':', "xProgram");
+
 	GET_PAIR(progPort, progBit, "xProgram");
-	progMask = (uint8)(1 << progBit);
 	SET_BIT(progPort, progBit, LOW, "xProgram");
+
 	GET_PAIR(initPort, initBit, "xProgram");
-	initMask = (uint8)(1 << initBit);
 	SET_BIT(initPort, initBit, INPUT, "xProgram");
+
 	GET_PAIR(donePort, doneBit, "xProgram");
-	doneMask = (uint8)(1 << doneBit);
 	SET_BIT(donePort, doneBit, INPUT, "xProgram");
+
 	GET_PAIR(cclkPort, cclkBit, "xProgram");
 	SET_BIT(cclkPort, cclkBit, LOW, "xProgram");
-	CHECK_STATUS(
-		progPort != initPort || progPort != donePort, FL_CONF_FORMAT, cleanup,
-		"xProgram(): For now, PROG, INIT & DONE must be on the same port");
-	GET_PORT(dataPort, "xProgram");
 
+	GET_PORT(dataPort, "xProgram");
 	if ( progOp == PROG_PARALLEL ) {
 		for ( i = 0; i < 8; i++ ) {
 			GET_BIT(dataBit[i], "xProgram");
@@ -399,14 +382,12 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	} else if ( ch != '\0' ) {
 		CHECK_STATUS(
 			true, FL_CONF_FORMAT, cleanup,
-			"xProgram(): Expecting ':' or end-of-string, not '%c' at char %d", ch, ptr-portConfig);
+			"xProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
 	} else if ( !progFile ) {
 		CHECK_STATUS(
 			true, FL_CONF_FORMAT, cleanup,
 			"xProgram(): No filename given");
 	}
-
-	makeMasks(pinMap, maskList, ddrList, portList);
 
 	// Map the CCLK bit & the SelectMAP data bus
 	fStatus = portMap(handle, PATCH_TCK, cclkPort, cclkBit, error);
@@ -420,71 +401,61 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	}
 
 	// Assert PROG & wait for INIT & DONE to go low
+	fStatus = flSingleBitPortAccess(handle, initPort, initBit, false, true, NULL, error); // INIT is input
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	fStatus = flSingleBitPortAccess(handle, donePort, doneBit, false, true, NULL, error); // DONE is input
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	fStatus = flSingleBitPortAccess(handle, progPort, progBit, true, false, NULL, error); // PROG is low
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	do {
-		fStatus = flPortAccess(
-			handle, progPort,
-			(progMask | initMask | doneMask),
-			progMask,
-			0x00,
-			&tempByte,
-			error
-		);
+		fStatus = flSingleBitPortAccess(handle, initPort, initBit, false, true, &initStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-	} while ( tempByte & (initMask | doneMask) );
+		fStatus = flSingleBitPortAccess(handle, donePort, doneBit, false, true, &doneStatus, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	} while ( initStatus || doneStatus );
 
+	// Now it's safe to switch to conduit mode zero (=JTAG, etc)
 	fStatus = flFifoMode(handle, 0x00, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 
-	for ( i = 0; i < 5; i++ ) {
-		mask = maskList[i];
-		ddr = ddrList[i];
-		port = portList[i];
-		if ( i == progPort ) {
-			mask = (uint8)(mask & ~(progMask | initMask | doneMask));
-			ddr = (uint8)(ddr & ~(progMask | initMask | doneMask));
-			port = (uint8)(port & ~(progMask | initMask | doneMask));
-		}
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, (uint8)i,
-				mask, ddr, port,
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	// Apply requested configuration to each specified pin
+	pinMap[progPort][progBit] = UNUSED;
+	pinMap[initPort][initBit] = UNUSED;
+	pinMap[donePort][doneBit] = UNUSED;
+	for ( port = 0; port < 26; port++ ) {
+		for ( bit = 0; bit < 32; bit++ ) {
+			thisPin = pinMap[port][bit];
+			if ( thisPin != UNUSED ) {
+				drive = (thisPin != INPUT);
+				high = (thisPin != LOW);
+				fStatus = flSingleBitPortAccess(handle, port, bit, drive, high, NULL, error);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+			}
 		}
 	}
 
+	// Deassert PROG and wait for INIT to go high
+	fStatus = flSingleBitPortAccess(handle, progPort, progBit, true, true, NULL, error); // PROG is high
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	do {
-		fStatus = flPortAccess(
-			handle, progPort,  // deassert PROG
-			progMask,               // mask: affect only PROG
-			progMask,               // ddr: PROG is output
-			progMask,               // port: drive PROG high (deasserted)
-			&tempByte,
-			error
-		);
+		fStatus = flSingleBitPortAccess(handle, initPort, initBit, false, true, &initStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-	} while ( !(tempByte & initMask) );
+	} while ( !initStatus );
 
+	// Write the programming file into the FPGA
 	fStatus = fileWrite(handle, progOp, progFile, lookupTable, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 
 	i = 0;
 	for ( ; ; ) {
-		fStatus = flPortAccess(
-			handle, progPort,  // check INIT & DONE
-			0x00,              // mask: affect nothing
-			0x00,              // ddr: ignored
-			0x00,              // port: ignored
-			&tempByte,
-			error
-		);
+		fStatus = flSingleBitPortAccess(handle, initPort, initBit, false, true, &initStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-		if ( tempByte & doneMask ) {
+		fStatus = flSingleBitPortAccess(handle, donePort, doneBit, false, true, &doneStatus, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+		if ( doneStatus ) {
 			// If DONE goes high, we've finished.
 			break;
-		} else if ( tempByte & initMask ) {
+		} else if ( initStatus ) {
 			// If DONE remains low and INIT remains high, we probably just need more clocks
 			i++;
 			CHECK_STATUS(i == 10, FL_JTAG_ERR, cleanup, "xProgram(): DONE did not assert");
@@ -498,18 +469,14 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		}
 	}
 
-	for ( i = 0; i < 5; i++ ) {
-		mask = maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, (uint8)i,
-				mask,
-				(uint8)((i == progPort) ? progMask : 0x00),
-				0xFF,
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	// Make all specified pins inputs; leave INIT & DONE as inputs and leave PROG driven high
+	for ( port = 0; port < 26; port++ ) {
+		for ( bit = 0; bit < 32; bit++ ) {
+			thisPin = pinMap[port][bit];
+			if ( thisPin != UNUSED ) {
+				fStatus = flSingleBitPortAccess(handle, port, bit, false, true, NULL, error);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+			}
 		}
 	}
 
@@ -555,6 +522,60 @@ cleanup:
 	return retVal;
 }
 
+static FLStatus jtagOpenInternal(struct FLContext *handle, const char *portConfig, const char *ptr, const char **error) {
+	FLStatus retVal = FL_SUCCESS;
+	FLStatus fStatus;
+	uint8 tdoPort, tdoBit;
+	uint8 tdiPort, tdiBit;
+	uint8 tmsPort, tmsBit;
+	uint8 tckPort, tckBit;
+	PinState pinMap[26][32] = {{0,},};
+	char ch;
+
+	// Get all four JTAG bits and tell the micro which ones to use
+	GET_PAIR(tdoPort, tdoBit, "jtagOpen");        // TDO
+	SET_BIT(tdoPort, tdoBit, INPUT, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TDO, tdoPort, tdoBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+
+	GET_PAIR(tdiPort, tdiBit, "jtagOpen");        // TDI
+	SET_BIT(tdiPort, tdiBit, LOW, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TDI, tdiPort, tdiBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+
+	GET_PAIR(tmsPort, tmsBit, "jtagOpen");        // TMS
+	SET_BIT(tmsPort, tmsBit, LOW, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TMS, tmsPort, tmsBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+
+	GET_PAIR(tckPort, tckBit, "jtagOpen");        // TCK
+	SET_BIT(tckPort, tckBit, LOW, "jtagOpen");
+	fStatus = portMap(handle, PATCH_TCK, tckPort, tckBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+
+	// Set TDO as an input and the other three as outputs
+	fStatus = flSingleBitPortAccess(handle, tdoPort, tdoBit, false, true, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	fStatus = flSingleBitPortAccess(handle, tdiPort, tdiBit, true, false, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	fStatus = flSingleBitPortAccess(handle, tmsPort, tmsBit, true, false, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	fStatus = flSingleBitPortAccess(handle, tckPort, tckBit, true, false, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+
+	// Remember the ports and bits for the benefit of jtagClose()
+	handle->tdoPort = tdoPort;
+	handle->tdoBit = tdoBit;
+	handle->tdiPort = tdiPort;
+	handle->tdiBit = tdiBit;
+	handle->tmsPort = tmsPort;
+	handle->tmsBit = tmsBit;
+	handle->tckPort = tckPort;
+	handle->tckBit = tckBit;
+cleanup:
+	return retVal;
+}
+
 // Program a device over JTAG.
 //
 // Called by:
@@ -566,7 +587,7 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	const char *ptr = portConfig + 1;
 	char ch;
 	EXPECT_CHAR(':', "jProgram");
-	fStatus = jtagOpen(handle, portConfig, (uint32)(ptr - portConfig), error);
+	fStatus = jtagOpenInternal(handle, portConfig, ptr, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jProgram()");
 
 	ptr += 8;
@@ -580,7 +601,7 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	} else if ( ch != '\0' ) {
 		CHECK_STATUS(
 			true, FL_CONF_FORMAT, cleanup,
-			"jProgram(): Expecting ':' or end-of-string, not '%c' at char %d", ch, ptr-portConfig);
+			"jProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
 	} else if ( !progFile ) {
 		CHECK_STATUS(
 			true, FL_CONF_FORMAT, cleanup,
@@ -618,72 +639,23 @@ static void swap(uint32 *array, uint32 numWritten) {
 // Implementation of public functions
 // -------------------------------------------------------------------------------------------------
 
-DLLEXPORT(FLStatus) jtagOpen(struct FLContext *handle, const char *portConfig, uint32 index, const char **error) {
-	FLStatus retVal = FL_SUCCESS;
-	FLStatus fStatus;
-	uint8 thisPort, thisBit, mask;
-	PinState pinMap[5*8] = {0,};
-	const char *ptr = portConfig + index;
-	char ch;
-	int i;
-
-	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TDO
-	SET_BIT(thisPort, thisBit, INPUT, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TDO, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-
-	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TDI
-	SET_BIT(thisPort, thisBit, LOW, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TDI, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-
-	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TMS
-	SET_BIT(thisPort, thisBit, LOW, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TMS, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-
-	GET_PAIR(thisPort, thisBit, "jtagOpen");        // TCK
-	SET_BIT(thisPort, thisBit, LOW, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TCK, thisPort, thisBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-
-	makeMasks(pinMap, handle->maskList, handle->ddrList, handle->portList);
-
-	for ( i = 0; i < 5; i++ ) {
-		mask = handle->maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, (uint8)i,
-				mask, handle->ddrList[i], handle->portList[i],
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-		}
-	}
-cleanup:
-	return retVal;
+DLLEXPORT(FLStatus) jtagOpen(struct FLContext *handle, const char *portConfig, const char **error) {
+	return jtagOpenInternal(handle, portConfig, portConfig, error);
 }
 
 DLLEXPORT(FLStatus) jtagClose(struct FLContext *handle, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	FLStatus fStatus;
-	uint8 mask;
-	int i;
-	for ( i = 0; i < 5; i++ ) {
-		mask = handle->maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, (uint8)i,
-				mask,
-				0x00,
-				0x00,
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
-		}
-	}
+
+	// Set TDO, TDI, TMS & TCK as inputs
+	fStatus = flSingleBitPortAccess(handle, handle->tdoPort, handle->tdoBit, false, true, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	fStatus = flSingleBitPortAccess(handle, handle->tdiPort, handle->tdiBit, false, true, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	fStatus = flSingleBitPortAccess(handle, handle->tmsPort, handle->tmsBit, false, true, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	fStatus = flSingleBitPortAccess(handle, handle->tckPort, handle->tckBit, false, true, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 cleanup:
 	return retVal;
 }
@@ -815,7 +787,7 @@ DLLEXPORT(FLStatus) jtagScanChain(
 		uint32 idCode;
 		uint8 bytes[4];
 	} u;
-	fStatus = jtagOpen(handle, portConfig, 0, error);
+	fStatus = jtagOpenInternal(handle, portConfig, portConfig, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagScanChain()");
 
 	i = 0;
@@ -881,27 +853,63 @@ cleanup:
 	return retVal;
 }
 
-DLLEXPORT(FLStatus) flPortConfig(struct FLContext *handle, const char *portConfig, const char **error) {
+DLLEXPORT(FLStatus) flSingleBitPortAccess(
+	struct FLContext *handle, uint8 portNumber, uint8 bitNumber,
+	bool drive, bool high, bool *pinRead, const char **error)
+{
 	FLStatus retVal = FL_SUCCESS;
-	FLStatus fStatus;
-	PinState pinMap[5*8] = {0,};
-	uint8 maskList[5], ddrList[5], portList[5], mask;
-	int i;
-	fStatus = populateMap(portConfig, portConfig, NULL, pinMap, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "flPortConfig()");
-	makeMasks(pinMap, maskList, ddrList, portList);
-	for ( i = 0; i < 5; i++ ) {
-		mask = maskList[i];
-		if ( mask ) {
-			fStatus = flPortAccess(
-				handle, (uint8)i,
-				mask, ddrList[i], portList[i],
-				NULL,
-				error
-			);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "flPortConfig()");
-		}
+	USBStatus uStatus;
+	uint8 byte;
+	const uint16 value = (uint16)((bitNumber << 8) | portNumber);
+	const uint16 index = (uint16)((high ? 0x0100 : 0x0000) | (drive ? 0x0001 : 0x0000));
+	uStatus = usbControlRead(
+		handle->device,
+		CMD_PORT_BIT_IO, // bRequest
+		value,           // wValue
+		index,           // wIndex
+		&byte,           // buffer to receive current state of ports
+		1,               // wLength
+		1000,            // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flSingleBitPortAccess()");
+	if ( pinRead ) {
+		*pinRead = (byte != 0x00);
 	}
+cleanup:
+	return retVal;
+}
+
+DLLEXPORT(FLStatus) flMultiBitPortAccess(struct FLContext *handle, const char *portConfig, const char **error) {
+	FLStatus retVal = FL_SUCCESS, fStatus;
+	const char *ptr = portConfig;
+	//uint32 result = 0;  TODO!!!
+	uint8 thisPort, thisBit;
+	char ch;
+	bool drive = false;
+	bool high = false;
+	do {
+		GET_PAIR(thisPort, thisBit, "flMultiBitPortAccess");
+		GET_CHAR("flMultiBitPortAccess");
+		if ( ch == '+' ) {
+			drive = true;
+			high = true;
+		} else if ( ch == '-' ) {
+			drive = true;
+			high = false;
+		} else if ( ch == '?' ) {
+			drive = false;
+			high = true;
+		} else {
+			CHECK_STATUS(
+				true, FL_CONF_FORMAT, cleanup,
+				"flMultiBitPortAccess(): Expecting '+', '-' or '?':\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
+		}
+		fStatus = flSingleBitPortAccess(handle, thisPort, thisBit, drive, high, NULL, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup);
+		ptr++;
+		ch = *ptr++;
+	} while ( ch == ',' );
 cleanup:
 	return retVal;
 }

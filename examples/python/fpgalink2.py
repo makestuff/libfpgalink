@@ -58,10 +58,14 @@ fpgalink.flLoadFile.argtypes = [c_char_p, POINTER(uint32)]
 fpgalink.flLoadFile.restype = POINTER(uint8)
 fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
-fpgalink.flPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flPortAccess.restype = FLStatus
-fpgalink.flPortConfig.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
-fpgalink.flPortConfig.restype = FLStatus
+#fpgalink.flPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
+#fpgalink.flPortAccess.restype = FLStatus
+#fpgalink.flPortConfig.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+#fpgalink.flPortConfig.restype = FLStatus
+fpgalink.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flSingleBitPortAccess.restype = FLStatus
+fpgalink.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+fpgalink.flMultiBitPortAccess.restype = FLStatus
 
 # Connection Lifecycle
 fpgalink.flOpen.argtypes = [c_char_p, POINTER(FLHandle), POINTER(ErrorString)]
@@ -98,14 +102,14 @@ fpgalink.flProgram.argtypes = [FLHandle, c_char_p, c_char_p, POINTER(ErrorString
 fpgalink.flProgram.restype = FLStatus
 fpgalink.jtagScanChain.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
 fpgalink.jtagScanChain.restype = FLStatus
-fpgalink.jtagOpen.argtypes = [FLHandle, c_char_p, uint32, POINTER(ErrorString)]
-fpgalink.jtagOpen.restype = FLStatus
-fpgalink.jtagClose.argtypes = [FLHandle, POINTER(ErrorString)]
-fpgalink.jtagClose.restype = FLStatus
-fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
-fpgalink.jtagClockFSM.restype = FLStatus
-fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
-fpgalink.jtagClocks.restype = FLStatus
+#fpgalink.jtagOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+#fpgalink.jtagOpen.restype = FLStatus
+#fpgalink.jtagClose.argtypes = [FLHandle, POINTER(ErrorString)]
+#fpgalink.jtagClose.restype = FLStatus
+#fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
+#fpgalink.jtagClockFSM.restype = FLStatus
+#fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
+#fpgalink.jtagClocks.restype = FLStatus
 
 # FX2LP Firmware Operations
 fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
@@ -167,20 +171,20 @@ def flIsCommCapable(handle):
         return False
 
 # Access the I/O ports on the micro
-def flPortAccess(handle, portSelect, mask, ddrWrite, portWrite):
+def flSingleBitPortAccess(handle, portNumber, bitNumber, drive, high):
     error = ErrorString()
-    portRead = uint8()
-    status = fpgalink.flPortAccess(handle, portSelect, mask, ddrWrite, portWrite, byref(portRead), byref(error))
+    bitRead = uint8()
+    status = fpgalink.flSingleBitPortAccess(handle, portNumber, bitNumber, drive, high, byref(bitRead), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
-    return portRead.value
+    return bitRead.value
 
 # Access the I/O ports on the micro
-def flPortConfig(handle, portConfig):
+def flMultiBitPortAccess(handle, portConfig):
     error = ErrorString()
-    status = fpgalink.flPortConfig(handle, portConfig.encode('ascii'), byref(error))
+    status = fpgalink.flMultiBitPortAccess(handle, portConfig.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -338,10 +342,12 @@ def jtagScanChain(handle, portConfig):
         status = fpgalink.jtagScanChain(handle, portConfig, None, chain, length, byref(error))
     return chain
 
+# TODO: Other low-level JTAG functions
+
 # Open a JTAG port
-#def jtagOpen(handle, portConfig, index, progFile):
+#def jtagOpen(handle, portConfig):
 #    error = ErrorString()
-#    status = fpgalink.jtagOpen(handle, portConfig.encode('ascii'), index, byref(error))
+#    status = fpgalink.jtagOpen(handle, portConfig.encode('ascii'), byref(error))
 #    if ( status != FL_SUCCESS ):
 #        s = str(error.value)
 #        fpgalink.flFreeError(error)

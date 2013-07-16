@@ -17,11 +17,12 @@
 ROOT             := $(realpath ../..)
 DEPS             := error usbwrap fx2loader buffer
 TYPE             := dll
-#SUBDIRS          := tests-unit
-PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib gen_fw
-POST_BUILD       := tools
+SUBDIRS          := tests-unit
 EXTRA_CC_SRCS    := gen_fw/ramFirmware.c gen_fw/eepromNoBootFirmware.c
-EXTRA_CLEAN      := gen_fw #gen_svf gen_xsvf gen_csvf
+#PRE_BUILD        := $(ROOT)/3rd/fx2lib/lib/fx2.lib
+PRE_BUILD        += $(EXTRA_CC_SRCS)
+POST_BUILD       := tools
+#EXTRA_CLEAN      := gen_fw
 EXTRA_CLEAN_DIRS := mkfw firmware/fx2 xsvf2csvf dump
 
 -include $(ROOT)/common/top.mk
@@ -36,17 +37,27 @@ tools:
 	make -C xsvf2csvf rel
 	make -C dump rel
 
-gen_fw: $(MKFW)
+gen_fw/ramFirmware.c: gen_fw/ramFirmware.hex $(MKFW) gen_fw
+	$(MKFW) $< ram bix > $@
+
+gen_fw/eepromNoBootFirmware.c: gen_fw/eepromNoBootFirmware.hex $(MKFW) gen_fw
+	$(MKFW) $< eepromNoBoot iic > $@
+
+gen_fw/ramFirmware.hex:
+	@echo Building RAM firmware...
 	mkdir -p gen_fw
 	make -C firmware/fx2 clean
 	make -C firmware/fx2
 	cp firmware/fx2/firmware.hex gen_fw/ramFirmware.hex
 	make -C firmware/fx2 clean
+
+gen_fw/eepromNoBootFirmware.hex:
+	@echo Building EEPROM firmware...
+	mkdir -p gen_fw
+	make -C firmware/fx2 clean
 	make -C firmware/fx2 FLAGS="-DEEPROM"
 	cp firmware/fx2/firmware.hex gen_fw/eepromNoBootFirmware.hex
 	make -C firmware/fx2 clean
-	$(MKFW) gen_fw/ramFirmware.hex ram bix > gen_fw/ramFirmware.c
-	$(MKFW) gen_fw/eepromNoBootFirmware.hex eepromNoBoot iic > gen_fw/eepromNoBootFirmware.c
 
 hdl:
 	./hdlbuild.sh $(X2C)

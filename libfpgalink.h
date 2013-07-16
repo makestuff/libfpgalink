@@ -387,35 +387,6 @@ extern "C" {
 	 * @{
 	 */
 	/**
-	 * @brief Play an SVF, XSVF or CSVF file into the JTAG chain.
-	 *
-	 * Despite the name of the function, it does actually support regular Serial Vector Format files
-	 * and Compressed Serial Vector Format files in addition to Xilinx Serial Vector Format files.
-	 * All are simply played into the JTAG chain, so it's your responsibility to ensure that the
-	 * file is created for the appropriate chain configuration. Typically, this is used for
-	 * programming devices, but it doesn't have to be - the file can be arbitrary JTAG operations.
-	 * Before calling \c flPlaySVF(), you should verify that the \b FPGALink device actually
-	 * supports \b NeroJTAG using \c flIsNeroCapable().
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 * @param xsvfFile An SVF, XSVF or CSVF file.
-	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
-	 * @returns
-	 *     - \c FL_SUCCESS if the file played successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support \b NeroJTAG.
-	 *     - \c FL_FILE_ERR if the file could not be loaded.
-	 *     - \c FL_JTAG_ERR if an error occurred during the JTAG operation.
-	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
-	 */
-	DLLEXPORT(FLStatus) flPlaySVF(
-		struct FLContext *handle, const char *svfFile, const char *jtagPort, const char **error
-	) WARN_UNUSED_RESULT;
-
-	/**
 	 * @brief Scan the JTAG chain and return an array of IDCODEs.
 	 *
 	 * Count the number of devices on the JTAG chain, and set \c *numDevices accordingly. Then, if
@@ -672,8 +643,13 @@ extern "C" {
 	 *     - \c FL_SUCCESS if the port access command completed successfully.
 	 *     - \c FL_USB_ERR if the micro failed to respond to the port access command.
 	 */
-	DLLEXPORT(FLStatus) flPortAccess(
-		struct FLContext *handle, uint8 portSelect, uint8 mask, uint8 ddrWrite, uint8 portWrite, uint8 *portRead, const char **error
+	DLLEXPORT(FLStatus) flSingleBitPortAccess(
+		struct FLContext *handle, uint8 portNumber, uint8 bitNumber,
+		bool drive, bool high, bool *pinRead, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flMultiBitPortAccess(
+		struct FLContext *handle, const char *portConfig, const char **error
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flResetToggle(
@@ -684,13 +660,8 @@ extern "C" {
 		struct FLContext *handle, uint8 fifoMode, const char **error
 	) WARN_UNUSED_RESULT;
 
-
 	DLLEXPORT(FLStatus) flProgram(
 		struct FLContext *handle, const char *portConfig, const char *progFile, const char **error
-	) WARN_UNUSED_RESULT;
-
-	DLLEXPORT(FLStatus) flPortConfig(
-		struct FLContext *handle, const char *portConfig, const char **error
 	) WARN_UNUSED_RESULT;
 
 	// Special values for inData parameter of jtagShift() declared below
@@ -698,7 +669,7 @@ extern "C" {
 	#define ONES (ZEROS - 1)
 
 	DLLEXPORT(FLStatus) jtagOpen(
-		struct FLContext *handle, const char *portConfig, uint32 index, const char **error
+		struct FLContext *handle, const char *portConfig, const char **error
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) jtagClose(
