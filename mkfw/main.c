@@ -54,6 +54,11 @@ void dumpWords(const uint16 *ptr, uint16 numWords) {
 	printf("\n");
 }
 
+#define VID_MSB 0x1D
+#define VID_LSB 0x50
+#define PID_MSB 0x60
+#define PID_LSB 0x2B
+
 int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 	int retVal = 0;
 	uint32 i;
@@ -61,8 +66,8 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 
 	for ( i = 1; i < buf->length; i++ ) {
 		if (
-			buf->data[i] == 0xB4 && buf->data[i+1] == 0x04 &&
-			buf->data[i+2] == 0x13 && buf->data[i+3] == 0x86 )
+			buf->data[i] == VID_LSB && buf->data[i+1] == VID_MSB &&
+			buf->data[i+2] == PID_LSB && buf->data[i+3] == PID_MSB )
 		{
 			if ( vp ) {
 				fprintf(stderr, "%s: Refusing to override VID:PID@%04X with %04X\n", progName, vp, i);
