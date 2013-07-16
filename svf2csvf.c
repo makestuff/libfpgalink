@@ -860,10 +860,10 @@ static FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, con
 	bufSwap(&newBuf, csvfBuf);
 cleanup:
 	if ( dstIndex ) {
-		free(dstIndex);
+		free((void*)dstIndex);
 	}
 	if ( srcIndex ) {
-		free(srcIndex);
+		free((void*)srcIndex);
 	}
 	bufDestroy(&newBuf);
 	return retVal;
