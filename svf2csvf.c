@@ -772,8 +772,6 @@ void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex) {
 
 static FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
-	const uint8 *srcIndex[cxt->numCommands];
-	const uint8 *dstIndex[3*cxt->numCommands/2]; // abs worst case {XSIR, XCOMPLETE} -> {XRUNTEST, XSIR, XCOMPLETE}
 	const uint8 *const start = csvfBuf->data;
 	const uint8 *ptr = start;
 	struct Buffer newBuf = {0,};
@@ -782,9 +780,12 @@ static FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, con
 	int i = 0;
 	int offset;
 	const CmdPtr *cmdPtr;
-	BufferStatus bStatus = bufWriteBinaryFile(csvfBuf, "foo.csvf", 0, csvfBuf->length, error);
-	CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "buildIndex()");
-	bStatus = bufInitialise(&newBuf, 4*csvfBuf->length/3, 0x00, error);
+	BufferStatus bStatus;
+	const uint8 **const srcIndex = malloc(sizeof(const uint8*) * cxt->numCommands);
+	const uint8 **const dstIndex = malloc(sizeof(const uint8*) * cxt->numCommands * 3 / 2); // abs worst case {XSIR, XCOMPLETE} -> {XRUNTEST, XSIR, XCOMPLETE}
+	CHECK_STATUS(srcIndex == NULL, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+	CHECK_STATUS(dstIndex == NULL, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
+	bStatus = bufInitialise(&newBuf, csvfBuf->length * 4 / 3, 0x00, error);  // common worst case
 	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
 	numBytes = illegal32;
 	while ( thisByte != XCOMPLETE ) {
@@ -858,6 +859,12 @@ static FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, con
 	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "buildIndex()");
 	bufSwap(&newBuf, csvfBuf);
 cleanup:
+	if ( dstIndex ) {
+		free(dstIndex);
+	}
+	if ( srcIndex ) {
+		free(srcIndex);
+	}
 	bufDestroy(&newBuf);
 	return retVal;
 }
