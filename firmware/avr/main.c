@@ -230,46 +230,17 @@ int main(void) {
 	}
 }
 
-#define MODE_FIFO (1<<1)
+#define FIFO_MODE 0x0000
 
-#define updateRegister(reg, val) tempByte = reg; tempByte &= ~mask; tempByte |= val; reg = tempByte
-
-uint8 portAccess(uint8 portSelect, uint8 mask, uint8 ddrWrite, uint8 portWrite) {
-	uint8 tempByte = 0x00;
-	switch ( portSelect ) {
-
-#ifdef HAS_PORTA
-	case 0:
-		updateRegister(PORTA, portWrite);
-		updateRegister(DDRA, ddrWrite);
-		tempByte = PINA;
-		break;
-#endif
-	case 1:
-		updateRegister(PORTB, portWrite);
-		updateRegister(DDRB, ddrWrite);
-		tempByte = PINB;
-		break;
-	case 2:
-		updateRegister(PORTC, portWrite);
-		updateRegister(DDRC, ddrWrite);
-		tempByte = PINC;
-		break;
-	case 3:
-		updateRegister(PORTD, portWrite);
-		updateRegister(DDRD, ddrWrite);
-		tempByte = PIND;
-		break;
-#ifdef HAS_PORTE
-	case 4:
-		updateRegister(PORTE, portWrite);
-		updateRegister(DDRE, ddrWrite);
-		tempByte = PINE;
-		break;
-#endif
-	}
-	return tempByte;
-}
+#define updatePort(port) \
+	if ( CONCAT(DDR, port) | bitMask ) { \
+		CONCAT(DDR, port)  = drive ? (CONCAT(DDR, port)  | bitMask) : (CONCAT(DDR, port)  & ~bitMask); \
+		CONCAT(PORT, port) = high  ? (CONCAT(PORT, port) | bitMask) : (CONCAT(PORT, port) & ~bitMask); \
+	} else { \
+		CONCAT(PORT, port) = high  ? (CONCAT(PORT, port) | bitMask) : (CONCAT(PORT, port) & ~bitMask); \
+		CONCAT(DDR, port)  = drive ? (CONCAT(DDR, port)  | bitMask) : (CONCAT(DDR, port)  & ~bitMask); \
+	} \
+	tempByte = (CONCAT(PIN, port) & bitMask) ? 0x01 : 0x00
 
 // Called when a vendor command is received
 //
@@ -277,13 +248,12 @@ void EVENT_USB_Device_ControlRequest(void) {
 	switch ( USB_ControlRequest.bRequest ) {
 	case CMD_MODE_STATUS:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
-			// Enable/disable JTAG mode
-			const uint16 wBits = USB_ControlRequest.wValue;
-			const uint16 wMask = USB_ControlRequest.wIndex;
-			if ( wMask & MODE_FIFO ) {
+			const uint16 param = USB_ControlRequest.wValue;
+			const uint16 value = USB_ControlRequest.wIndex;
+			if ( param == FIFO_MODE ) {
 				// Enable or disable FIFO mode
 				Endpoint_ClearSETUP();
-				fifoSetEnabled(wBits & MODE_FIFO ? 1 : 0);
+				fifoSetEnabled(value);
 				Endpoint_ClearStatusStage();
 			}
 		} else if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
@@ -353,36 +323,40 @@ void EVENT_USB_Device_ControlRequest(void) {
 		}
 		break;
 
-	case CMD_PORT_IO:
+	case CMD_PORT_BIT_IO:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
-			const uint8 portSelect = USB_ControlRequest.wIndex & 0x00FF;
-			const uint8 mask = USB_ControlRequest.wIndex >> 8;
-			uint8 ddrWrite = USB_ControlRequest.wValue & 0x00FF;
-			uint8 portWrite = USB_ControlRequest.wValue >> 8;
-			uint8 response;
-			if (
-				portSelect >= 
-					#ifdef HAS_PORTA
-						0
-					#else
-						1
-					#endif
-				&& portSelect <=
-					#ifdef HAS_PORTE
-						4
-					#else
-						3
-					#endif
-			) {
-				portWrite &= mask;
-				ddrWrite &= mask;
-
-				// Get the state of the port lines:
-				Endpoint_ClearSETUP();
-				response = portAccess(portSelect, mask, ddrWrite, portWrite);
-				Endpoint_Write_Control_Stream_LE(&response, 1);
-				Endpoint_ClearStatusStage();
+			const uint8 portNumber = USB_ControlRequest.wValue & 0x00FF;
+			const uint8 bitMask = (1 << (USB_ControlRequest.wValue >> 8));
+			const uint8 drive = USB_ControlRequest.wIndex & 0x00FF;
+			const uint8 high = USB_ControlRequest.wIndex >> 8;
+			uint8 tempByte;
+			switch ( portNumber ) {
+			#ifdef HAS_PORTA
+				case 0:
+					updatePort(A);
+					break;
+			#endif
+			case 1:
+				updatePort(B);
+				break;
+			case 2:
+				updatePort(C);
+				break;
+			case 3:
+				updatePort(D);
+				break;
+			#ifdef HAS_PORTE
+				case 4:
+					updatePort(E);
+					break;
+			#endif
+			default:
+				return;
 			}
+			// Get the state of the port lines:
+			Endpoint_ClearSETUP();
+			Endpoint_Write_Control_Stream_LE(&tempByte, 1);
+			Endpoint_ClearStatusStage();
 		}
 		break;
 
