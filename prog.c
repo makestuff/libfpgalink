@@ -880,14 +880,17 @@ cleanup:
 	return retVal;
 }
 
-DLLEXPORT(FLStatus) flMultiBitPortAccess(struct FLContext *handle, const char *portConfig, const char **error) {
+DLLEXPORT(FLStatus) flMultiBitPortAccess(
+	struct FLContext *handle, const char *portConfig, uint32 *readState, const char **error)
+{
 	FLStatus retVal = FL_SUCCESS, fStatus;
 	const char *ptr = portConfig;
-	//uint32 result = 0;  TODO!!!
+	uint32 result = 0;
 	uint8 thisPort, thisBit;
 	char ch;
 	bool drive = false;
 	bool high = false;
+	bool bitState;
 	do {
 		GET_PAIR(thisPort, thisBit, "flMultiBitPortAccess");
 		GET_CHAR("flMultiBitPortAccess");
@@ -905,11 +908,18 @@ DLLEXPORT(FLStatus) flMultiBitPortAccess(struct FLContext *handle, const char *p
 				true, FL_CONF_FORMAT, cleanup,
 				"flMultiBitPortAccess(): Expecting '+', '-' or '?':\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
 		}
-		fStatus = flSingleBitPortAccess(handle, thisPort, thisBit, drive, high, NULL, error);
+		fStatus = flSingleBitPortAccess(handle, thisPort, thisBit, drive, high, &bitState, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup);
+		result <<= 1;
+		if ( bitState ) {
+			result |= 1;
+		}
 		ptr++;
 		ch = *ptr++;
 	} while ( ch == ',' );
+	if ( readState ) {
+		*readState = result;
+	}
 cleanup:
 	return retVal;
 }

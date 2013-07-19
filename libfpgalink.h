@@ -649,7 +649,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flMultiBitPortAccess(
-		struct FLContext *handle, const char *portConfig, const char **error
+		struct FLContext *handle, const char *portConfig, uint32 *readState, const char **error
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flResetToggle(
