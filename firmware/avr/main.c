@@ -240,6 +240,7 @@ int main(void) {
 		CONCAT(PORT, port) = high  ? (CONCAT(PORT, port) | bitMask) : (CONCAT(PORT, port) & ~bitMask); \
 		CONCAT(DDR, port)  = drive ? (CONCAT(DDR, port)  | bitMask) : (CONCAT(DDR, port)  & ~bitMask); \
 	} \
+	__asm volatile("nop\nnop\nnop\nnop"::);											\
 	tempByte = (CONCAT(PIN, port) & bitMask) ? 0x01 : 0x00
 
 // Called when a vendor command is received
