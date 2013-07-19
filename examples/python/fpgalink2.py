@@ -58,10 +58,6 @@ fpgalink.flLoadFile.argtypes = [c_char_p, POINTER(uint32)]
 fpgalink.flLoadFile.restype = POINTER(uint8)
 fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
-#fpgalink.flPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
-#fpgalink.flPortAccess.restype = FLStatus
-#fpgalink.flPortConfig.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
-#fpgalink.flPortConfig.restype = FLStatus
 fpgalink.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flSingleBitPortAccess.restype = FLStatus
 fpgalink.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
@@ -102,14 +98,14 @@ fpgalink.flProgram.argtypes = [FLHandle, c_char_p, c_char_p, POINTER(ErrorString
 fpgalink.flProgram.restype = FLStatus
 fpgalink.jtagScanChain.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
 fpgalink.jtagScanChain.restype = FLStatus
-#fpgalink.jtagOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
-#fpgalink.jtagOpen.restype = FLStatus
-#fpgalink.jtagClose.argtypes = [FLHandle, POINTER(ErrorString)]
-#fpgalink.jtagClose.restype = FLStatus
-#fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
-#fpgalink.jtagClockFSM.restype = FLStatus
-#fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
-#fpgalink.jtagClocks.restype = FLStatus
+fpgalink.jtagOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+fpgalink.jtagOpen.restype = FLStatus
+fpgalink.jtagClose.argtypes = [FLHandle, POINTER(ErrorString)]
+fpgalink.jtagClose.restype = FLStatus
+fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
+fpgalink.jtagClockFSM.restype = FLStatus
+fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
+fpgalink.jtagClocks.restype = FLStatus
 
 # FX2LP Firmware Operations
 fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
@@ -335,23 +331,48 @@ def jtagScanChain(handle, portConfig):
     chain = ChainType()
     length = uint32(0)
     status = fpgalink.jtagScanChain(handle, portConfig, byref(length), chain, 16, byref(error))
-    if ( length > 16 ):
+    if ( length.value > 16 ):
         # We know exactly how many devices there are, so try again
         ChainType = (uint32 * length.value)
         chain = ChainType()
-        status = fpgalink.jtagScanChain(handle, portConfig, None, chain, length, byref(error))
+        status = fpgalink.jtagScanChain(handle, portConfig, None, chain, length.value, byref(error))
     return chain
 
-# TODO: Other low-level JTAG functions
-
 # Open a JTAG port
-#def jtagOpen(handle, portConfig):
-#    error = ErrorString()
-#    status = fpgalink.jtagOpen(handle, portConfig.encode('ascii'), byref(error))
-#    if ( status != FL_SUCCESS ):
-#        s = str(error.value)
-#        fpgalink.flFreeError(error)
-#        raise FLException(s)
+def jtagOpen(handle, portConfig):
+    error = ErrorString()
+    status = fpgalink.jtagOpen(handle, portConfig.encode('ascii'), byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+# Close a JTAG port
+def jtagClose(handle):
+    error = ErrorString()
+    status = fpgalink.jtagClose(handle, byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+# Transition the TAP state machine
+def jtagClockFSM(handle, bitPattern, transitionCount):
+    error = ErrorString()
+    status = fpgalink.jtagClockFSM(handle, bitPattern, transitionCount, byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+# Transition the TAP state machine
+def jtagClocks(handle, numClocks):
+    error = ErrorString()
+    status = fpgalink.jtagClocks(handle, numClocks, byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
 
 flInitialise(0)
 
