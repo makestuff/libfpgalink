@@ -65,6 +65,11 @@ LUFA_VERSION=130303
 # MCU name
 MCU = at90usb162
 
+# Identifiers for the device
+MAKESTUFF_TODAY_DATE := $(shell date +%Y%m%d)
+VID := 1D50
+PID := 602B
+DID := 0001
 
 # Target architecture (see library "Board Types" documentation).
 ARCH = AVR8
@@ -469,7 +474,13 @@ ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 
 
 # Default target.
-all: LUFA-$(LUFA_VERSION) begin gccversion sizebefore build sizeafter end
+all: date.h LUFA-$(LUFA_VERSION) begin gccversion sizebefore build sizeafter end
+
+date.h:
+	echo "#define DATE 0x$(MAKESTUFF_TODAY_DATE)" > $@
+	echo "#define VID 0x$(VID)" >> $@
+	echo "#define PID 0x$(PID)" >> $@
+	echo "#define DID 0x$(DID)" >> $@
 
 # Change the build target to build a HEX file or a library.
 build: elf hex eep lss sym
@@ -693,6 +704,7 @@ clean_list :
 	$(REMOVE) $(TARGET).map
 	$(REMOVE) $(TARGET).sym
 	$(REMOVE) $(TARGET).lss
+	$(REMOVE) date.h
 	$(REMOVE) $(SRC:%.c=$(OBJDIR)/%.o) $(CPPSRC:%.cpp=$(OBJDIR)/%.o) $(ASRC:%.S=$(OBJDIR)/%.o)
 	$(REMOVE) $(SRC:%.c=$(OBJDIR)/%.lst) $(CPPSRC:%.cpp=$(OBJDIR)/%.lst) $(ASRC:%.S=$(OBJDIR)/%.lst)
 	$(REMOVE) $(SRC:.c=.s)

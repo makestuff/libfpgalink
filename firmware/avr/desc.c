@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "desc.h"
+#include "date.h"
 
 static USBDeviceDescriptor PROGMEM deviceDescriptor = {
 	.Header = {
@@ -26,9 +27,9 @@ static USBDeviceDescriptor PROGMEM deviceDescriptor = {
 	.SubClass = 0xff,
 	.Protocol = 0xff,
 	.Endpoint0Size = FIXED_CONTROL_ENDPOINT_SIZE,
-	.VendorID = 0x1D50,      // openmoko vendor id
-	.ProductID = 0x602B,     // allocated by http://wiki.openmoko.org/wiki/USB_Product_IDs
-	.ReleaseNumber = 0x0001, // used for device specification, to identify multiple FPGALink devices
+	.VendorID = VID,
+	.ProductID = PID,
+	.ReleaseNumber = DID,
 	.ManufacturerStrIndex = 0x01,
 	.ProductStrIndex = 0x02,
 	.SerialNumStrIndex = NO_DESCRIPTOR,
@@ -93,18 +94,29 @@ static USBStringDescriptor PROGMEM languageString = {
 
 static USBStringDescriptor PROGMEM manufacturerString = {
 	.Header = {
-		.Size = USB_STRING_LEN(18),
+		.Size = USB_STRING_LEN(9),
 		.Type = DTYPE_String
 	},
-	.UnicodeString          = L"Swaton Electronics"
+	.UnicodeString = L"MakeStuff"
 };
 
 static USBStringDescriptor PROGMEM productString = {
 	.Header = {
-		.Size = USB_STRING_LEN(17),
+		.Size = USB_STRING_LEN(21),
 		.Type = DTYPE_String
 	},
-	.UnicodeString          = L"FPGALink/AVR v1.1"
+	.UnicodeString = {
+		'F', 'P', 'G', 'A', 'L', 'i', 'n', 'k', '/', 'A', 'V', 'R', ' ',
+		((DATE>>(7*4))&0xF) + '0',
+		((DATE>>(6*4))&0xF) + '0',
+		((DATE>>(5*4))&0xF) + '0',
+		((DATE>>(4*4))&0xF) + '0',
+		((DATE>>(3*4))&0xF) + '0',
+		((DATE>>(2*4))&0xF) + '0',
+		((DATE>>(1*4))&0xF) + '0',
+		((DATE>>(0*4))&0xF) + '0',
+		0
+	}
 };
 
 uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue, const uint8_t wIndex, const void** const descriptorAddress) {
