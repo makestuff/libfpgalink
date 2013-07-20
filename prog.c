@@ -917,6 +917,9 @@ DLLEXPORT(FLStatus) flMultiBitPortAccess(
 		ptr++;
 		ch = *ptr++;
 	} while ( ch == ',' );
+	CHECK_STATUS(
+		ch != '\0', FL_CONF_FORMAT, cleanup,
+		"flMultiBitPortAccess(): Expecting ',' or '\\0' here:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig-1));
 	if ( readState ) {
 		*readState = result;
 	}
