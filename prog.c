@@ -765,7 +765,7 @@ DLLEXPORT(FLStatus) jtagClocks(struct FLContext *handle, uint32 numClocks, const
 		(uint16)(numClocks >> 16),     // wIndex
 		NULL,                          // no data
 		0,                             // wLength
-		5000,                          // timeout (ms)
+		60000,                         // timeout (ms)
 		error
 	);
 	CHECK_STATUS(uStatus, FL_PROG_CLOCKS, cleanup, "jtagClocks()");
