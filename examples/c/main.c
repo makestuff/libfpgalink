@@ -19,6 +19,34 @@
 #include <libfpgalink.h>
 #include "args.h"
 
+static const char *nibbles[] = {
+	"0000",  // '0'
+	"0001",  // '1'
+	"0010",  // '2'
+	"0011",  // '3'
+	"0100",  // '4'
+	"0101",  // '5'
+	"0110",  // '6'
+	"0111",  // '7'
+	"1000",  // '8'
+	"1001",  // '9'
+
+	"XXXX",  // ':'
+	"XXXX",  // ';'
+	"XXXX",  // '<'
+	"XXXX",  // '='
+	"XXXX",  // '>'
+	"XXXX",  // '?'
+	"XXXX",  // '@'
+
+	"1010",  // 'A'
+	"1011",  // 'B'
+	"1100",  // 'C'
+	"1101",  // 'D'
+	"1110",  // 'E'
+	"1111"   // 'F'
+};
+
 int main(int argc, const char *argv[]) {
 	int retVal;
 	struct FLContext *handle = NULL;
@@ -115,9 +143,21 @@ int main(int argc, const char *argv[]) {
 	}
 	
 	if ( portConfig ) {
+		uint32 readState;
+		char hex[9];
+		const uint8 *p = (const uint8 *)hex;
 		printf("Configuring ports...\n");
-		status = flPortConfig(handle, portConfig, &error);
+		status = flMultiBitPortAccess(handle, portConfig, &readState, &error);
 		CHECK_STATUS(status, 16, cleanup);
+		sprintf(hex, "%08X", readState);
+		printf("Readback:   28   24   20   16    12    8    4    0\n          %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf("  %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s\n", nibbles[*p++ - '0']);
 		flSleep(100);
 	}
 

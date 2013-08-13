@@ -60,7 +60,7 @@ fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
 fpgalink.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flSingleBitPortAccess.restype = FLStatus
-fpgalink.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+fpgalink.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(ErrorString)]
 fpgalink.flMultiBitPortAccess.restype = FLStatus
 
 # Connection Lifecycle
@@ -180,11 +180,13 @@ def flSingleBitPortAccess(handle, portNumber, bitNumber, drive, high):
 # Access the I/O ports on the micro
 def flMultiBitPortAccess(handle, portConfig):
     error = ErrorString()
-    status = fpgalink.flMultiBitPortAccess(handle, portConfig.encode('ascii'), byref(error))
+    readState = uint32()
+    status = fpgalink.flMultiBitPortAccess(handle, portConfig.encode('ascii'), byref(readState), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
+    return readState.value
 
 # Set the FIFO mode
 def flFifoMode(handle, fifoMode):
@@ -336,7 +338,10 @@ def jtagScanChain(handle, portConfig):
         ChainType = (uint32 * length.value)
         chain = ChainType()
         status = fpgalink.jtagScanChain(handle, portConfig, None, chain, length.value, byref(error))
-    return chain
+    result = []
+    for id in chain[:length.value]:
+        result.append(id)
+    return result
 
 # Open a JTAG port
 def jtagOpen(handle, portConfig):
@@ -378,12 +383,11 @@ flInitialise(0)
 
 # Main function if we're not loaded as a module
 if __name__ == "__main__":
-    print "FPGALink Python Example Copyright (C) 2011-2012 Chris McClelland\n"
+    print "FPGALink Python Example Copyright (C) 2011-2013 Chris McClelland\n"
     parser = argparse.ArgumentParser(description='Load FX2LP firmware, load the FPGA, interact with the FPGA.')
     parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="vendor ID and product ID (e.g 04B4:8613)")
-    parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="VID, PID and optional dev ID (e.g 1D50:602B:0001)")
-    parser.add_argument('-w', action="store", nargs=1, metavar="<port[,port]*>", help="write/configure digital ports")
-    parser.add_argument('-r', action="store_true", default=False, help="read digital ports")
+    parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="VID, PID and opt. dev ID (e.g 1D50:602B:0002)")
+    parser.add_argument('-d', action="store", nargs=1, metavar="<port+>", help="read/write digital ports (e.g B13+,C1-,B2?)")
     parser.add_argument('-q', action="store", nargs=1, metavar="<jtagPorts>", help="query the JTAG chain")
     parser.add_argument('-p', action="store", nargs=1, metavar="<config>", help="program a device")
     parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to channel 0")
@@ -409,21 +413,17 @@ if __name__ == "__main__":
             else:
                 raise FLException("Could not open FPGALink device at %s and no initial VID:PID was supplied" % vp)
         
-        if ( argList.w ):
+        if ( argList.d ):
             print "Configuring ports..."
-            flPortConfig(handle, argList.w[0]);
+            rb = "{:0{}b}".format(flMultiBitPortAccess(handle, argList.d[0]), 32)
+            print "Readback:   28   24   20   16    12    8    4    0\n          %s %s %s %s  %s %s %s %s" % (rb[0:4], rb[4:8], rb[8:12], rb[12:16], rb[16:20], rb[20:24], rb[24:28], rb[28:32])
             fpgalink.flSleep(100)
-
-        if ( argList.r ):
-            print "State of port lines:"
-            for i in range(5):
-                print "  %c: %02X" % (chr(65+i), flPortAccess(handle, i, 0x00, 0x00, 0x00))
 
         isNeroCapable = flIsNeroCapable(handle)
         isCommCapable = flIsCommCapable(handle)
         if ( argList.q ):
             if ( isNeroCapable ):
-                chain = flScanChain(handle, argList.q[0])
+                chain = jtagScanChain(handle, argList.q[0])
                 if ( len(chain) > 0 ):
                     print "The FPGALink device at %s scanned its JTAG chain, yielding:" % vp
                     for i in chain:
@@ -445,9 +445,10 @@ if __name__ == "__main__":
             raise FLException("Data file load requested but device at %s does not support CommFPGA" % vp)
 
         if ( isCommCapable ):
-            print "Writing channel 1 to zero count..."
-            flWriteChannel(handle, 1000, 0x01, 0x01)
-
+            print "Zeroing R1 & R2..."
+            flFifoMode(handle, 1)
+            flWriteChannel(handle, 1000, 0x01, 0x00)
+            flWriteChannel(handle, 1000, 0x02, 0x00)
             if ( argList.f ):
                 dataFile = argList.f[0]
                 print "Writing %s to FPGALink device %s..." % (dataFile, vp)
@@ -455,10 +456,10 @@ if __name__ == "__main__":
             
             print "Reading channel 0..."
             print "Got 0x%02X" % flReadChannel(handle, 1000, 0x00)
-            print "Reading channel 0..."
-            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x00)
-            print "Reading channel 0..."
-            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x00)
+            print "Reading channel 1..."
+            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x01)
+            print "Reading channel 2..."
+            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x02)
 
     except FLException, ex:
         print ex
