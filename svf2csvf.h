@@ -72,6 +72,7 @@ extern "C" {
 	// Reorder commands after SVF parse
 	typedef const uint8 *CmdPtr;
 	typedef const uint8 CmdArray[];
+	FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char **error);
 	void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex);
 	const char *getCmdName(CmdPtr cmd);
 	uint32 readLongBE(const uint8 *p);

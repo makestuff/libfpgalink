@@ -770,7 +770,7 @@ void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex) {
 	*dstIndex = *ptr;
 }
 
-static FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char **error) {
+FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	const uint8 *const start = csvfBuf->data;
 	const uint8 *ptr = start;
@@ -942,6 +942,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	}
 	bStatus = bufAppendByte(csvfBuf, XCOMPLETE, error);
 	CHECK_STATUS(bStatus, FL_BUF_APPEND_ERR, cleanup, "flLoadSvfAndConvertToCsvf()");
+	cxt.numCommands++;
 
 	fStatus = buildIndex(&cxt, csvfBuf, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "flLoadSvfAndConvertToCsvf()");
