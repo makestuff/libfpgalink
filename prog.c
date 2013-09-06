@@ -146,6 +146,14 @@ static const char *spaces(ptrdiff_t n) {
 		func"(): Bit number is not valid:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig)); \
 	bit = (uint8)(strtoul(ptr, (char**)&ptr, 10));
 
+#define GET_DIGIT(bit, func) \
+	GET_CHAR(func) \
+	CHECK_STATUS( \
+		ch < '0' || ch > '7', FL_CONF_FORMAT, cleanup, \
+		func"(): Bit '%c' is not valid at char %d", ch, ptr-portConfig); \
+	bit = (uint8)(ch - '0'); \
+	ptr++
+
 #define GET_PAIR(port, bit, func) \
 	GET_PORT(port, func); \
 	GET_BIT(bit, func)
@@ -166,7 +174,6 @@ typedef enum {UNUSED, HIGH, LOW, INPUT} PinState;
 //
 // Called by:
 //   xProgram() -> populateMap()
-//   flPortConfig() -> populateMap()
 //
 static FLStatus populateMap(
 	const char *portConfig, const char *ptr, const char **endPtr,
@@ -289,34 +296,12 @@ cleanup:
 	return retVal;
 }
 
-// This function just loads binary data from the specified file and sends it to the micro.
-//
-// Called by:
-//   xProgram() -> fileWrite()
-//
-static FLStatus fileWrite(struct FLContext *handle, ProgOp progOp, const char *fileName, const uint8 lookupTable[256], const char **error) {
-	FLStatus retVal = FL_SUCCESS;
-	FLStatus fStatus;
-	uint32 fileLen;
-	uint8 *fileData = flLoadFile(fileName, &fileLen);
-	CHECK_STATUS(
-		!fileData, FL_JTAG_ERR, cleanup,
-		"fileWrite(): Unable to read from %s", fileName);
-	fStatus = dataWrite(handle, progOp, fileData, fileLen, lookupTable, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "fileWrite()");
-cleanup:
-	if ( fileData ) {
-		flFreeFile(fileData);
-	}
-	return retVal;
-}
-
 // This function performs either a serial or a parallel programming operation on Xilinx FPGAs.
 //
 // Called by:
 //   flProgram() -> xProgram()
 //
-static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *portConfig, const char *progFile, const char **error) {
+static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *portConfig, const uint8 *data, uint32 len, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	FLStatus fStatus;
 	uint8 progPort, progBit;
@@ -353,7 +338,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	GET_PORT(dataPort, "xProgram");
 	if ( progOp == PROG_PARALLEL ) {
 		for ( i = 0; i < 8; i++ ) {
-			GET_BIT(dataBit[i], "xProgram");
+			GET_DIGIT(dataBit[i], "xProgram");
 			SET_BIT(dataPort, dataBit[i], LOW, "xProgram");
 		}
 		makeLookup(dataBit, lookupTable);
@@ -364,7 +349,6 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		SET_BIT(dataPort, dataBit[0], LOW, "xProgram");
 	}
 
-	EXPECT_CHAR(':', "xProgram");
 	GET_CHAR("xProgram");
 	if ( ch == '[' ) {
 		ptr++;
@@ -373,21 +357,9 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		EXPECT_CHAR(']', "xProgram");
 	}
 	ch = *ptr;
-	if ( ch == ':' ) {
-		ptr++;
-		CHECK_STATUS(
-			progFile, FL_CONF_FORMAT, cleanup,
-			"xProgram(): Config includes a filename, but a filename is already provided");
-		progFile = ptr;
-	} else if ( ch != '\0' ) {
-		CHECK_STATUS(
-			true, FL_CONF_FORMAT, cleanup,
-			"xProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
-	} else if ( !progFile ) {
-		CHECK_STATUS(
-			true, FL_CONF_FORMAT, cleanup,
-			"xProgram(): No filename given");
-	}
+	CHECK_STATUS(
+		ch != '\0' && ch != ':', FL_CONF_FORMAT, cleanup,
+		"xProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
 
 	// Map the CCLK bit & the SelectMAP data bus
 	fStatus = portMap(handle, PATCH_TCK, cclkPort, cclkBit, error);
@@ -443,7 +415,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	} while ( !initStatus );
 
 	// Write the programming file into the FPGA
-	fStatus = fileWrite(handle, progOp, progFile, lookupTable, error);
+	fStatus = dataWrite(handle, progOp, data, len, lookupTable, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 
 	i = 0;
@@ -479,46 +451,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 			}
 		}
 	}
-
 cleanup:
-	return retVal;
-}
-
-// This function plays the specified SVF, XSVF or CSVF file into the attached FPGA.
-//
-// Called by:
-//   flProgram() -> jProgram() -> playSVF()
-//
-static FLStatus playSVF(struct FLContext *handle, const char *svfFile, const char **error) {
-	FLStatus retVal = FL_SUCCESS;
-	FLStatus fStatus;
-	struct Buffer csvfBuf = {0,};
-	BufferStatus bStatus;
-	uint32 maxBufSize;
-	const char *const ext = svfFile + strlen(svfFile) - 5;
-	CHECK_STATUS(
-		!handle->isNeroCapable, FL_PROTOCOL_ERR, cleanup,
-		"playSVF(): This device does not support NeroJTAG");
-	bStatus = bufInitialise(&csvfBuf, 0x20000, 0, error);
-	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "playSVF()");
-	if ( strcmp(".svf", ext+1) == 0 ) {
-		fStatus = flLoadSvfAndConvertToCsvf(svfFile, &csvfBuf, &maxBufSize, error);
-		CHECK_STATUS(fStatus, fStatus, cleanup, "playSVF()");
-	} else if ( strcmp(".xsvf", ext) == 0 ) {
-		fStatus = flLoadXsvfAndConvertToCsvf(svfFile, &csvfBuf, &maxBufSize, error);
-		CHECK_STATUS(fStatus, fStatus, cleanup, "playSVF()");
-	} else if ( strcmp(".csvf", ext) == 0 ) {
-		bStatus = bufAppendFromBinaryFile(&csvfBuf, svfFile, error);
-		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "playSVF()");
-	} else {
-		CHECK_STATUS(
-			true, FL_FILE_ERR, cleanup,
-			"playSVF(): Filename should have .svf, .xsvf or .csvf extension");
-	}
-	fStatus = csvfPlay(handle, csvfBuf.data, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "playSVF()");
-cleanup:
-	bufDestroy(&csvfBuf);
 	return retVal;
 }
 
@@ -581,7 +514,7 @@ cleanup:
 // Called by:
 //   flProgram() -> jProgram()
 //
-static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
+static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const uint8 *csvfData, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	FLStatus fStatus;
 	const char *ptr = portConfig + 1;
@@ -589,31 +522,10 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	EXPECT_CHAR(':', "jProgram");
 	fStatus = jtagOpenInternal(handle, portConfig, ptr, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jProgram()");
-
-	ptr += 8;
-	ch = *ptr;
-	if ( ch == ':' ) {
-		ptr++;
-		CHECK_STATUS(
-			progFile, FL_CONF_FORMAT, cleanup,
-			"jProgram(): Config includes a filename, but a filename is already provided");
-		progFile = ptr;
-	} else if ( ch != '\0' ) {
-		CHECK_STATUS(
-			true, FL_CONF_FORMAT, cleanup,
-			"jProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
-	} else if ( !progFile ) {
-		CHECK_STATUS(
-			true, FL_CONF_FORMAT, cleanup,
-			"jProgram(): No filename given");
-	}
-
-	fStatus = playSVF(handle, progFile, error);
+	fStatus = csvfPlay(handle, csvfData, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jProgram()");
-
 	fStatus = jtagClose(handle, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jProgram()");
-
 cleanup:
 	return retVal;
 }
@@ -819,7 +731,12 @@ cleanup:
 	return retVal;
 }
 
-DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
+// Programs a device using in-memory configuration information
+//
+DLLEXPORT(FLStatus) flProgramBlob(
+	struct FLContext *handle, const char *portConfig, const uint8 *blobData, uint32 blobLength,
+	const char **error)
+{
 	FLStatus retVal = FL_SUCCESS;
 	const char algoVendor = portConfig[0];
 	if ( algoVendor == 'X' ) {
@@ -827,21 +744,20 @@ DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, 
 		const char algoType = portConfig[1];
 		if ( algoType == 'P' ) {
 			// This is Xilinx Slave Parallel ("SelectMAP")
-			return xProgram(handle, PROG_PARALLEL, portConfig, progFile, error);
+			return xProgram(handle, PROG_PARALLEL, portConfig, blobData, blobLength, error);
 		} else if ( algoType == 'S' ) {
 			// This is Xilinx Slave Serial
-			return xProgram(handle, PROG_SERIAL, portConfig, progFile, error);
+			return xProgram(handle, PROG_SERIAL, portConfig, blobData, blobLength, error);
 		} else if ( algoType == '\0' ) {
 			CHECK_STATUS(true, FL_CONF_FORMAT, cleanup, "flProgram(): Missing Xilinx algorithm code");
 		} else {
-			// This is not a valid Xilinx algorithm
 			CHECK_STATUS(
 				true, FL_CONF_FORMAT, cleanup,
 				"flProgram(): '%c' is not a valid Xilinx algorithm code", algoType);
 		}
 	} else if ( algoVendor == 'J' ) {
 		// This is a JTAG algorithm
-		return jProgram(handle, portConfig, progFile, error);
+		return jProgram(handle, portConfig, blobData, error);
 	} else if ( algoVendor == '\0' ) {
 		CHECK_STATUS(true, FL_CONF_FORMAT, cleanup, "flProgram(): Missing algorithm vendor code");
 	} else {
@@ -850,6 +766,64 @@ DLLEXPORT(FLStatus) flProgram(struct FLContext *handle, const char *portConfig, 
 			"flProgram(): '%c' is not a valid algorithm vendor code", algoVendor);
 	}
 cleanup:
+	return retVal;
+}
+	
+// Programs a device using configuration information loaded from a file. If progFile is NULL,
+// it expects to find a filename at the end of portConfig.
+//
+DLLEXPORT(FLStatus) flProgram(
+	struct FLContext *handle, const char *portConfig, const char *progFile, const char **error)
+{
+	FLStatus retVal = FL_SUCCESS, fStatus;
+	const char algoVendor = portConfig[0];
+	struct Buffer fileBuf = {0,};
+	BufferStatus bStatus = bufInitialise(&fileBuf, 0x20000, 0, error);
+	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "playSVF()");
+	if ( progFile == NULL ) {
+		// Expect to find prog file at the end of portConfig
+		progFile = portConfig;
+		while ( *progFile && *progFile != ':' ) {
+			progFile++;
+		}
+		CHECK_STATUS(
+			*progFile == '0', FL_CONF_FORMAT, cleanup,
+			"flProgram(): portConfig terminated before first ':'");
+		progFile++;
+		while ( *progFile && *progFile != ':' ) {
+			progFile++;
+		}
+		CHECK_STATUS(
+			*progFile == '0', FL_CONF_FORMAT, cleanup,
+			"flProgram(): progFile was NULL, and portConfig didn't specify a file");
+		progFile++;
+	}
+	if ( algoVendor == 'J' ) {
+		// JTAG file
+		const char *const ext = progFile + strlen(progFile) - 5;
+		if ( strcmp(".svf", ext+1) == 0 ) {
+			fStatus = flLoadSvfAndConvertToCsvf(progFile, &fileBuf, NULL, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "flProgram()");
+		} else if ( strcmp(".xsvf", ext) == 0 ) {
+			fStatus = flLoadXsvfAndConvertToCsvf(progFile, &fileBuf, NULL, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "flProgram()");
+		} else if ( strcmp(".csvf", ext) == 0 ) {
+			bStatus = bufAppendFromBinaryFile(&fileBuf, progFile, error);
+			CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flProgram()");
+		} else {
+			CHECK_STATUS(
+				true, FL_FILE_ERR, cleanup,
+				"flProgram(): JTAG files should have .svf, .xsvf or .csvf extension");
+		}
+	} else {
+		// Just load it
+		bStatus = bufAppendFromBinaryFile(&fileBuf, progFile, error);
+		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flProgram()");
+	}
+	fStatus = flProgramBlob(handle, portConfig, fileBuf.data, fileBuf.length, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flProgram()");
+cleanup:
+	bufDestroy(&fileBuf);
 	return retVal;
 }
 

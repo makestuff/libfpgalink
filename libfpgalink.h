@@ -664,6 +664,11 @@ extern "C" {
 		struct FLContext *handle, const char *portConfig, const char *progFile, const char **error
 	) WARN_UNUSED_RESULT;
 
+	DLLEXPORT(FLStatus) flProgramBlob(
+		struct FLContext *handle, const char *portConfig, const uint8 *blobData, uint32 blobLength,
+		const char **error
+	) WARN_UNUSED_RESULT;
+
 	// Special values for inData parameter of jtagShift() declared below
 	#define ZEROS (const uint8*)NULL
 	#define ONES (ZEROS - 1)
