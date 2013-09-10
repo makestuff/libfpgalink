@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ROOT    := $(realpath ../../..)
-DEPS    := fpgalink buffer error
+DEPS    := fpgalink buffer error usbwrap
 TYPE    := exe
 SUBDIRS :=
 

@@ -20,6 +20,7 @@
 #include <makestuff.h>
 #include <libbuffer.h>
 #include "libfpgalink.h"
+#include "libusbwrap.h"
 #include "firmware.h"
 
 #ifdef __cplusplus
@@ -27,7 +28,6 @@ extern "C" {
 #endif
 
 	// Struct used to maintain context for most of the FPGALink operations
-	struct USBDevice;
 	struct FLContext {
 		// USB connection
 		struct USBDevice *device;
@@ -46,6 +46,7 @@ extern "C" {
 		uint8 tdiPort, tdiBit;
 		uint8 tmsPort, tmsBit;
 		uint8 tckPort, tckBit;
+		struct CompletionReport completionReport;
 	};
 
 	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will

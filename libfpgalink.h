@@ -74,8 +74,13 @@ extern "C" {
 	} FLStatus;
 	//@}
 
-	struct FLContext;  // Opaque context type
-	struct Buffer;     // Forward declaration of Buffer
+	struct FLContext;        // Opaque context type
+	struct Buffer;           // Forward declaration of Buffer
+	struct ReadReport {
+		const uint8 *data;
+		uint32 requestLength;
+		uint32 actualLength;
+	};
 
 	// ---------------------------------------------------------------------------------------------
 	// Miscellaneous functions
@@ -698,6 +703,24 @@ extern "C" {
 	// Toggle TCK "numClocks" times.
 	DLLEXPORT(FLStatus) jtagClocks(
 		struct FLContext *handle, uint32 numClocks, const char **error
+	) WARN_UNUSED_RESULT;
+
+
+	DLLEXPORT(FLStatus) flWriteChannelAsync(
+		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
+		const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flFlushWrites(
+		struct FLContext *handle, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
+		struct FLContext *handle, uint8 chan, uint32 count, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flReadChannelAsyncAwait(
+		struct FLContext *handle, struct ReadReport *readReport, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
 

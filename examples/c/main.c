@@ -194,32 +194,40 @@ int main(int argc, const char *argv[]) {
 	
 	if ( dataFile ) {
 		if ( isCommCapable ) {
+			struct ReadReport readReport;
+			uint32 i;
 			printf("Enabling FIFO mode...\n");
 			status = flFifoMode(handle, true, &error);
 			CHECK_STATUS(status, 21, cleanup);
+
+			// Do some synchronous writes
 			printf("Zeroing registers 1 & 2...\n");
 			byte = 0x00;
 			status = flWriteChannel(handle, 1000, 0x01, 1, &byte, &error);
 			CHECK_STATUS(status, 22, cleanup);
 			status = flWriteChannel(handle, 1000, 0x02, 1, &byte, &error);
 			CHECK_STATUS(status, 23, cleanup);
-			
+
+			// Write the file 16 times to the FPGA using the async write API
 			buffer = flLoadFile(dataFile, &fileLen);
 			if ( buffer ) {
 				uint16 checksum = 0x0000;
-				uint32 i;
 				for ( i = 0; i < fileLen; i++ ) {
 					checksum = (uint16)(checksum + buffer[i]);
 				}
 				printf(
 					"Writing %0.2f MiB (checksum 0x%04X) from %s to FPGALink device %s...\n",
 					(double)fileLen/(1024*1024), checksum, dataFile, vp);
-				status = flWriteChannel(handle, 30000, 0x00, fileLen, buffer, &error);
-				CHECK_STATUS(status, 24, cleanup);
+				for ( i = 0; i < 16; i++ ) {
+					status = flWriteChannelAsync(handle, 0x00, fileLen, buffer, &error);
+					CHECK_STATUS(status, 24, cleanup);
+				}
 			} else {
 				fprintf(stderr, "Unable to load file %s!\n", dataFile);
 				FAIL(25, cleanup);
 			}
+
+			// Do some synchronous reads
 			printf("Reading channel 0...");
 			status = flReadChannel(handle, 1000, 0x00, 1, buf, &error);
 			CHECK_STATUS(status, 26, cleanup);
@@ -232,13 +240,28 @@ int main(int argc, const char *argv[]) {
 			status = flReadChannel(handle, 1000, 0x02, 1, buf, &error);
 			CHECK_STATUS(status, 28, cleanup);
 			printf("got 0x%02X\n", buf[0]);
+
+			// Submit a couple of async reads...
+			status = flReadChannelAsyncSubmit(handle, 0x01, 65536, &error);
+			CHECK_STATUS(status, 29, cleanup);
+			status = flReadChannelAsyncSubmit(handle, 0x02, 65536, &error);
+			CHECK_STATUS(status, 30, cleanup);
+
+			// ...and then await their completion
+			for ( i = 0; i < 2; i++ ) {
+				status = flReadChannelAsyncAwait(handle, &readReport, &error);
+				CHECK_STATUS(status, 31, cleanup);
+				printf(
+					"read[%d]: requestLength = %d, actualLength = %d, bytes = %02X %02X %02X %02X\n",
+					i, readReport.requestLength, readReport.actualLength,
+					readReport.data[0], readReport.data[1], readReport.data[2], readReport.data[3]);
+			}
 		} else {
 			fprintf(stderr, "Data file load requested but device at %s does not support CommFPGA\n", vp);
 			FAIL(29, cleanup);
 		}
 	}
 	retVal = 0;
-
 cleanup:
 	if ( error ) {
 		fprintf(stderr, "%s\n", error);
