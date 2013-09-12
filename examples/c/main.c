@@ -122,9 +122,9 @@ int main(int argc, const char *argv[]) {
 			do {
 				printf(".");
 				fflush(stdout);
-				flSleep(100);
 				status = flIsDeviceAvailable(vp, &flag, &error);
 				CHECK_STATUS(status, 12, cleanup);
+				flSleep(250);
 				count--;
 			} while ( !flag && count );
 			printf("\n");
