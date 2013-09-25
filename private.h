@@ -46,7 +46,11 @@ extern "C" {
 		uint8 tdiPort, tdiBit;
 		uint8 tmsPort, tmsBit;
 		uint8 tckPort, tckBit;
+
+		// Async API context
 		struct CompletionReport completionReport;
+		uint8 *writeBuf;
+		uint8 *writePtr;
 	};
 
 	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will

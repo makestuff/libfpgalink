@@ -711,7 +711,7 @@ extern "C" {
 		const char **error
 	) WARN_UNUSED_RESULT;
 
-	DLLEXPORT(FLStatus) flFlushWrites(
+	DLLEXPORT(FLStatus) flFlushAsyncWrites(
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 
