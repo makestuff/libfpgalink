@@ -195,7 +195,7 @@ int main(int argc, const char *argv[]) {
 	if ( dataFile ) {
 		if ( isCommCapable ) {
 			struct ReadReport readReport;
-			uint32 i, j;
+			uint32 j;
 			uint16 checksum;
 			printf("Enabling FIFO mode...\n");
 			status = flFifoMode(handle, true, &error);
@@ -203,10 +203,11 @@ int main(int argc, const char *argv[]) {
 
 			// Do some synchronous writes
 			printf("Zeroing registers 1 & 2...\n");
-			byte = 0x00;
-			status = flWriteChannel(handle, 1000, 0x01, 1, &byte, &error);
+			byte = 0xCA;
+			status = flWriteChannel(handle, 0x01, 1, &byte, &error);
 			CHECK_STATUS(status, 22, cleanup);
-			status = flWriteChannel(handle, 1000, 0x02, 1, &byte, &error);
+			byte = 0xFE;
+			status = flWriteChannel(handle, 0x02, 1, &byte, &error);
 			CHECK_STATUS(status, 23, cleanup);
 
 			buffer = flLoadFile(dataFile, &fileLen);
@@ -219,7 +220,6 @@ int main(int argc, const char *argv[]) {
 				checksum = (uint16)(checksum + buffer[i]);
 			}
 			
-			//for ( ; ; ) {
 			for ( j = 0; j < 16; j++ ) {
 				printf(
 					"Writing %0.2f MiB (checksum 0x%04X) from %s to FPGALink device %s...\n",
@@ -233,18 +233,18 @@ int main(int argc, const char *argv[]) {
 				
 				// Do some synchronous reads
 				printf("Reading channel 0...");
-				status = flReadChannel(handle, 1000, 0x00, 1, buf, &error);
+				status = flReadChannel(handle, 0x00, 1, buf, &error);
 				CHECK_STATUS(status, 26, cleanup);
 				printf("got 0x%02X\n", buf[0]);
 				printf("Reading channel 1...");
-				status = flReadChannel(handle, 1000, 0x01, 1, buf, &error);
+				status = flReadChannel(handle, 0x01, 1, buf, &error);
 				CHECK_STATUS(status, 27, cleanup);
 				printf("got 0x%02X\n", buf[0]);
 				printf("Reading channel 2...");
-				status = flReadChannel(handle, 1000, 0x02, 1, buf, &error);
+				status = flReadChannel(handle, 0x02, 1, buf, &error);
 				CHECK_STATUS(status, 28, cleanup);
 				printf("got 0x%02X\n", buf[0]);
-				
+
 				// Submit a couple of async reads...
 				status = flReadChannelAsyncSubmit(handle, 0x01, 65536, &error);
 				CHECK_STATUS(status, 29, cleanup);

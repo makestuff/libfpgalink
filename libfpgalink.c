@@ -150,46 +150,6 @@ cleanup:
 	return retVal;
 }
 
-// Write some raw bytes to the device.
-// TODO: Remove this!
-//
-FLStatus flWrite(
-	struct FLContext *handle, const uint8 *bytes, uint32 count, uint32 timeout, const char **error)
-{
-	FLStatus retVal = FL_SUCCESS;
-	USBStatus uStatus = usbBulkWrite(
-		handle->device,
-		handle->commOutEP,  // endpoint to write
-		bytes,              // data to send
-		count,              // number of bytes
-		timeout,
-		error
-	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWrite()");
-cleanup:
-	return retVal;
-}
-
-// Read some raw bytes from the device.
-// TODO: Remove this!
-//
-FLStatus flRead(
-	struct FLContext *handle, uint8 *buffer, uint32 count, uint32 timeout, const char **error)
-{
-	FLStatus retVal = FL_SUCCESS;
-	USBStatus uStatus = usbBulkRead(
-		handle->device,
-		handle->commInEP,  // endpoint to read
-		buffer,            // space for data
-		count,             // number of bytes
-		timeout,
-		error
-	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flRead()");
-cleanup:
-	return retVal;
-}
-
 // TODO: fix 65536 magic number: it should be tunable.
 static FLStatus bufferAppend(
 	struct FLContext *handle, const uint8 *data, uint32 count, const char **error)
@@ -214,7 +174,7 @@ static FLStatus bufferAppend(
 		
 		// Submit it
 		uStatus = usbBulkWriteAsyncSubmit(
-			handle->device, handle->commOutEP, 65536, 0xFFFFFFFFU, error);
+			handle->device, handle->commOutEP, 65536, U32MAX, error);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "bufferAppend()");
 		queueDepth++;
 		
@@ -240,7 +200,7 @@ static FLStatus bufferAppend(
 		
 		// Submit it
 		uStatus = usbBulkWriteAsyncSubmit(
-			handle->device, handle->commOutEP, 65536, 0xFFFFFFFFU, error);
+			handle->device, handle->commOutEP, 65536, U32MAX, error);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "bufferAppend()");
 		queueDepth++;
 
@@ -262,7 +222,7 @@ DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **er
 		uStatus = usbBulkWriteAsyncSubmit(
 			handle->device, handle->commOutEP,
 			(uint32)(handle->writePtr - handle->writeBuf),
-			0xFFFFFFFFU, NULL);
+			U32MAX, NULL);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flFlushAsyncWrites()");
 		handle->writePtr = handle->writeBuf = NULL;
 	}
@@ -273,8 +233,7 @@ cleanup:
 // Write some bytes to the specified channel, synchronously.
 //
 DLLEXPORT(FLStatus) flWriteChannel(
-	struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, const uint8 *data,
-	const char **error)
+	struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS, fStatus;
 	size_t queueDepth;
@@ -306,16 +265,29 @@ DLLEXPORT(FLStatus) flWriteChannel(
 	//       just be appended to the existing write buffer before the flush above.
 	command[0] = chan & 0x7F;
 	flWriteLong(count, command+1);
-	retVal = flWrite(handle, command, 5, 1000, error);
-	CHECK_STATUS(retVal, retVal, cleanup, "flWriteChannel()");
-	retVal = flWrite(handle, data, count, timeout, error);
-	CHECK_STATUS(retVal, retVal, cleanup, "flWriteChannel()");
+	uStatus = usbBulkWrite(
+		handle->device,
+		handle->commOutEP,  // endpoint to write
+		command,            // data to send
+		5,                  // number of bytes
+		U32MAX,
+		error
+	);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWriteChannel()");
+	uStatus = usbBulkWrite(
+		handle->device,
+		handle->commOutEP,  // endpoint to write
+		data,               // data to send
+		count,              // number of bytes
+		U32MAX,
+		error
+	);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWriteChannel()");
 cleanup:
 	return retVal;
 }
 
 // Write some bytes to the specified channel, asynchronously.
-// TODO: Interaction with reads
 //
 DLLEXPORT(FLStatus) flWriteChannelAsync(
 	struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
@@ -344,9 +316,11 @@ cleanup:
 }
 
 // Read some bytes from the specified channel, synchronously.
+// TODO: Deal with early-termination properly - it should not be treated like an error.
+//       This will require changes in usbBulkRead(). Async API is already correct.
 //
 DLLEXPORT(FLStatus) flReadChannel(
-	struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, uint8 *buf,
+	struct FLContext *handle, uint8 chan, uint32 count, uint8 *buf,
 	const char **error)
 {
 	FLStatus retVal = FL_SUCCESS, fStatus;
@@ -379,10 +353,24 @@ DLLEXPORT(FLStatus) flReadChannel(
 	//       just be appended to the existing write buffer before the flush above.
 	command[0] = chan | 0x80;
 	flWriteLong(count, command+1);
-	fStatus = flWrite(handle, command, 5, 1000, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
-	fStatus = flRead(handle, buf, count, timeout, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
+	uStatus = usbBulkWrite(
+		handle->device,
+		handle->commOutEP,  // endpoint to write
+		command,            // data to send
+		5,                  // number of bytes
+		U32MAX,
+		error
+	);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannel()");
+	uStatus = usbBulkRead(
+		handle->device,
+		handle->commInEP,  // endpoint to read
+		buf,               // space for data
+		count,             // number of bytes
+		U32MAX,
+		error
+	);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannel()");
 cleanup:
 	return retVal;
 }
@@ -407,7 +395,7 @@ DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 	if ( !handle->writePtr ) {
 		// There is not an active write buffer
 		uStatus = usbBulkWriteAsyncPrepare(handle->device, &handle->writePtr, error);
-		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWriteChannelAsync()");
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannelAsyncSubmit()");
 		handle->writeBuf = handle->writePtr;
 	}
 	command[0] = chan | 0x80;
@@ -434,7 +422,7 @@ DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 		handle->device,
 		handle->commInEP,   // endpoint to read
 		count,              // number of data bytes
-		0xFFFFFFFFU,        // max timeout: 49 days
+		U32MAX,             // max timeout: 49 days
 		error
 	);
 	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannelAsyncSubmit()");

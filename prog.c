@@ -708,7 +708,7 @@ DLLEXPORT(FLStatus) jtagScanChain(
 	for ( ; ; ) {
 		fStatus = jtagShift(handle, 32, ZEROS, u.bytes, false, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "jtagScanChain()");
-		if ( u.idCode == 0x00000000 || u.idCode == 0xFFFFFFFF ) {
+		if ( u.idCode == 0x00000000 || u.idCode == U32MAX ) {
 			break;
 		}
 		if ( deviceArray && i < arraySize ) {

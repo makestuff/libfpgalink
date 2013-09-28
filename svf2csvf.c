@@ -717,7 +717,7 @@ const char *getCmdName(CmdPtr cmd) {
 
 #define SET_BYTES(rt) rt.b[0] = (*ptr)[1]; rt.b[1] = (*ptr)[2]; rt.b[2] = (*ptr)[3]; rt.b[3] = (*ptr)[4]
 static const uint8 xrtZero[] = {XRUNTEST, 0, 0, 0, 0};
-static const uint32 illegal32 = 0xFFFFFFFF;
+static const uint32 illegal32 = U32MAX;
 
 void processIndex(const CmdPtr *srcIndex, CmdPtr *dstIndex) {
 	union {

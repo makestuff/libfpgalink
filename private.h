@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+	#define U32MAX 0xFFFFFFFFU
+
 	// Struct used to maintain context for most of the FPGALink operations
 	struct FLContext {
 		// USB connection
@@ -52,34 +54,6 @@ extern "C" {
 		uint8 *writeBuf;
 		uint8 *writePtr;
 	};
-
-	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will
-	// arise if these bytes are not valid FPGALink READ or WRITE commands:
-	//   WRITE (six or more bytes):  [Chan,      N, Data0, Data1, ... DataN]
-	//   READ (exactly five bytes):  [Chan|0x80, N]
-	//     Chan is the FPGA channel (0-127)
-	//     N is a big-endian uint32 representing the number of data bytes to read or write
-	//
-	// Immediately after sending a read command you MUST call flRead() with count=N.
-	//
-	// The timeout should be sufficiently large to actually transfer the number of bytes requested,
-	// or sync problems (requiring power-cycle to clear) will arise. A good rule of thumb is
-	// 100 + K/10 where K is the number of kilobytes to transfer.
-	FLStatus flWrite(
-		struct FLContext *handle, const uint8 *bytes, uint32 count, uint32 timeout,
-		const char **error
-	) WARN_UNUSED_RESULT;
-
-	// Read some raw bytes from the FL. Bytes will only be available if they have been
-	// previously requested with a FPGALink READ command sent with flWrite(). The count value
-	// should be the same as the actual number of bytes requested by the flWrite() READ command.
-	//
-	// The timeout should be sufficiently large to actually transfer the number of bytes requested,
-	// or sync problems (requiring power-cycle to clear) will arise. A good rule of thumb is
-	// 100 + K/10 where K is the number of kilobytes to transfer.
-	FLStatus flRead(
-		struct FLContext *handle, uint8 *buffer, uint32 count, uint32 timeout, const char **error
-	) WARN_UNUSED_RESULT;
 
 	// Utility functions for manipulating big-endian words
 	uint16 flReadWord(const uint8 *p);

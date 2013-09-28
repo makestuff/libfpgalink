@@ -268,7 +268,6 @@ extern "C" {
 	 * \b FPGALink device actually supports \b CommFPGA using \c flIsCommCapable().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param timeout The time to wait (in milliseconds) for the read to complete before giving up.
 	 * @param chan The FPGA channel to read.
 	 * @param count The number of bytes to read.
 	 * @param buf The address of a buffer to store the bytes read from the FPGA.
@@ -283,7 +282,7 @@ extern "C" {
 	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
 	 */
 	DLLEXPORT(FLStatus) flReadChannel(
-		struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, uint8 *buf,
+		struct FLContext *handle, uint8 chan, uint32 count, uint8 *buf,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -298,7 +297,6 @@ extern "C" {
 	 * \b FPGALink device actually supports \b CommFPGA using \c flIsCommCapable().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param timeout The time to wait (in milliseconds) for the write to complete before giving up.
 	 * @param chan The FPGA channel to write.
 	 * @param count The number of bytes to write.
 	 * @param data The address of the array of bytes to be written to the FPGA.
@@ -313,7 +311,7 @@ extern "C" {
 	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannel(
-		struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, const uint8 *data,
+		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
