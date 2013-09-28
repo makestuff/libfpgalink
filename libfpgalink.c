@@ -151,6 +151,7 @@ cleanup:
 }
 
 // Write some raw bytes to the device.
+// TODO: Remove this!
 //
 FLStatus flWrite(
 	struct FLContext *handle, const uint8 *bytes, uint32 count, uint32 timeout, const char **error)
@@ -170,6 +171,7 @@ cleanup:
 }
 
 // Read some raw bytes from the device.
+// TODO: Remove this!
 //
 FLStatus flRead(
 	struct FLContext *handle, uint8 *buffer, uint32 count, uint32 timeout, const char **error)
@@ -184,50 +186,6 @@ FLStatus flRead(
 		error
 	);
 	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flRead()");
-cleanup:
-	return retVal;
-}
-
-// Write some bytes to the specified channel, synchronously.
-//
-DLLEXPORT(FLStatus) flWriteChannel(
-	struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, const uint8 *data,
-	const char **error)
-{
-	FLStatus retVal = FL_SUCCESS, fStatus;
-	size_t queueDepth;
-	uint8 command[5];
-	USBStatus uStatus;
-	CHECK_STATUS(
-		!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
-		"flWriteChannel(): This device does not support CommFPGA");
-
-	// Flush outstanding async writes
-	fStatus = flFlushAsyncWrites(handle, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "flWriteChannel()");
-
-	// Clear out any outstanding write awaits
-	queueDepth = usbNumOutstandingRequests(handle->device);
-	while ( queueDepth && !handle->completionReport.flags.isRead ) {
-		uStatus = usbBulkAwaitCompletion(
-			handle->device, &handle->completionReport, error
-		);
-		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWriteChannel()");
-		queueDepth--;
-	}
-	CHECK_STATUS(
-		queueDepth, FL_PROTOCOL_ERR, cleanup,
-		"flWriteChannel(): Cannot do synchronous writes when an asynchronous read is in flight");
-
-	// Proceed with the write
-	// TODO: probably better to do at least the command write asynchronously because it could then
-	//       just be appended to the existing write buffer before the flush above.
-	command[0] = chan & 0x7F;
-	flWriteLong(count, command+1);
-	retVal = flWrite(handle, command, 5, 1000, error);
-	CHECK_STATUS(retVal, retVal, cleanup, "flWriteChannel()");
-	retVal = flWrite(handle, data, count, timeout, error);
-	CHECK_STATUS(retVal, retVal, cleanup, "flWriteChannel()");
 cleanup:
 	return retVal;
 }
@@ -297,6 +255,65 @@ cleanup:
 	return retVal;
 }
 
+DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **error) {
+	FLStatus retVal = FL_SUCCESS;
+	USBStatus uStatus;
+	if ( handle->writePtr && handle->writeBuf && handle->writePtr > handle->writeBuf ) {
+		uStatus = usbBulkWriteAsyncSubmit(
+			handle->device, handle->commOutEP,
+			(uint32)(handle->writePtr - handle->writeBuf),
+			0xFFFFFFFFU, NULL);
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flFlushAsyncWrites()");
+		handle->writePtr = handle->writeBuf = NULL;
+	}
+cleanup:
+	return retVal;
+}
+
+// Write some bytes to the specified channel, synchronously.
+//
+DLLEXPORT(FLStatus) flWriteChannel(
+	struct FLContext *handle, uint32 timeout, uint8 chan, uint32 count, const uint8 *data,
+	const char **error)
+{
+	FLStatus retVal = FL_SUCCESS, fStatus;
+	size_t queueDepth;
+	uint8 command[5];
+	USBStatus uStatus;
+	CHECK_STATUS(
+		!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
+		"flWriteChannel(): This device does not support CommFPGA");
+
+	// Flush outstanding async writes
+	fStatus = flFlushAsyncWrites(handle, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flWriteChannel()");
+
+	// Clear out any outstanding write awaits
+	queueDepth = usbNumOutstandingRequests(handle->device);
+	while ( queueDepth && !handle->completionReport.flags.isRead ) {
+		uStatus = usbBulkAwaitCompletion(
+			handle->device, &handle->completionReport, error
+		);
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWriteChannel()");
+		queueDepth--;
+	}
+	CHECK_STATUS(
+		queueDepth, FL_PROTOCOL_ERR, cleanup,
+		"flWriteChannel(): Cannot do synchronous writes when an asynchronous read is in flight");
+
+	// Proceed with the write
+	// TODO: probably better to do at least the command write asynchronously because it could then
+	//       just be appended to the existing write buffer before the flush above.
+	command[0] = chan & 0x7F;
+	flWriteLong(count, command+1);
+	retVal = flWrite(handle, command, 5, 1000, error);
+	CHECK_STATUS(retVal, retVal, cleanup, "flWriteChannel()");
+	retVal = flWrite(handle, data, count, timeout, error);
+	CHECK_STATUS(retVal, retVal, cleanup, "flWriteChannel()");
+cleanup:
+	return retVal;
+}
+
 // Write some bytes to the specified channel, asynchronously.
 // TODO: Interaction with reads
 //
@@ -322,21 +339,6 @@ DLLEXPORT(FLStatus) flWriteChannelAsync(
 	CHECK_STATUS(fStatus, fStatus, cleanup, "flWriteChannelAsync()");
 	fStatus = bufferAppend(handle, data, count, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "flWriteChannelAsync()");
-cleanup:
-	return retVal;
-}
-
-DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **error) {
-	FLStatus retVal = FL_SUCCESS;
-	USBStatus uStatus;
-	if ( handle->writePtr && handle->writeBuf && handle->writePtr > handle->writeBuf ) {
-		uStatus = usbBulkWriteAsyncSubmit(
-			handle->device, handle->commOutEP,
-			(uint32)(handle->writePtr - handle->writeBuf),
-			0xFFFFFFFFU, NULL);
-		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flFlushAsyncWrites()");
-		handle->writePtr = handle->writeBuf = NULL;
-	}
 cleanup:
 	return retVal;
 }
