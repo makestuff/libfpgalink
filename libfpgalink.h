@@ -127,7 +127,9 @@ extern "C" {
 	 * Connects to the device and verifies it is an \b FPGALink device, then queries its
 	 * capabilities and synchronises the USB bulk endpoints.
 	 *
-	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device.
+	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device. You may also specify
+	 *            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
+	 *            selects the first device with matching VID/PID.
 	 * @param handle A pointer to a <code>struct FLContext*</code> which will be set on exit to
 	 *            point at a newly-allocated context structure. Responsibility for this allocated
 	 *            memory (and its associated USB resources) passes to the caller and must be freed
@@ -169,15 +171,17 @@ extern "C" {
 	 * @brief Check if the given device is actually connected to the system.
 	 *
 	 * The \b LibUSB devices in the system are searched for a device with the given VID/PID. On
-	 * Linux this will always work. On Windows it's necessary to install a \b LibUSB-Win32 driver
-	 * for the device beforehand.
+	 * Linux this will always work. On Windows it's necessary to install a \b WinUSB or \b libusbK
+	 * driver for the device beforehand (try Googling "zadig.exe").
 	 *
 	 * There is a short period of time following a call to \c flLoadStandardFirmware() or
 	 * \c flLoadCustomFirmware() during which this function will still return true for the
 	 * "current" VID/PID, so when you load new firmware, it's important to ensure that the "new"
 	 * VID/PID is different from the "current" VID/PID to avoid such false positives.
 	 *
-	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device.
+	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device. You may also specify
+	 *            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
+	 *            selects the first device with matching VID/PID.
 	 * @param isAvailable A pointer to an 8-bit integer which will be set on exit to 1 if available
 	 *            else 0.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
@@ -191,38 +195,50 @@ extern "C" {
 	 *            remember to call \c flInitialise()?).
 	 */
 	DLLEXPORT(FLStatus) flIsDeviceAvailable(
-		const char *vp, bool *isAvailable, const char **error
+		const char *vp, uint8 *isAvailable, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Check to see if the device supports \b NeroJTAG.
+	 * @brief Check to see if the device supports \b NeroProg.
 	 *
-	 * \b NeroJTAG is a simple JTAG-over-USB protocol, currently implemented for Atmel AVR and
-	 * Cypress FX2. It uses bulk endpoints 2 and 4. An affirmative response means you can call
-	 * \c flPlaySVF() and \c jtagScanChain().
+	 * \b NeroProg is the collective name for all the various programming algorithms supported by
+	 * FPGALink, including but not limited to JTAG. An affirmative response means you are free to
+	 * call \c flProgram(), \c jtagScanChain(), \c jtagOpen(), \c jtagClose(), \c jtagShift(),
+	 * \c jtagClockFSM() and \c jtagClocks().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @returns An 8-bit integer: 1 if the device supports NeroJTAG, else 0.
 	 */
-	DLLEXPORT(bool) flIsNeroCapable(struct FLContext *handle);
+	DLLEXPORT(uint8) flIsNeroCapable(struct FLContext *handle);
 
 	/**
 	 * @brief Check to see if the device supports \b CommFPGA.
 	 *
-	 * \b CommFPGA is a simple channel read/write protocol using USB bulk endpoints 6 and 8. This
-	 * only returns whether the micro itself supports the protocol, not whether the target logic
-	 * device has been configured with a suitable design implementing the other end of the protocol.
-	 * An affirmative response means you are free to call \c flReadChannel(), \c flWriteChannel()
-	 * and \c flIsFPGARunning().
+	 * \b CommFPGA is a set of channel read/write protocols. The micro may implement several
+	 * different CommFPGA protocols, distinguished by the chosen conduit. A micro will typically
+	 * implement its first CommFPGA protocol on conduit 0x01, and additional protocols on conduit
+	 * 0x02, 0x03 etc. Conduit 0x00 is reserved for communication over JTAG using a virtual TAP
+	 * state machine implemented in the FPGA.
 	 *
-	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
+	 * This function returns 0x01 if the micro supports CommFPGA on the chosen conduit, else 0x00.
+	 *
+	 * Note that this function only knows the capabilities of the micro itself; it cannot determine
+	 * whether the FPGA contains suitable logic to implement the protocol, or even whether there is
+	 * an FPGA physically wired to the micro in the first place.
+	 *
+	 * An affirmative response means you are free to call \c flReadChannel(),
+	 * \c flReadChannelAsyncSubmit(), \c flReadChannelAsyncAwait(), \c flWriteChannel(),
+	 * \c flWriteChannelAsync() and \c flIsFPGARunning().
+	 *
+	 * This function merely returns information determined by \c flOpen(), so it cannot fail.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @returns An 8-bit integer: 1 if the device supports \b CommFPGA, else 0.
+	 * @param conduit The conduit you're interested in (this will typically be 0x01).
+	 * @returns An 8-bit integer: 0x01 if the device supports \b CommFPGA, else 0x00.
 	 */
-	DLLEXPORT(bool) flIsCommCapable(struct FLContext *handle);
+	DLLEXPORT(uint8) flIsCommCapable(struct FLContext *handle, uint8 conduit);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
@@ -241,8 +257,8 @@ extern "C" {
 	 * \c flIsCommCapable().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param isRunning A pointer to an 8-bit integer which will be set on exit to 1 if available
-	 *            else 0.
+	 * @param isRunning A pointer to an 8-bit integer which will be set on exit to 0x01 if the FPGA
+	 *            is running, else 0x00.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -254,7 +270,7 @@ extern "C" {
 	 *     - \c FL_USB_ERR if the device no longer responds.
 	 */
 	DLLEXPORT(FLStatus) flIsFPGARunning(
-		struct FLContext *handle, bool *isRunning, const char **error
+		struct FLContext *handle, uint8 *isRunning, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -659,8 +675,8 @@ extern "C" {
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 
-	DLLEXPORT(FLStatus) flFifoMode(
-		struct FLContext *handle, uint8 fifoMode, const char **error
+	DLLEXPORT(FLStatus) flSelectConduit(
+		struct FLContext *handle, uint8 conduit, const char **error
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flProgram(
@@ -703,6 +719,9 @@ extern "C" {
 		struct FLContext *handle, uint32 numClocks, const char **error
 	) WARN_UNUSED_RESULT;
 
+	DLLEXPORT(void) flSetAsyncWriteChunkSize(
+		struct FLContext *handle, uint16 chunkSize
+	);
 
 	DLLEXPORT(FLStatus) flWriteChannelAsync(
 		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
@@ -710,6 +729,10 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flFlushAsyncWrites(
+		struct FLContext *handle, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flAwaitAsyncWrites(
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 

@@ -53,6 +53,7 @@ extern "C" {
 		struct CompletionReport completionReport;
 		uint8 *writeBuf;
 		uint8 *writePtr;
+		uint32 chunkSize;
 	};
 
 	// Utility functions for manipulating big-endian words

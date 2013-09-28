@@ -54,7 +54,7 @@ int main(int argc, const char *argv[]) {
 	const char *error = NULL;
 	uint8 byte = 0x10;
 	uint8 buf[256];
-	bool flag;
+	uint8 flag;
 	bool isNeroCapable, isCommCapable;
 	uint32 fileLen;
 	uint8 *buffer = NULL;
@@ -162,7 +162,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	isNeroCapable = flIsNeroCapable(handle);
-	isCommCapable = flIsCommCapable(handle);
+	isCommCapable = flIsCommCapable(handle, 0x01);
 	if ( queryPort ) {
 		if ( isNeroCapable ) {
 			status = jtagScanChain(handle, queryPort, &numDevices, scanChain, 16, &error);
@@ -197,8 +197,8 @@ int main(int argc, const char *argv[]) {
 			struct ReadReport readReport;
 			uint32 j;
 			uint16 checksum;
-			printf("Enabling FIFO mode...\n");
-			status = flFifoMode(handle, true, &error);
+			printf("Selecting conduit 0x01...\n");
+			status = flSelectConduit(handle, 0x01, &error);
 			CHECK_STATUS(status, 21, cleanup);
 
 			// Do some synchronous writes

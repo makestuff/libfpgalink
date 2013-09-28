@@ -45,11 +45,13 @@ DLLEXPORT(void) flFreeError(const char *err) {
 // Return with true in isAvailable if the given VID:PID[:DID] is available.
 //
 DLLEXPORT(FLStatus) flIsDeviceAvailable(
-	const char *vp, bool *isAvailable, const char **error)
+	const char *vp, uint8 *isAvailable, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
-	USBStatus uStatus = usbIsDeviceAvailable(vp, isAvailable, error);
+	bool flag;
+	USBStatus uStatus = usbIsDeviceAvailable(vp, &flag, error);
 	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flIsDeviceAvailable()");
+	*isAvailable = flag ? 0x01 : 0x00;
 cleanup:
 	return retVal;
 }
@@ -87,6 +89,7 @@ DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char
 		newCxt->commOutEP = (commEndpoints >> 4);
 		newCxt->commInEP = (commEndpoints & 0x0F);
 	}
+	newCxt->chunkSize = 0x10000;  // default maximum libusbwrap chunk size
 	*handle = newCxt;
 	return retVal;
 cleanup:
@@ -123,20 +126,44 @@ DLLEXPORT(void) flClose(struct FLContext *handle) {
 
 // Check to see if the device supports NeroProg.
 //
-DLLEXPORT(bool) flIsNeroCapable(struct FLContext *handle) {
-	return handle->isNeroCapable;
+DLLEXPORT(uint8) flIsNeroCapable(struct FLContext *handle) {
+	return handle->isNeroCapable ? 0x01 : 0x00;
 }
 
 // Check to see if the device supports CommFPGA.
 //
-DLLEXPORT(bool) flIsCommCapable(struct FLContext *handle) {
-	return handle->isCommCapable;
+DLLEXPORT(uint8) flIsCommCapable(struct FLContext *handle, uint8 conduit) {
+	// TODO: actually consider conduit
+	(void)conduit;
+	return handle->isCommCapable ? 0x01 : 0x00;
 }
 
-// Return with true in isRunning if the firmware thinks the FPGA is running.
+// Select the conduit that should be used to communicate with the FPGA. Each device may support one
+// or more different conduits to the same FPGA, or different FPGAs.
+//
+DLLEXPORT(FLStatus) flSelectConduit(
+	struct FLContext *handle, uint8 conduit, const char **error)
+{
+	FLStatus retVal = FL_SUCCESS;
+	USBStatus uStatus = usbControlWrite(
+		handle->device,
+		0x80,              // bRequest
+		0x0000,            // wValue
+		(uint16)conduit,   // wIndex
+		NULL,              // buffer to receive current state of ports
+		0,                 // wLength
+		1000,              // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flSelectConduit()");
+cleanup:
+	return retVal;
+}
+
+// Return with 0x01 in isRunning if the firmware thinks the FPGA is running.
 //
 DLLEXPORT(FLStatus) flIsFPGARunning(
-	struct FLContext *handle, bool *isRunning, const char **error)
+	struct FLContext *handle, uint8 *isRunning, const char **error)
 {
 	FLStatus retVal;
 	uint8 statusBuffer[16];
@@ -145,17 +172,16 @@ DLLEXPORT(FLStatus) flIsFPGARunning(
 		"flIsFPGARunning(): This device does not support CommFPGA");
 	retVal = getStatus(handle, statusBuffer, error);
 	CHECK_STATUS(retVal, retVal, cleanup, "flIsFPGARunning()");
-	*isRunning = (statusBuffer[5] & 0x01) ? true : false;
+	*isRunning = (statusBuffer[5] & 0x01) ? 0x01 : 0x00;
 cleanup:
 	return retVal;
 }
 
-// TODO: fix 65536 magic number: it should be tunable.
 static FLStatus bufferAppend(
 	struct FLContext *handle, const uint8 *data, uint32 count, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
-	uint32 spaceAvailable = 65536 - (uint32)(handle->writePtr - handle->writeBuf);
+	uint32 spaceAvailable = handle->chunkSize - (uint32)(handle->writePtr - handle->writeBuf);
 	size_t queueDepth = usbNumOutstandingRequests(handle->device);
 	USBStatus uStatus;
 	while ( count > spaceAvailable ) {
@@ -174,7 +200,7 @@ static FLStatus bufferAppend(
 		
 		// Submit it
 		uStatus = usbBulkWriteAsyncSubmit(
-			handle->device, handle->commOutEP, 65536, U32MAX, error);
+			handle->device, handle->commOutEP, handle->chunkSize, U32MAX, error);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "bufferAppend()");
 		queueDepth++;
 		
@@ -182,7 +208,7 @@ static FLStatus bufferAppend(
 		uStatus = usbBulkWriteAsyncPrepare(handle->device, &handle->writePtr, error);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "bufferAppend()");
 		handle->writeBuf = handle->writePtr;
-		spaceAvailable = 65536;
+		spaceAvailable = handle->chunkSize;
 	}
 	if ( count == spaceAvailable ) {
 		// Reduce the depth of the work queue a little
@@ -200,7 +226,7 @@ static FLStatus bufferAppend(
 		
 		// Submit it
 		uStatus = usbBulkWriteAsyncSubmit(
-			handle->device, handle->commOutEP, 65536, U32MAX, error);
+			handle->device, handle->commOutEP, handle->chunkSize, U32MAX, error);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "bufferAppend()");
 		queueDepth++;
 
@@ -215,6 +241,14 @@ cleanup:
 	return retVal;
 }
 
+DLLEXPORT(void) flSetAsyncWriteChunkSize(struct FLContext *handle, uint16 chunkSize) {
+	if ( chunkSize ) {
+		handle->chunkSize = chunkSize;
+	} else {
+		handle->chunkSize = 0x10000;
+	}
+}
+
 DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
@@ -226,6 +260,27 @@ DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **er
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flFlushAsyncWrites()");
 		handle->writePtr = handle->writeBuf = NULL;
 	}
+cleanup:
+	return retVal;
+}
+
+DLLEXPORT(FLStatus) flAwaitAsyncWrites(struct FLContext *handle, const char **error) {
+	FLStatus retVal = FL_SUCCESS, fStatus;
+	USBStatus uStatus;
+	size_t queueDepth;
+	fStatus = flFlushAsyncWrites(handle, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flAwaitAsyncWrites()");
+	queueDepth = usbNumOutstandingRequests(handle->device);
+	while ( queueDepth && !handle->completionReport.flags.isRead ) {
+		uStatus = usbBulkAwaitCompletion(
+			handle->device, &handle->completionReport, error
+		);
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flAwaitAsyncWrites()");
+		queueDepth--;
+	}
+	CHECK_STATUS(
+		queueDepth, FL_PROTOCOL_ERR, cleanup,
+		"flAwaitAsyncWrites(): An asynchronous read is in flight");
 cleanup:
 	return retVal;
 }
@@ -469,28 +524,6 @@ DLLEXPORT(FLStatus) flResetToggle(
 		error
 	);
 	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flResetToggle()");
-cleanup:
-	return retVal;
-}
-
-// Select the conduit that should be used to communicate with the FPGA. Each device may support one
-// or more different conduits to the same FPGA, or different FPGAs.
-//
-DLLEXPORT(FLStatus) flFifoMode(
-	struct FLContext *handle, uint8 fifoMode, const char **error)
-{
-	FLStatus retVal = FL_SUCCESS;
-	USBStatus uStatus = usbControlWrite(
-		handle->device,
-		0x80,              // bRequest
-		0x0000,            // wValue
-		(uint16)fifoMode,  // wIndex
-		NULL,              // buffer to receive current state of ports
-		0,                 // wLength
-		1000,              // timeout (ms)
-		error
-	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flFifoMode()");
 cleanup:
 	return retVal;
 }

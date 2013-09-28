@@ -387,7 +387,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	} while ( initStatus || doneStatus );
 
 	// Now it's safe to switch to conduit mode zero (=JTAG, etc)
-	fStatus = flFifoMode(handle, 0x00, error);
+	fStatus = flSelectConduit(handle, 0x00, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 
 	// Apply requested configuration to each specified pin
