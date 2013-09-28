@@ -401,9 +401,21 @@ DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 		count > 0x10000, FL_USB_ERR, cleanup,
 		"flReadChannelAsyncSubmit(): Transfer length exceeds 0x10000");
 
+	// Write command
+	if ( !handle->writePtr ) {
+		// There is not an active write buffer
+		uStatus = usbBulkWriteAsyncPrepare(handle->device, &handle->writePtr, error);
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWriteChannelAsync()");
+		handle->writeBuf = handle->writePtr;
+	}
+	command[0] = chan | 0x80;
+	flWriteLong(count, command+1);
+	fStatus = bufferAppend(handle, command, 5, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannelAsyncSubmit()");
+
 	// Flush outstanding async writes
 	fStatus = flFlushAsyncWrites(handle, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
+	CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannelAsyncSubmit()");
 
 	// Maybe do a few awaits, to keep things balanced
 	queueDepth = usbNumOutstandingRequests(handle->device);
@@ -414,21 +426,6 @@ DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannelAsyncSubmit()");
 		queueDepth--;
 	}
-
-	// Send read command
-	// TODO: probably better to do the command write asynchronously because it could then
-	//       just be appended to the existing write buffer before the flush above.
-	command[0] = chan | 0x80;
-	flWriteLong(count, command+1);
-	uStatus = usbBulkWriteAsync(
-		handle->device,
-		handle->commOutEP,  // endpoint to write
-		command,            // command to send
-		5,                  // channel and four length bytes
-		0xFFFFFFFFU,        // max timeout: 49 days
-		error
-	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannelAsyncSubmit()");
 
 	// Then request the data
 	uStatus = usbBulkReadAsync(
