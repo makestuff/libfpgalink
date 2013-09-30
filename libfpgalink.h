@@ -21,9 +21,9 @@
  * The <b>FPGALink</b> library makes it easier to talk to an FPGA over USB (via a suitable micro).
  *
  * It performs three classes of function:
- * - Load device firmware and EEPROM (specific to Cypress FX2LP)
- * - Play an SVF, XSVF or CSVF file into a JTAG chain for FPGA programming
- * - Read and write (over USB) up to 128 byte-wide data channels in the target FPGA
+ * - Load device firmware and EEPROM (specific to Cypress FX2LP).
+ * - Play an SVF, XSVF or CSVF file into a JTAG chain for FPGA programming.
+ * - Read and write (over USB) up to 128 byte-wide data channels in the target FPGA.
  */
 #ifndef FPGALINK_H
 #define FPGALINK_H
@@ -38,9 +38,18 @@ extern "C" {
 	// Type declarations
 	// ---------------------------------------------------------------------------------------------
 	/**
-	 * @name Enumerations
+	 * @name Types
 	 * @{
 	 */
+	/**
+	 * Report struct used by \c flReadChannelAsyncAwait().
+	 */
+	struct ReadReport {
+		const uint8 *data;     ///< The result of the asynchronous read.
+		uint32 requestLength;  ///< The number of bytes requested.
+		uint32 actualLength;   ///< The number of bytes actualy read.
+	};
+
 	/**
 	 * Return codes from the functions.
 	 */
@@ -72,15 +81,21 @@ extern "C" {
 		FL_PROG_CLOCKS,          ///< There was a problem issuing clocks during programming.
 		FL_INTERNAL_ERR          ///< An internal error occurred. Please report it!
 	} FLStatus;
+
+	/**
+	 * Enum used by \c flSingleBitPortAccess() to configure the pin direction and drive.
+	 */
+	typedef enum {
+		UNUSED, ///< These aren't the droids you're looking for. Move along.
+		HIGH,   ///< Configure the pin as an output and drive it high.
+		LOW,    ///< Configure the pin as an output and drive it low.
+		INPUT   ///< Configure the pin as an input.
+	} PinConfig;
 	//@}
+
 
 	struct FLContext;        // Opaque context type
 	struct Buffer;           // Forward declaration of Buffer
-	struct ReadReport {
-		const uint8 *data;
-		uint32 requestLength;
-		uint32 actualLength;
-	};
 
 	// ---------------------------------------------------------------------------------------------
 	// Miscellaneous functions
@@ -330,72 +345,6 @@ extern "C" {
 		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
 		const char **error
 	) WARN_UNUSED_RESULT;
-
-	/**
-	 * @brief Append a write command to the end of the write buffer.
-	 *
-	 * The write buffer is like a notepad onto which one or more FPGA channel write commands can be
-	 * written by calls to this function. The current state of the notepad can then be played in one
-	 * go (by \c flPlayWriteBuffer()) or written (by \c flFlashStandardFirmware()) to the FX2's
-	 * EEPROM for execution on power-on.
-	 *
-	 * You'll notice that apart from the lack of a \c timeout parameter, the signature of this
-	 * function is identical to that of \c flWriteChannel(), but rather than executing the write
-	 * immediately, it just appends the write command to the write buffer for playback later.
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 * @param chan The FPGA channel to write.
-	 * @param count The number of bytes to write.
-	 * @param data The address of the array of bytes to be written to the FPGA.
-	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
-	 * @returns
-	 *     - \c FL_SUCCESS if the write command was successfully appended to the write buffer.
-	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
-	 */
-	DLLEXPORT(FLStatus) flAppendWriteChannelCommand(
-		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data, const char **error
-	) WARN_UNUSED_RESULT;
-
-	/**
-	 * @brief Play the write buffer into the \b FPGALink device immediately.
-	 *
-	 * Appending several small (i.e <10KiB) channel writes to the write buffer and playing them in
-	 * one go is more efficient than making several calls to \c flWriteChannel().
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 * @param timeout The time to wait (in milliseconds) for the operation to complete before giving
-	 *            up.
-	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
-	 * @returns
-	 *     - \c FL_SUCCESS if the write buffer played successfully.
-	 *     - \c FL_WBUF_ERR if there was no write buffer.
-	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
-	 */
-	DLLEXPORT(FLStatus) flPlayWriteBuffer(
-		struct FLContext *handle, uint32 timeout, const char **error
-	) WARN_UNUSED_RESULT;
-
-	/**
-	 * @brief Clean the write buffer (if any).
-	 * 
-	 * The write buffer is like a notepad onto which one or more FPGA channel write commands can be
-	 * written (by \c flAppendWriteChannelCommand()). The current state of the notepad can then be
-	 * played in one go (by \c flPlayWriteBuffer()) or written (by \c flFlashStandardFirmware()) to
-	 * the FX2's EEPROM for execution on power-on.
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 */
-	DLLEXPORT(void) flCleanWriteBuffer(
-		struct FLContext *handle
-	);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
@@ -460,7 +409,6 @@ extern "C" {
 	 *
 	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
 	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) that you \b want the FX2 device to be.
-	 * @param jtagPort A string describing the JTAG port, e.g "D0234".
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -497,9 +445,6 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) you want the FX2 to be on power-on.
-	 * @param jtagPort A string describing the JTAG port, e.g "D0234".
-	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
-	 * @param xsvfFile An SVF, XSVF or CSVF file to play on power-up, or \c NULL.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -649,10 +594,11 @@ extern "C" {
 	 * are actually available) and the high order bytes access port D.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param portWrite Value to write to the port lines.
-	 * @param ddr Value to write to the DDR registers.
-	 * @param portRead Pointer to a \c uint16 to be populated with the value read back from the port
-	 *            lines. May be \c NULL if you're not interested.
+	 * @param portNumber Which port to use (i.e 0=PortA, 1=PortB, 2=PortC, etc).
+	 * @param bitNumber The bit within the chosen port to use.
+	 * @param pinConfig Either INPUT, HIGH or LOW.
+	 * @param pinRead Pointer to a <code>uint8</code> to be set on exit to 0x00 or 0x01 depending on
+	 *            the current state of the pin. May be \c NULL if you're not interested.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -664,7 +610,7 @@ extern "C" {
 	 */
 	DLLEXPORT(FLStatus) flSingleBitPortAccess(
 		struct FLContext *handle, uint8 portNumber, uint8 bitNumber,
-		bool drive, bool high, bool *pinRead, const char **error
+		PinConfig pinConfig, uint8 *pinRead, const char **error
 	) WARN_UNUSED_RESULT;
 
 	DLLEXPORT(FLStatus) flMultiBitPortAccess(
@@ -688,10 +634,6 @@ extern "C" {
 		const char **error
 	) WARN_UNUSED_RESULT;
 
-	// Special values for inData parameter of jtagShift() declared below
-	#define ZEROS (const uint8*)NULL
-	#define ONES (ZEROS - 1)
-
 	DLLEXPORT(FLStatus) jtagOpen(
 		struct FLContext *handle, const char *portConfig, const char **error
 	) WARN_UNUSED_RESULT;
@@ -700,12 +642,18 @@ extern "C" {
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 
+	// Special values for inData parameter of jtagShift() declared below
+	// @cond NEVER
+	#define ZEROS (const uint8*)NULL
+	#define ONES (ZEROS - 1)
+	// @endcond
+
 	// Shift "numBits" bits from "inData" into TDI, at the same time shifting the same number of
 	// bits from TDO into "outData". If "isLast" is true, leave Shift-DR state on final bit. If you
 	// want inData to be all zeros or all ones, you can use ZEROS or ONES respectively. This is more
 	// efficient than physically sending an array containing all zeros or all 0xFFs.
 	DLLEXPORT(FLStatus) jtagShift(
-		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, bool isLast,
+		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, uint8 isLast,
 		const char **error
 	) WARN_UNUSED_RESULT;
 	
