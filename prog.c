@@ -426,13 +426,13 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		} else if ( initStatus ) {
 			// If DONE remains low and INIT remains high, we probably just need more clocks
 			i++;
-			CHECK_STATUS(i == 10, FL_JTAG_ERR, cleanup, "xProgram(): DONE did not assert");
+			CHECK_STATUS(i == 10, FL_PROG_ERR, cleanup, "xProgram(): DONE did not assert");
 			fStatus = dataWrite(handle, progOp, zeroBlock, 64, lookupTable, error);
 			CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 		} else {
 			// If DONE remains low and INIT goes low, an error occurred
 			CHECK_STATUS(
-				true, FL_JTAG_ERR, cleanup,
+				true, FL_PROG_ERR, cleanup,
 				"xProgram(): INIT unexpectedly low (CRC error during config)");
 		}
 	}

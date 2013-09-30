@@ -57,12 +57,9 @@ extern "C" {
 		FL_SUCCESS = 0,          ///< The operation completed successfully.
 		FL_ALLOC_ERR,            ///< There was a memory allocation error.
 		FL_USB_ERR,              ///< There was some USB-related problem.
-		FL_PROTOCOL_ERR,         ///< The device is probably not a valid \b FPGALink device.
-		//FL_SYNC_ERR,             ///< The library was unable to synchronise the device's bulk endpoints.
+		FL_PROTOCOL_ERR,         ///< The device is probably not a valid FPGALink device.
 		FL_FX2_ERR,              ///< There was some problem talking to the FX2 chip.
-		FL_JTAG_ERR,             ///< There was some problem with the \b NeroJTAG interface.
 		FL_FILE_ERR,             ///< There was a file-related problem.
-		FL_WBUF_ERR,             ///< There was some problem with the write buffer.
 		FL_BUF_INIT_ERR,         ///< The CSVF buffer could not be allocated.
 		FL_BUF_APPEND_ERR,       ///< The CSVF buffer could not be grown.
 		FL_BUF_LOAD_ERR,         ///< The XSVF file could not be loaded.
@@ -79,6 +76,7 @@ extern "C" {
 		FL_PROG_SVF_COMPARE,     ///< An SVF compare operation failed.
 		FL_PROG_SVF_UNKNOWN_CMD, ///< An unknown SVF command was encountered.
 		FL_PROG_CLOCKS,          ///< There was a problem issuing clocks during programming.
+		FL_PROG_ERR,             ///< The device failed to start after programmign.
 		FL_BAD_STATE,            ///< You're trying to do something that is illegal in this state.
 		FL_INTERNAL_ERR          ///< An internal error occurred. Please report it!
 	} FLStatus;
@@ -139,12 +137,12 @@ extern "C" {
 	 * @{
 	 */
 	/**
-	 * @brief Open a connection to the \b FPGALink device at the specified VID & PID.
+	 * @brief Open a connection to the FPGALink device at the specified VID & PID.
 	 *
-	 * Connects to the device and verifies it is an \b FPGALink device, then queries its
+	 * Connects to the device and verifies it is an FPGALink device, then queries its
 	 * capabilities and synchronises the USB bulk endpoints.
 	 *
-	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device. You may also specify
+	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the FPGALink device. You may also specify
 	 *            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
 	 *            selects the first device with matching VID:PID.
 	 * @param handle A pointer to a <code>struct FLContext*</code> which will be set on exit to
@@ -159,7 +157,7 @@ extern "C" {
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (\c *handle is valid).
 	 *     - \c FL_USB_ERR if the VID:PID is invalid or the device cannot be found or opened.
-	 *     - \c FL_PROTOCOL_ERR if the device is not an \b FPGALink device.
+	 *     - \c FL_PROTOCOL_ERR if the device is not an FPGALink device.
 	 *     - \c FL_SYNC_ERR if the bulk endpoint pairs cannot be synchronised.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
@@ -168,7 +166,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Close the connection to the \b FPGALink device.
+	 * @brief Close the connection to the FPGALink device.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 */
@@ -187,7 +185,7 @@ extern "C" {
 	/**
 	 * @brief Check if the given device is actually connected to the system.
 	 *
-	 * The \b LibUSB devices in the system are searched for a device with the given VID:PID.
+	 * The LibUSB devices in the system are searched for a device with the given VID:PID.
 	 *
 	 * There is a short period of time following a call to \c flLoadStandardFirmware() or
 	 * \c flLoadCustomFirmware() during which this function will still return true for the
@@ -195,7 +193,7 @@ extern "C" {
 	 * calling this function, or alternatively just ensure that the "new" VID:PID is different from
 	 * the "current" VID:PID to avoid such false positives.
 	 *
-	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the \b FPGALink device. You may also specify
+	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the FPGALink device. You may also specify
 	 *            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
 	 *            selects the first device with matching VID:PID.
 	 * @param isAvailable A pointer to an 8-bit integer which will be set on exit to 1 if available
@@ -215,9 +213,9 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Check to see if the device supports \b NeroProg.
+	 * @brief Check to see if the device supports NeroProg.
 	 *
-	 * \b NeroProg is the collective name for all the various programming algorithms supported by
+	 * NeroProg is the collective name for all the various programming algorithms supported by
 	 * FPGALink, including but not limited to JTAG. An affirmative response means you are free to
 	 * call \c flProgram(), \c jtagScanChain(), \c jtagOpen(), \c jtagClose(), \c jtagShift(),
 	 * \c jtagClockFSM() and \c jtagClocks().
@@ -225,14 +223,14 @@ extern "C" {
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @returns An 8-bit integer: 1 if the device supports NeroJTAG, else 0.
+	 * @returns An 8-bit integer: 1 if the device supports NeroProg, else 0.
 	 */
 	DLLEXPORT(uint8) flIsNeroCapable(struct FLContext *handle);
 
 	/**
-	 * @brief Check to see if the device supports \b CommFPGA.
+	 * @brief Check to see if the device supports CommFPGA.
 	 *
-	 * \b CommFPGA is a set of channel read/write protocols. The micro may implement several
+	 * CommFPGA is a set of channel read/write protocols. The micro may implement several
 	 * different CommFPGA protocols, distinguished by the chosen conduit. A micro will typically
 	 * implement its first CommFPGA protocol on conduit 1, and additional protocols on conduit
 	 * 0x02, 0x03 etc. Conduit 0 is reserved for communication over JTAG using a virtual TAP
@@ -252,7 +250,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param conduit The conduit you're interested in (this will typically be 1).
-	 * @returns An 8-bit integer: 1 if the device supports \b CommFPGA, else 0.
+	 * @returns An 8-bit integer: 1 if the device supports CommFPGA, else 0.
 	 */
 	DLLEXPORT(uint8) flIsCommCapable(struct FLContext *handle, uint8 conduit);
 	//@}
@@ -300,8 +298,8 @@ extern "C" {
 	 * This may only be called if \c flIsCommCapable() returns true. It merely verifies that
 	 * the FPGA is asserting that it's ready to read commands on the chosen conduit. Some conduits
 	 * may not have the capability to determine this, and will therefore just optimistically report
-	 * true. Before calling \c flIsFPGARunning(), you should verify that the \b FPGALink device
-	 * actually supports \b CommFPGA using \c flIsCommCapable(), and select the conduit you wish to
+	 * true. Before calling \c flIsFPGARunning(), you should verify that the FPGALink device
+	 * actually supports CommFPGA using \c flIsCommCapable(), and select the conduit you wish to
 	 * use.
 	 *
 	 * @param handle The handle returned by \c flOpen().
@@ -314,7 +312,7 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (<code>*isRunning</code> is valid).
-	 *     - \c FL_PROTOCOL_ERR if the device does not support \b CommFPGA.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 *     - \c FL_USB_ERR if the device no longer responds.
 	 */
 	DLLEXPORT(FLStatus) flIsFPGARunning(
@@ -325,8 +323,8 @@ extern "C" {
 	 * @brief Synchronously read the specified channel into the supplied buffer.
 	 *
 	 * Read \c count bytes from the FPGA channel \c chan to the \c data array. Before calling
-	 * \c flReadChannel(), you should verify that the \b FPGALink device actually supports
-	 * \b CommFPGA using \c flIsCommCapable().
+	 * \c flReadChannel(), you should verify that the FPGALink device actually supports
+	 * CommFPGA using \c flIsCommCapable().
 	 *
 	 * Because this function is synchronous, it will block until the data has been returned.
 	 *
@@ -341,8 +339,9 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the read completed successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support \b CommFPGA.
-	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
+	 *     - \c FL_BAD_STATE if there are async reads in progress.
+	 *     - \c FL_USB_ERR if a USB error occurred.
 	 */
 	DLLEXPORT(FLStatus) flReadChannel(
 		struct FLContext *handle, uint8 chan, uint32 count, uint8 *buf,
@@ -353,8 +352,8 @@ extern "C" {
 	 * @brief Synchronously write the supplied data to the specified channel.
 	 *
 	 * Write \c count bytes from the \c data array to FPGA channel \c chan. Before calling
-	 * \c flWriteChannel(), you should verify that the \b FPGALink device actually supports
-	 * \b CommFPGA using \c flIsCommCapable().
+	 * \c flWriteChannel(), you should verify that the FPGALink device actually supports
+	 * CommFPGA using \c flIsCommCapable().
 	 *
 	 * Because this function is synchronous, it will block until the OS has confirmed that the data
 	 * has been correctly sent over USB and received by the micro. It cannot confirm that the data
@@ -371,8 +370,9 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the write completed successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support \b CommFPGA.
-	 *     - \c FL_USB_ERR if a USB error (including timeout) occurred.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
+	 *     - \c FL_BAD_STATE if there are async reads in progress.
+	 *     - \c FL_USB_ERR if a USB error occurred.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannel(
 		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
@@ -380,30 +380,174 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Set the chunk size to be used in future calls to \c flWriteChannelAsync().
+	 * @brief Set the chunk size to be used for future async writes.
 	 *
+	 * By default, the \c flWriteChannelAsync() function buffers up to 64KiB of data before sending
+	 * anything over USB. Chunking the data in this way is more efficient than sending lots of little
+	 * messages. However, the choice of chunk size affects the steady-state throughput in interesting
+	 * ways. If you need to, you can choose to make the chunks smaller than 64KiB.
+	 *
+	 * You should not call this when there is some send data buffered. You should either call this
+	 * before the first call to \c flWriteChannelAsync(), or call it immediately after a call to
+	 * \c flFlushAsyncWrites().
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param chunkSize The new chunksize in bytes. Passing zero sets the chunkSize to 64KiB.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_BAD_STATE if there is some outstanding send data.
 	 */
 	DLLEXPORT(FLStatus) flSetAsyncWriteChunkSize(
 		struct FLContext *handle, uint16 chunkSize, const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Asynchronously write the supplied data to the specified channel.
+	 *
+	 * Write \c count bytes from the \c data array to FPGA channel \c chan. Before calling
+	 * \c flWriteChannelAsync(), you should verify that the FPGALink device actually supports
+	 * CommFPGA using \c flIsCommCapable().
+	 *
+	 * This function is asynchronous. That means it will return immediately, usually before anything
+	 * has been actually sent over USB. If the operation fails, you will not be notified of the
+	 * failure until a future call to \c flAwaitAsyncWrites() or \c flReadChannelAsyncAwait(). The
+	 * data is copied internally, so there's no need to worry about preserving the data: it's safe to
+	 * call \c flWriteChannelAsync() on a stack-allocated array, for example.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param chan The FPGA channel to write.
+	 * @param count The number of bytes to write.
+	 * @param data The address of the array of bytes to be written to the FPGA.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
+	 *     - \c FL_ALLOC_ERR if we ran out of memory.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 */
 	DLLEXPORT(FLStatus) flWriteChannelAsync(
 		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Flush any outstanding writes.
+	 *
+	 * Flush any writes that have been buffered up, or do nothing if no writes have been buffered.
+	 * This only triggers the send over USB; it does not guarantee the micro successfully received
+	 * the data. See \c flAwaitAsyncWrites().
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 */
 	DLLEXPORT(FLStatus) flFlushAsyncWrites(
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Actually wait for confirmation that async writes were received by the micro.
+	 *
+	 * The first thing this does is to call \c flFlushAsyncWrites() to flush out any outstanding
+	 * write commands. It will then block until the OS confirms that all the asynchronous write
+	 * commands sent by \c flWriteChannelAsync() were correctly sent over USB and recieved by the
+	 * micro. It cannot confirm that that the writes were received by the FPGA however: they may be
+	 * waiting in the micro's output buffer.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
+	 *     - \c FL_BAD_STATE if there are async reads in progress.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 */
 	DLLEXPORT(FLStatus) flAwaitAsyncWrites(
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Submit an asynchronous read on the specified channel.
+	 *
+	 * Submit an asynchronous read of \c count bytes from the FPGA channel \c chan. You can request
+	 * at most 64KiB of data asynchronously. Before calling \c flReadChannelAsyncSubmit(), you should
+	 * verify that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
+	 *
+	 * This function is asynchronous. That means it will return immediately, usually before the read
+	 * request has been sent over USB. You will not find out the result of the read until you later
+	 * call \c flReadChannelAsyncAwait() - this will give you your data, or tell you what went wrong.
+	 *
+	 * You should always ensure that for each call to \c flReadChannelAsyncSubmit(), there is a
+	 * matching call to \c flReadChannelAsyncAwait(). You should not call any of
+	 * \c flSetAsyncWriteChunkSize(), \c flAwaitAsyncWrites(), \c flWriteChannel() or
+	 * \c flReadChannel() between a submit...await pair.
+	 *
+	 * USB host controllers typically need just one level of nesting of submit...await pairs to keep
+	 * them busy. That means sequences like submit, submit, await, submit, await, submit, ..., await,
+	 * await.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param chan The FPGA channel to read.
+	 * @param count The number of bytes to read. Must be <= 64KiB.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the read completed successfully.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 */
 	DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 		struct FLContext *handle, uint8 chan, uint32 count, const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Await the result of a previous call to \c flReadChannelAsyncSubmit().
+	 *
+	 * Block until the outcome of a previous call to \c flReadChannelAsyncSubmit() is known. If the
+	 * read was successful, you are given the resulting data. If not, an error code/message.
+	 *
+	 * On successful outcome, the \c ReadReport structure is populated with a pointer to the data,
+	 * the number of bytes read, etc. This is an "out" parameter: the current state of the struct
+	 * is not considered. It remains unchanged on failure.
+	 *
+	 * The data returned is stored in an internal buffer. It is guaranteed to remain valid until your
+	 * next call to any of the CommFPGA functions.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param readReport A pointer to a <code>struct ReadReport</code> which will be populated with
+	 *            the result of successful read, or left unchanged in the event of an error.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the read completed successfully.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 */
 	DLLEXPORT(FLStatus) flReadChannelAsyncAwait(
 		struct FLContext *handle, struct ReadReport *readReport, const char **error
 	) WARN_UNUSED_RESULT;
@@ -413,7 +557,7 @@ extern "C" {
 	// JTAG functions (only if flIsNeroCapable() returns true)
 	// ---------------------------------------------------------------------------------------------
 	/**
-	 * @name NeroJTAG Operations
+	 * @name JTAG Operations
 	 * @{
 	 */
 	/**
@@ -437,7 +581,7 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the write completed successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support \b NeroJTAG.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support NeroProg.
 	 *     - \c FL_JTAG_ERR if an error occurred during the JTAG operation.
 	 */
 	DLLEXPORT(FLStatus) jtagScanChain(
@@ -455,7 +599,7 @@ extern "C" {
 	 * @{
 	 */
 	/**
-	 * @brief Load standard \b FPGALink firmware into the FX2's RAM.
+	 * @brief Load standard FPGALink firmware into the FX2's RAM.
 	 *
 	 * Load the FX2 chip at the "current" VID:PID with a precompiled firmware such that it will
 	 * renumerate as the "new" VID:PID. The firmware is loaded into RAM, so the change is not
@@ -487,7 +631,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Flash standard \b FPGALink firmware into the FX2's EEPROM, optionally appending an
+	 * @brief Flash standard FPGALink firmware into the FX2's EEPROM, optionally appending an
 	 * SVF, XSVF or CSVF initialisation stream and an FPGA initialisation stream.
 	 *
 	 * @warning This function will make permanent changes to your hardware. Remember to make a

@@ -261,6 +261,9 @@ DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **er
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
 	if ( handle->writePtr && handle->writeBuf && handle->writePtr > handle->writeBuf ) {
+		CHECK_STATUS(
+			!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
+			"flFlushAsyncWrites(): This device does not support CommFPGA");
 		uStatus = usbBulkWriteAsyncSubmit(
 			handle->device, handle->commOutEP,
 			(uint32)(handle->writePtr - handle->writeBuf),
@@ -287,7 +290,7 @@ DLLEXPORT(FLStatus) flAwaitAsyncWrites(struct FLContext *handle, const char **er
 		queueDepth--;
 	}
 	CHECK_STATUS(
-		queueDepth, FL_PROTOCOL_ERR, cleanup,
+		queueDepth, FL_BAD_STATE, cleanup,
 		"flAwaitAsyncWrites(): An asynchronous read is in flight");
 cleanup:
 	return retVal;
@@ -320,7 +323,7 @@ DLLEXPORT(FLStatus) flWriteChannel(
 		queueDepth--;
 	}
 	CHECK_STATUS(
-		queueDepth, FL_PROTOCOL_ERR, cleanup,
+		queueDepth, FL_BAD_STATE, cleanup,
 		"flWriteChannel(): Cannot do synchronous writes when an asynchronous read is in flight");
 
 	// Proceed with the write
@@ -365,7 +368,7 @@ DLLEXPORT(FLStatus) flWriteChannelAsync(
 	if ( !handle->writePtr ) {
 		// There is not an active write buffer
 		uStatus = usbBulkWriteAsyncPrepare(handle->device, &handle->writePtr, error);
-		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flWriteChannelAsync()");
+		CHECK_STATUS(uStatus, FL_ALLOC_ERR, cleanup, "flWriteChannelAsync()");
 		handle->writeBuf = handle->writePtr;
 	}
 	command[0] = chan & 0x7F;
@@ -408,7 +411,7 @@ DLLEXPORT(FLStatus) flReadChannel(
 		queueDepth--;
 	}
 	CHECK_STATUS(
-		queueDepth, FL_PROTOCOL_ERR, cleanup,
+		queueDepth, FL_BAD_STATE, cleanup,
 		"flReadChannel(): Cannot do synchronous reads when an asynchronous read is in flight");
 
 	// Proceed with the read
