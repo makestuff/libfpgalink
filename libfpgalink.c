@@ -241,12 +241,20 @@ cleanup:
 	return retVal;
 }
 
-DLLEXPORT(void) flSetAsyncWriteChunkSize(struct FLContext *handle, uint16 chunkSize) {
+DLLEXPORT(FLStatus) flSetAsyncWriteChunkSize(
+	struct FLContext *handle, uint16 chunkSize, const char **error)
+{
+	FLStatus retVal = FL_SUCCESS;
+	CHECK_STATUS(
+		handle->writePtr, FL_BAD_STATE, cleanup,
+		"flSetAsyncWriteChunkSize(): cannot change chunk size when there's some data pending");
 	if ( chunkSize ) {
 		handle->chunkSize = chunkSize;
 	} else {
 		handle->chunkSize = 0x10000;
 	}
+cleanup:
+	return retVal;
 }
 
 DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **error) {
