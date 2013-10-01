@@ -317,7 +317,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	int i;
 	char ch;
 	CHECK_STATUS(
-		progOp != PROG_PARALLEL && progOp != PROG_SERIAL, FL_INTERNAL_ERR, cleanup,
+		progOp != PROG_PARALLEL && progOp != PROG_SERIAL, FL_CONF_FORMAT, cleanup,
 		"xProgram(): unsupported ProgOp");
 	EXPECT_CHAR(':', "xProgram");
 
@@ -783,14 +783,14 @@ DLLEXPORT(FLStatus) flProgram(
 			progFile++;
 		}
 		CHECK_STATUS(
-			*progFile == '0', FL_CONF_FORMAT, cleanup,
+			*progFile == '\0', FL_CONF_FORMAT, cleanup,
 			"flProgram(): portConfig terminated before first ':'");
 		progFile++;
 		while ( *progFile && *progFile != ':' ) {
 			progFile++;
 		}
 		CHECK_STATUS(
-			*progFile == '0', FL_CONF_FORMAT, cleanup,
+			*progFile == '\0', FL_CONF_FORMAT, cleanup,
 			"flProgram(): progFile was NULL, and portConfig didn't specify a file");
 		progFile++;
 	}
