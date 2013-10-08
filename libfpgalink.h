@@ -60,23 +60,21 @@ extern "C" {
 		FL_PROTOCOL_ERR,         ///< The device is probably not a valid FPGALink device.
 		FL_FX2_ERR,              ///< There was some problem talking to the FX2 chip.
 		FL_FILE_ERR,             ///< There was a file-related problem.
-		FL_BUF_INIT_ERR,         ///< The CSVF buffer could not be allocated.
-		FL_BUF_APPEND_ERR,       ///< The CSVF buffer could not be grown.
-		FL_BUF_LOAD_ERR,         ///< The XSVF file could not be loaded.
 		FL_UNSUPPORTED_CMD_ERR,  ///< The XSVF file contains an unsupported command.
 		FL_UNSUPPORTED_DATA_ERR, ///< The XSVF file contains an unsupported XENDIR or XENDDR.
 		FL_UNSUPPORTED_SIZE_ERR, ///< The XSVF file requires more buffer space than is available.
-		FL_SVF_PARSE_ERR,        ///< The SVF file was not parseable.
-		FL_CONF_FORMAT,          ///< The supplied programing config was not parseable.
-		FL_PROG_PORTMAP,         ///< There was a problem remapping ports for programming.
+		FL_SVF_PARSE_ERR,        ///< The SVF file is not parseable.
+		FL_CONF_FORMAT,          ///< The supplied programming config is malformed.
+		FL_PROG_PORT_MAP,        ///< There was a problem remapping ports for programming.
 		FL_PROG_SEND,            ///< There was a problem sending data during programming.
 		FL_PROG_RECV,            ///< There was a problem receiving data during programming.
 		FL_PROG_SHIFT,           ///< There was a problem with the requested shift operation.
 		FL_PROG_JTAG_FSM,        ///< There was a problem navigating the JTAG state machine.
+		FL_PROG_JTAG_CLOCKS,     ///< There was a problem issuing clocks during programming.
 		FL_PROG_SVF_COMPARE,     ///< An SVF compare operation failed.
 		FL_PROG_SVF_UNKNOWN_CMD, ///< An unknown SVF command was encountered.
-		FL_PROG_CLOCKS,          ///< There was a problem issuing clocks during programming.
 		FL_PROG_ERR,             ///< The device failed to start after programmign.
+		FL_PORT_IO,              ///< There was a problem doing port I/O.
 		FL_BAD_STATE,            ///< You're trying to do something that is illegal in this state.
 		FL_INTERNAL_ERR          ///< An internal error occurred. Please report it!
 	} FLStatus;
@@ -156,10 +154,9 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (\c *handle is valid).
+	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 *     - \c FL_USB_ERR if the VID:PID is invalid or the device cannot be found or opened.
 	 *     - \c FL_PROTOCOL_ERR if the device is not an FPGALink device.
-	 *     - \c FL_SYNC_ERR if the bulk endpoint pairs cannot be synchronised.
-	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flOpen(
 		const char *vp, struct FLContext **handle, const char **error
@@ -285,7 +282,7 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if all is well (<code>*isRunning</code> is valid).
+	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if the device doesn't respond, or the conduit is out of range.
 	 */
 	DLLEXPORT(FLStatus) flSelectConduit(
@@ -313,7 +310,6 @@ extern "C" {
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (<code>*isRunning</code> is valid).
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
-	 *     - \c FL_USB_ERR if the device no longer responds.
 	 */
 	DLLEXPORT(FLStatus) flIsFPGARunning(
 		struct FLContext *handle, uint8 *isRunning, const char **error
@@ -338,10 +334,10 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the read completed successfully.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if a USB read or write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 *     - \c FL_BAD_STATE if there are async reads in progress.
-	 *     - \c FL_USB_ERR if a USB error occurred.
 	 */
 	DLLEXPORT(FLStatus) flReadChannel(
 		struct FLContext *handle, uint8 chan, uint32 count, uint8 *buf,
@@ -369,10 +365,10 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if a USB write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 *     - \c FL_BAD_STATE if there are async reads in progress.
-	 *     - \c FL_USB_ERR if a USB error occurred.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannel(
 		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
@@ -399,7 +395,7 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_BAD_STATE if there is some outstanding send data.
 	 */
 	DLLEXPORT(FLStatus) flSetAsyncWriteChunkSize(
@@ -429,10 +425,10 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the write completed successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_ALLOC_ERR if we ran out of memory.
-	 *     - \c FL_USB_ERR if a USB error occurred.
+	 *     - \c FL_USB_ERR if a USB write error occurred.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannelAsync(
 		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
@@ -453,9 +449,9 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if a USB write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
-	 *     - \c FL_USB_ERR if a USB error occurred.
 	 */
 	DLLEXPORT(FLStatus) flFlushAsyncWrites(
 		struct FLContext *handle, const char **error
@@ -477,10 +473,10 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the write completed successfully.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if one of the outstanding async operations failed.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 *     - \c FL_BAD_STATE if there are async reads in progress.
-	 *     - \c FL_USB_ERR if a USB error occurred.
 	 */
 	DLLEXPORT(FLStatus) flAwaitAsyncWrites(
 		struct FLContext *handle, const char **error
@@ -515,16 +511,16 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the read completed successfully.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if a USB read or write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
-	 *     - \c FL_USB_ERR if a USB error occurred.
 	 */
 	DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 		struct FLContext *handle, uint8 chan, uint32 count, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Await the result of a previous call to \c flReadChannelAsyncSubmit().
+	 * @brief Await the result of a previous async read.
 	 *
 	 * Block until the outcome of a previous call to \c flReadChannelAsyncSubmit() is known. If the
 	 * read was successful, you are given the resulting data. If not, an error code/message.
@@ -545,21 +541,167 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the read completed successfully.
-	 *     - \c FL_USB_ERR if a USB error occurred.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if one of the outstanding async operations failed.
 	 */
 	DLLEXPORT(FLStatus) flReadChannelAsyncAwait(
 		struct FLContext *handle, struct ReadReport *readReport, const char **error
 	) WARN_UNUSED_RESULT;
+
+	/**
+	 * Under some circumstances (e.g a Linux VM running on a Windows VirtualBox host talking to an
+	 * FX2-based FPGALink device), it's necessary to manually reset the USB endpoints before
+	 * doing any reads or writes. I admit this is hacky, and probably represents a bug somewhere.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 */
+	DLLEXPORT(FLStatus) flResetToggle(
+		struct FLContext *handle, const char **error
+	) WARN_UNUSED_RESULT;
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
-	// JTAG functions (only if flIsNeroCapable() returns true)
+	// NeroProg functions (only if flIsNeroCapable() returns true)
 	// ---------------------------------------------------------------------------------------------
 	/**
-	 * @name JTAG Operations
+	 * @name NeroProg Operations
 	 * @{
 	 */
+	/**
+	 * @brief Program a device using the specified file.
+	 *
+	 * This will program an FPGA or CPLD using the specified microcontroller ports and the specified
+	 * programming file. Several programming algorithms are supported (JTAG, Xilinx Slave-Serial and
+	 * Xilinx SelectMap). In each case, it's necessary to tell the micro which ports to use. Here are
+	 * some examples:
+	 *
+	 * A Digilent board using JTAG: <code>progConfig="J:D0D2D3D4"</code>:
+	 * - TDO: PD0
+	 * - TDI: PD2
+	 * - TMS: PD3
+	 * - TCK: PD4
+	 *
+	 * MakeStuff LX9 using JTAG: <code>progConfig="J:A7A0A3A1"</code>:
+	 * - TDO: PA7
+	 * - TDI: PA0
+	 * - TMS: PA3
+	 * - TCK: PA1
+	 *
+	 * Aessent aes220 using Xilinx Slave-Serial: <code>progConfig="XS:D0D5D1D6A7[D3?,B1+,B5+,B3+]"</code>:
+	 * - PROG_B: PD0
+	 * - INIT_B: PD5
+	 * - DONE: PD1
+	 * - CCLK: PD6
+	 * - DIN: PA7
+	 * - Tristate DOUT (PD3)
+	 * - Drive M[2:0]="111" (PB1, PB5, PB3) for Slave-Serial
+	 *
+	 * Aessent aes220 using Xilinx SelectMAP: <code>progConfig="XP:D0D5D1D6A01234567[B4-,D2-,D3?,B1+,B5+,B3-]"</code>:
+	 * - PROG_B: PD0
+	 * - INIT_B: PD5
+	 * - DONE: PD1
+	 * - CCLK: PD6
+	 * - D[7:0]: PA[7:0]
+	 * - Drive RDWR_B="0" (PB4)
+	 * - Drive CSI_B="0" (PD2)
+	 * - Tristate DOUT (PD3)
+	 * - Drive M[2:0]="110" (PB1, PB5, PB3) for SelectMAP
+	 *
+	 * Note that this approach of specifying and implementing many disparate programming algorithms
+	 * on the host side in terms of a much smaller set of building-block operations on the
+	 * microcontroller is optimized for microcontrollers which support efficient remapping of I/O
+	 * pins. For example the FX2 has a Von Neumann architecture where both code and data are stored
+	 * in a single RAM-based address space, so port remapping can easily be achieved with
+	 * self-modifying code. Conversely, the AVRs have Harvard architecture, where code and data are
+	 * in separate address spaces, with code in flash so it cannot be self-modified. And actually,
+	 * the AVR firmware is more likely to be tuned to a specific board layout than the more generic
+	 * FX2 firmware.
+	 *
+	 * So, the bottom line is, even if you're using a microcontroller whose port pins are hard-coded,
+	 * you still have to supply the port pins to use when you call functions expecting \c progConfig.
+	 *
+	 * You can either append the programming filename to the end of \c progConfig (e.g
+	 * \c "J:A7A0A3A1:fpga.xsvf") or you can supply the programming filename separately in
+	 * \c progFile.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param progConfig The port configuration described above.
+	 * @param progFile The name of the programming file, or NULL if it's already given in progConfig.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_ALLOC_ERR if we ran out of memory during programming.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 *     - \c FL_FILE_ERR if the programming file is unreadable or an unexpected format.
+	 *     - \c FL_UNSUPPORTED_CMD_ERR if an XSVF file contains an unsupported command.
+	 *     - \c FL_UNSUPPORTED_DATA_ERR if an XSVF file contains an unsupported XENDDR/XENDIR.
+	 *     - \c FL_UNSUPPORTED_SIZE_ERR if an XSVF command is too long.
+	 *     - \c FL_SVF_PARSE_ERR if an SVF file is unparseable.
+	 *     - \c FL_CONF_FORMAT if \c progConfig is malformed.
+	 *     - \c FL_PROG_PORT_MAP if the micro was unable to map its ports to those given.
+	 *     - \c FL_PROG_SEND if the micro refused to accept programming data.
+	 *     - \c FL_PROG_RECV if the micro refused to provide programming data.
+	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
+	 *     - \c FL_PROG_JTAG_FSM if the micro refused to navigate the TAP state-machine.
+	 *     - \c FL_PROG_JTAG_CLOCKS if the micro refused to send JTAG clocks.
+	 *     - \c FL_PROG_SVF_COMPARE if an SVF/XSVF compare operation failed.
+	 *     - \c FL_PROG_SVF_UNKNOWN_CMD if an SVF/XSVF unknown command was encountered.
+	 *     - \c FL_PROG_ERR if the FPGA failed to start after programming.
+	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
+	 */
+	DLLEXPORT(FLStatus) flProgram(
+		struct FLContext *handle, const char *progConfig, const char *progFile, const char **error
+	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Program a device using the specified programming blob.
+	 *
+	 * This is similar to \c flProgram(), except that instead of reading the programming information
+	 * from a file, it runs the programming operation from a binary blob already stored in memory.
+	 * For JTAG programming this is assumed to be a CSVF file; for Xilinx programming it is assumed
+	 * to be a raw bitstream (.bin) file.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param progConfig The port configuration described in \c flProgram().
+	 * @param blobData A pointer to the start of the programming data.
+	 * @param blobLength The number of bytes of programming data.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_USB_ERR if a USB error occurred.
+	 *     - \c FL_CONF_FORMAT if \c progConfig is malformed.
+	 *     - \c FL_PROG_PORT_MAP if the micro was unable to map its ports to those given.
+	 *     - \c FL_PROG_SEND if the micro refused to accept programming data.
+	 *     - \c FL_PROG_RECV if the micro refused to provide programming data.
+	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
+	 *     - \c FL_PROG_JTAG_FSM if the micro refused to navigate the TAP state-machine.
+	 *     - \c FL_PROG_JTAG_CLOCKS if the micro refused to send JTAG clocks.
+	 *     - \c FL_PROG_SVF_COMPARE if an SVF/XSVF compare operation failed.
+	 *     - \c FL_PROG_SVF_UNKNOWN_CMD if an SVF/XSVF unknown command was encountered.
+	 *     - \c FL_PROG_ERR if the FPGA failed to start after programming.
+	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
+	 */
+	DLLEXPORT(FLStatus) flProgramBlob(
+		struct FLContext *handle, const char *progConfig, const uint8 *blobData, uint32 blobLength,
+		const char **error
+	) WARN_UNUSED_RESULT;
+
 	/**
 	 * @brief Scan the JTAG chain and return an array of IDCODEs.
 	 *
@@ -580,14 +722,139 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the write completed successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support NeroProg.
-	 *     - \c FL_JTAG_ERR if an error occurred during the JTAG operation.
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_CONF_FORMAT if \c portConfig is malformed.
+	 *     - \c FL_PROG_PORT_MAP if the micro was unable to map its ports to those given.
+	 *     - \c FL_PROG_SEND if the micro refused to accept programming data.
+	 *     - \c FL_PROG_RECV if the micro refused to provide programming data.
+	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
+	 *     - \c FL_PROG_JTAG_FSM if the micro refused to navigate the TAP state-machine.
+	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
 	 */
 	DLLEXPORT(FLStatus) jtagScanChain(
 		struct FLContext *handle, const char *portConfig,
 		uint32 *numDevices, uint32 *deviceArray, uint32 arraySize,
 		const char **error
+	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Open a JTAG connection.
+	 *
+	 * Open a JTAG connection using the supplied \c portConfig. You must open a JTAG connection
+	 * before calling \c jtagShift(), \c jtagClockFSM() or \c jtagClocks(). And you must close the
+	 * connection when you're finished with \c jtagClose().
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param portConfig The port bits to use for TDO, TDI, TMS & TCK, or NULL to use the default.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_CONF_FORMAT if \c portConfig is malformed.
+	 *     - \c FL_PROG_PORTMAP if the micro refused to map its ports to those given.
+	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
+	 */
+	DLLEXPORT(FLStatus) jtagOpen(
+		struct FLContext *handle, const char *portConfig, const char **error
+	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Close a JTAG connection.
+	 *
+	 * Close a JTAG connection previously opened by \c jtagOpen(), and tri-state the four JTAG lines.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
+	 */
+	DLLEXPORT(FLStatus) jtagClose(
+		struct FLContext *handle, const char **error
+	) WARN_UNUSED_RESULT;
+
+	// Special values for inData parameter of jtagShift() declared below
+	// @cond NEVER
+	#define ZEROS (const uint8*)NULL
+	#define ONES (ZEROS - 1)
+	// @endcond
+
+	/**
+	 * @brief Shift data into and out of the JTAG state-machine.
+	 *
+	 * Shift \c numBits bits from \c inData into TDI, at the same time shifting the same number of
+	 * bits from TDO into \c outData. If \c isLast is nonzero, leave the TAP state-machine in
+	 * Shift-xR, otherwise Exit1-xR. If you want \c inData to be all zeros you can use \c ZEROS, or
+	 * if you want it to be all ones you can use \c ONES. This is more efficient than exlicitly
+	 * sending an array containing all zeros or all 0xFFs.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param numBits The number of bits to clock into the JTAG state-machine.
+	 * @param inData A pointer to the source data, or \c ZEROS or \c ONES.
+	 * @param outData A pointer to a buffer to receive output data, or NULL if you don't care.
+	 * @param isLast Either 0 to remain in Shift-xR, or 1 to exit to Exit1-xR.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_PROG_SEND if the micro refused to accept programming data.
+	 *     - \c FL_PROG_RECV if the micro refused to provide programming data.
+	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
+	 */
+	DLLEXPORT(FLStatus) jtagShift(
+		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, uint8 isLast,
+		const char **error
+	) WARN_UNUSED_RESULT;
+	
+	/**
+	 * @brief Clock \c transitionCount bits from \c bitPattern into TMS, starting with the LSB.
+	 *
+	 * Navigate the TAP state-machine by clocking an arbitrary sequence of bits into TMS.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param bitPattern The pattern of bits to clock into TMS, LSB first.
+	 * @param transitionCount The number of bits to clock.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_PROG_JTAG_FSM if the micro refused to navigate the TAP state-machine.
+	 */
+	DLLEXPORT(FLStatus) jtagClockFSM(
+		struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error
+	) WARN_UNUSED_RESULT;
+	
+	/**
+	 * @brief Toggle TCK \c numClocks times.
+	 *
+	 * Put \c numClocks clocks out on TCK.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param numClocks The number of clocks to put out on TCK.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_PROG_JTAG_CLOCKS if the micro refused to send JTAG clocks.
+	 */
+	DLLEXPORT(FLStatus) jtagClocks(
+		struct FLContext *handle, uint32 numClocks, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
 
@@ -607,12 +874,6 @@ extern "C" {
 	 * the renumeration to complete by calling \c flIsDeviceAvailable() repeatedly until the "new"
 	 * VID:PID becomes active.
 	 *
-	 * In addition to the "new" VID:PID, you can also customise the port pins used for JTAG
-	 * operations. For this you must specify an FX2 port (C or D) and the bits within that port to
-	 * be used for TDO, TDI, TMS and TCK respectively. For example, the port specification "D0234"
-	 * means PD0=TDO, PD2=TDI, PD3=TMS and PD4=TCK, and is appropriate for Digilent boards (Nexys2,
-	 * Nexys3, Atlys etc).
-	 *
 	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
 	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) that you \b want the FX2 device to be.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
@@ -622,32 +883,22 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
+	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 *     - \c FL_USB_ERR if one of the VID:PIDs was invalid or the current VID:PID was not found.
 	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
-	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 */
 	DLLEXPORT(FLStatus) flLoadStandardFirmware(
 		const char *curVidPid, const char *newVidPid, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Flash standard FPGALink firmware into the FX2's EEPROM, optionally appending an
-	 * SVF, XSVF or CSVF initialisation stream and an FPGA initialisation stream.
+	 * @brief Flash standard FPGALink firmware into the FX2's EEPROM.
 	 *
 	 * @warning This function will make permanent changes to your hardware. Remember to make a
 	 * backup copy of the existing EEPROM firmware with \c flSaveFirmware() before calling it.
 	 *
-	 * Load a precompiled firmware into the FX2's EEPROM such that it will enumerate on power-on as
-	 * the "new" VID:PID. If \c xsvfFile is not \c NULL, its contents are compressed and appended to
-	 * the end of the FX2 firmware, and played into the JTAG chain on power-on. If a write buffer
-	 * has been built (by calls to \c flAppendWriteChannelCommand()), this will be appended to the
-	 * end of the FPGA configuration data and will be played into the FPGA on power-on config.
-	 *
-	 * In addition to the "new" VID:PID, you can also customise the port pins used for JTAG
-	 * operations. For this you must specify an FX2 port (C or D) and the bits within that port to
-	 * be used for TDO, TDI, TMS and TCK respectively. For example, the port specification "D0234"
-	 * means PD0=TDO, PD2=TDI, PD3=TMS and PD4=TCK, and is appropriate for Digilent boards (Nexys2,
-	 * Nexys3, Atlys etc).
+	 * Overwrite the FX2's EEPROM with a precompiled FPGALink firmware such that the board will
+	 * enumerate on power-on as the "new" VID:PID.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) you want the FX2 to be on power-on.
@@ -657,10 +908,10 @@ extern "C" {
 	 *            \c NULL, no allocation is done and no message is returned, but the return code
 	 *            will still be valid.
 	 * @returns
-	 *     - \c FL_SUCCESS if the firmware loaded successfully.
-	 *     - \c FL_USB_ERR if the VID:PID was invalid.
-	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2, or the EEPROM was too small.
+	 *     - \c FL_SUCCESS if the firmware flashed successfully.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
+	 *     - \c FL_USB_ERR if the VID:PID was invalid.
+	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
 	 */
 	DLLEXPORT(FLStatus) flFlashStandardFirmware(
 		struct FLContext *handle, const char *newVidPid, const char **error
@@ -682,29 +933,27 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
-	 *     - \c FL_USB_ERR if the VID:PID was invalid.
-	 *     - \c FL_FILE_ERR if the firmware file has a bad extension or could not be loaded.
-	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
+	 *     - \c FL_USB_ERR if the VID:PID was invalid.
+	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
+	 *     - \c FL_FILE_ERR if \c fwFile has a bad extension or could not be loaded.
 	 */
 	DLLEXPORT(FLStatus) flLoadCustomFirmware(
 		const char *curVidPid, const char *fwFile, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Flash a custom firmware from a <code>.hex</code> or <code>.iic</code> file into the
-	 *            FX2's EEPROM.
+	 * @brief Flash a custom firmware from a file into the FX2's EEPROM.
 	 *
 	 * @warning This function will make permanent changes to your hardware. Remember to make a
 	 * backup copy of the existing EEPROM firmware with \c flSaveFirmware() before calling it.
 	 *
-	 * Load a custom firmware from a <code>.hex</code> or <code>.iic</code> file into the FX2's
-	 * EEPROM.
+	 * Overwrite the FX2's EEPROM with a custom firmware from a <code>.hex</code> or
+	 * <code>.iic</code> file.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param fwFile A <code>.hex</code> or <code>.iic</code> file containing new FX2 firmware to be
 	 *            loaded into the FX2's EEPROM.
-	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -712,19 +961,18 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
-	 *     - \c FL_FILE_ERR if the firmware file could not be loaded.
-	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2, or if the EEPROM was too
-	 *            small.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
+	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
+	 *     - \c FL_FILE_ERR if the firmware file could not be loaded.
 	 */
 	DLLEXPORT(FLStatus) flFlashCustomFirmware(
-		struct FLContext *handle, const char *fwFile, uint32 eepromSize, const char **error
+		struct FLContext *handle, const char *fwFile, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Save existing EEPROM data to an <code>.iic</code> file.
+	 * @brief Save existing EEPROM data to a file.
 	 *
-	 * The existing EEPROM firmware is saved to a file, for backup purposes.
+	 * The existing EEPROM firmware is saved to an <code>.iic</code> file, for backup purposes.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
@@ -736,9 +984,9 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
-	 *     - \c FL_FILE_ERR if the firmware file could not be loaded.
-	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
+	 *     - \c FL_FX2_ERR if there was a problem talking to the FX2.
+	 *     - \c FL_FILE_ERR if \c saveFile file could not be written.
 	 */
 	DLLEXPORT(FLStatus) flSaveFirmware(
 		struct FLContext *handle, uint32 eepromSize, const char *saveFile, const char **error
@@ -769,8 +1017,7 @@ extern "C" {
 	 * must be freed later by a call to \c flFreeFile().
 	 *
 	 * @param name The name of the file to load.
-	 * @param length A pointer to a \c uint32 which will be populated on exit with the length of the
-	 *            file.
+	 * @param length A pointer to a \c uint32 which will be populated on exit with the file length.
 	 * @returns A pointer to the allocated buffer, or NULL if the file could not be loaded.
 	 */
 	DLLEXPORT(uint8*) flLoadFile(
@@ -786,21 +1033,13 @@ extern "C" {
 	);
 
 	/**
-	 * @brief Access port lines on the microcontroller
+	 * @brief Configure a single port bit on the microcontroller.
 	 *
-	 * With this function you can set a 16-bit data direction register and write a 16-bit number to
-	 * the corresponding port lines. You can also optionally query the state of the port lines. The
-	 * actual physical ports used will differ from micro to micro.
-	 *
-	 * On the FX2LP, the low order bytes access port D (which is also used for JTAG, so only four
-	 * bits are actually available) and the high order bytes access port C (which is only available
-	 * on the larger FX2LP chips).
-	 *
-	 * On the AVR, the low order bytes access port B (which is also used for JTAG, so only four bits
-	 * are actually available) and the high order bytes access port D.
+	 * With this function you can set a single microcontroller port bit to either \c INPUT, \c HIGH
+	 * or \c LOW, and read back the current state of the bit.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param portNumber Which port to use (i.e 0=PortA, 1=PortB, 2=PortC, etc).
+	 * @param portNumber Which port to configure (i.e 0=PortA, 1=PortB, 2=PortC, etc).
 	 * @param bitNumber The bit within the chosen port to use.
 	 * @param pinConfig Either INPUT, HIGH or LOW.
 	 * @param pinRead Pointer to a <code>uint8</code> to be set on exit to 0 or 1 depending on
@@ -812,63 +1051,38 @@ extern "C" {
 	 *            will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the port access command completed successfully.
-	 *     - \c FL_USB_ERR if the micro failed to respond to the port access command.
+	 *     - \c FL_PORT_IO if the micro failed to respond to the port access command.
 	 */
 	DLLEXPORT(FLStatus) flSingleBitPortAccess(
 		struct FLContext *handle, uint8 portNumber, uint8 bitNumber,
 		PinConfig pinConfig, uint8 *pinRead, const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Configure multiple port bits on the microcontroller.
+	 *
+	 * With this function you can set multiple microcontroller port bits to either \c INPUT, \c HIGH
+	 * or \c LOW, and read back the current state of each bit. This is achieved by sending a
+	 * comma-separated list of port configurations, e.g "A12-,B2+,C7?". A "+" or a "-" suffix sets
+	 * the port as an output, driven high or low respectively, and a "?" suffix sets the port as an
+	 * input. The current state of up to 32 bits are returned in \c readState, LSB first.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param portConfig A comma-separated sequence of port configurations.
+	 * @param readState Pointer to a <code>uint32</code> to be set on exit to the port readback.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the port access command completed successfully.
+	 *     - \c FL_CONF_FORMAT if \c portConfig is malformed.
+	 *     - \c FL_PORT_IO if the micro failed to respond to the port access command.
+	 */
 	DLLEXPORT(FLStatus) flMultiBitPortAccess(
 		struct FLContext *handle, const char *portConfig, uint32 *readState, const char **error
 	) WARN_UNUSED_RESULT;
-
-	DLLEXPORT(FLStatus) flResetToggle(
-		struct FLContext *handle, const char **error
-	) WARN_UNUSED_RESULT;
-
-	DLLEXPORT(FLStatus) flProgram(
-		struct FLContext *handle, const char *portConfig, const char *progFile, const char **error
-	) WARN_UNUSED_RESULT;
-
-	DLLEXPORT(FLStatus) flProgramBlob(
-		struct FLContext *handle, const char *portConfig, const uint8 *blobData, uint32 blobLength,
-		const char **error
-	) WARN_UNUSED_RESULT;
-
-	DLLEXPORT(FLStatus) jtagOpen(
-		struct FLContext *handle, const char *portConfig, const char **error
-	) WARN_UNUSED_RESULT;
-
-	DLLEXPORT(FLStatus) jtagClose(
-		struct FLContext *handle, const char **error
-	) WARN_UNUSED_RESULT;
-
-	// Special values for inData parameter of jtagShift() declared below
-	// @cond NEVER
-	#define ZEROS (const uint8*)NULL
-	#define ONES (ZEROS - 1)
-	// @endcond
-
-	// Shift "numBits" bits from "inData" into TDI, at the same time shifting the same number of
-	// bits from TDO into "outData". If "isLast" is true, leave Shift-DR state on final bit. If you
-	// want inData to be all zeros or all ones, you can use ZEROS or ONES respectively. This is more
-	// efficient than physically sending an array containing all zeros or all 0xFFs.
-	DLLEXPORT(FLStatus) jtagShift(
-		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, uint8 isLast,
-		const char **error
-	) WARN_UNUSED_RESULT;
-	
-	// Clock "transitionCount" bits from "bitPattern" into TMS, starting with the LSB.
-	DLLEXPORT(FLStatus) jtagClockFSM(
-		struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error
-	) WARN_UNUSED_RESULT;
-	
-	// Toggle TCK "numClocks" times.
-	DLLEXPORT(FLStatus) jtagClocks(
-		struct FLContext *handle, uint32 numClocks, const char **error
-	) WARN_UNUSED_RESULT;
-
 	//@}
 
 #ifdef __cplusplus

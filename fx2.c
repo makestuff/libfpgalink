@@ -123,7 +123,7 @@ cleanup:
 
 // Flash custom firmware (.hex or .iic) into the FX2's EEPROM
 DLLEXPORT(FLStatus) flFlashCustomFirmware(
-	struct FLContext *handle, const char *fwFile, uint32 eepromSize, const char **error)
+	struct FLContext *handle, const char *fwFile, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	struct Buffer fwData = {0,};
@@ -155,10 +155,6 @@ DLLEXPORT(FLStatus) flFlashCustomFirmware(
 		bStatus = bufAppendFromBinaryFile(&iicBuf, fwFile, error);
 		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flFlashCustomFirmware()");
 	}
-	CHECK_STATUS(
-		iicBuf.length > (eepromSize << 7), FL_FX2_ERR, cleanup,
-		"flFlashCustomFirmware(): Cannot load %lu bytes into an %lukbit EEPROM!",
-		iicBuf.length, eepromSize);
 	fxStatus = fx2WriteEEPROM(handle->device, iicBuf.data, iicBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flFlashCustomFirmware()");
 cleanup:

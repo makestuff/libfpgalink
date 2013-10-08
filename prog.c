@@ -62,6 +62,8 @@ cleanup:
 	return retVal;
 }
 
+void foo(void);
+
 // Send a chunk of data to the micro on EP1OUT. The previous call to beginShift() specifies what the
 // micro should actually do with the data.
 //
@@ -236,7 +238,7 @@ static FLStatus portMap(
 		1000,              // timeout (ms)
 		error
 	);
-	CHECK_STATUS(uStatus, FL_PROG_PORTMAP, cleanup, "portMap()");
+	CHECK_STATUS(uStatus, FL_PROG_PORT_MAP, cleanup, "portMap()");
 cleanup:
 	return retVal;
 }
@@ -676,7 +678,7 @@ DLLEXPORT(FLStatus) jtagClocks(struct FLContext *handle, uint32 numClocks, const
 		60000,                         // timeout (ms)
 		error
 	);
-	CHECK_STATUS(uStatus, FL_PROG_CLOCKS, cleanup, "jtagClocks()");
+	CHECK_STATUS(uStatus, FL_PROG_JTAG_CLOCKS, cleanup, "jtagClocks()");
 cleanup:
 	return retVal;
 }
@@ -769,8 +771,7 @@ cleanup:
 // it expects to find a filename at the end of portConfig.
 //
 DLLEXPORT(FLStatus) flProgram(
-	struct FLContext *handle, const char *portConfig, const char *progFile, const char **error)
-{
+	struct FLContext *handle, const char *portConfig, const char *progFile, const char **error) {
 	FLStatus retVal = FL_SUCCESS, fStatus;
 	const char algoVendor = portConfig[0];
 	struct Buffer fileBuf = {0,};
@@ -844,7 +845,7 @@ DLLEXPORT(FLStatus) flSingleBitPortAccess(
 		1000,            // timeout (ms)
 		error
 	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flSingleBitPortAccess()");
+	CHECK_STATUS(uStatus, FL_PORT_IO, cleanup, "flSingleBitPortAccess()");
 	if ( pinRead ) {
 		*pinRead = byte;
 	}
