@@ -559,13 +559,13 @@ DLLEXPORT(FLStatus) jtagClose(struct FLContext *handle, const char **error) {
 
 	// Set TDO, TDI, TMS & TCK as inputs
 	fStatus = flSingleBitPortAccess(handle, handle->tdoPort, handle->tdoBit, INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
 	fStatus = flSingleBitPortAccess(handle, handle->tdiPort, handle->tdiBit, INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
 	fStatus = flSingleBitPortAccess(handle, handle->tmsPort, handle->tmsBit, INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
 	fStatus = flSingleBitPortAccess(handle, handle->tckPort, handle->tckBit, INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
 cleanup:
 	return retVal;
 }
