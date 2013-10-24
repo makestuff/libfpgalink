@@ -25,6 +25,7 @@ static uint8 m_flagByte = 0x00;
 
 // Port and bits to use:
 #define JTAG_HWSPI
+
 #ifdef JTAG_HWSPI
 	// These are fixed for a given micro: the SPI pins
 	#define PROG_PORT B
@@ -40,8 +41,6 @@ static uint8 m_flagByte = 0x00;
 	#define bmTDI     0x04
 	#define bmTDO     0x08
 #endif
-#define bmSCLK    bmTDI
-#define bmMOSI    bmTCK
 
 // Make PORT{B,C,D...} & PIN{B,C,D...} macros
 #define PORT CONCAT(PORT, PROG_PORT)
@@ -64,13 +63,12 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 }
 
 #define setTDI(x) if ( x ) { PORT |= bmTDI; } else { PORT &= ~bmTDI; }
-#define setMOSI(x) if ( x ) { PORT |= bmMOSI; } else { PORT &= ~bmMOSI; }
 #define jtagBit(x) setTDI(byte & x); PORT |= bmTCK; PORT &= ~bmTCK
-#define mosiBit(x) setMOSI(byte & x); PORT |= bmSCLK; PORT &= ~bmSCLK
 
 // If the JTAG lines are wired to the right pins on the AVR SPI port, we can use
-// it instead of bit-banging, which is much faster
-//#if (PROG_PORT == B) && (bmTDO == 0x08) && (bmTDI == 0x04) && (bmTMS == 0x01) && (bmTMS == 0x02)
+// it instead of bit-banging, which is much faster. Beware though, if SS is not used
+// as an output, the SPI engine doesn't seem to work.
+//
 #ifdef JTAG_HWSPI
 	// Use SPI hardware!
 
@@ -145,17 +143,6 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 	// Disable the SPI port
 	static inline void spiDisable(void) {
 		// We're bit-banging, so nothing needs to be done
-	}
-#endif
-
-// SCLK-clock the supplied byte into MOSI, LSB first.
-//
-#if bmTCK == bmSCLK && bmTDI == bmMOSI
-	#define mosiShiftOut(x) jtagShiftOut(x)
-#else
-	static void mosiShiftOut(uint8 byte) {
-		mosiBit(0x01); mosiBit(0x02); mosiBit(0x04); mosiBit(0x08);
-		mosiBit(0x10); mosiBit(0x20); mosiBit(0x40); mosiBit(0x80);
 	}
 #endif
 
@@ -355,22 +342,29 @@ static void jtagNotSendingNotReceiving(void) {
 	m_progOp = PROG_NOP;
 }
 
+static void doProgram(void) {
+	uint8 bytesRead;
+	uint8 buf[ENDPOINT_SIZE], *ptr;
+	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+	spiEnable();
+	while ( m_numBits ) {
+		bytesRead = (m_numBits >= ENDPOINT_SIZE) ? ENDPOINT_SIZE : m_numBits;
+		Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
+		ptr = buf;
+		m_numBits -= bytesRead;
+		while ( bytesRead-- ) {
+			jtagShiftOut(*ptr++);
+		}
+	}
+	spiDisable();
+	Endpoint_ClearOUT();
+	m_progOp = PROG_NOP;
+}
+
 // Actually execute the shift operation initiated by progBeginShift(). This is done in a
 // separate method because vendor commands cannot read & write to bulk endpoints.
 //
 void progShiftExecute(void) {
-	#ifdef FOO_DEBUG
-		if ( m_progOp ) {
-			debugSendFlashString(PSTR("progShiftExecute("));
-			debugSendLongHex(m_numBits);
-			debugSendByte(',');
-			debugSendByteHex(m_progOp);
-			debugSendByte(',');
-			debugSendByteHex(m_flagByte);
-			debugSendByte(')');
-			debugSendByte('\r');
-		}
-	#endif
 	switch ( m_progOp ) {
 	case PROG_JTAG_ISSENDING_ISRECEIVING:
 		// The host is giving us data, and is expecting a response (xdr)
@@ -387,12 +381,10 @@ void progShiftExecute(void) {
 	case PROG_JTAG_NOTSENDING_NOTRECEIVING:
 		jtagNotSendingNotReceiving();
 		break;
-	//case PROG_PARALLEL:
-	//	doProgram(true);
-	//	break;
-	//case PROG_SERIAL:
-	//	doProgram(false);
-	//	break;
+	case PROG_SERIAL:
+		doProgram();
+		break;
+	case PROG_PARALLEL:  // Parallel not supported
 	case PROG_NOP:
 	default:
 		break;

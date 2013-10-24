@@ -26,6 +26,7 @@
 #include "prog.h"
 #include "../../vendorCommands.h"
 #include "debug.h"
+#include "date.h"
 
 #define EPP_ADDRSTB (1<<4)
 #define EPP_DATASTB (1<<5)
@@ -39,9 +40,14 @@ void fifoSetEnabled(uint8 mode) {
 	switch(mode) {
 	case 0:
 		// Port C and D inputs, pull-ups off
-		DDRC = 0x00;
+		#ifdef DEBUG
+			DDRC &= DEBUG_MASK;
+			PORTC &= DEBUG_MASK;
+		#else
+			DDRC = 0x00;
+			PORTC = 0x00;
+		#endif
 		DDRD = 0x00;
-		PORTC = 0x00;
 		PORTD = 0x00;
 		break;
 	case 1:
@@ -213,8 +219,28 @@ int main(void) {
 
 	sei();
 	#ifdef DEBUG
+	{
+		// Read the Manufacturer and Product strings and print them on the debug console...
+		uint16 size;
+		const char *addr;
 		debugInit();
-		debugSendFlashString(PSTR("MakeStuff FPGALink/AVR v1.1...\r"));
+		size = CALLBACK_USB_GetDescriptor((DTYPE_String << 8) + 0x01, 0x0000, (const void **)&addr);
+		size = (size >> 1) - 1;
+		addr += 2;
+		while ( size-- ) {
+			debugSendByte(pgm_read_byte(addr));
+			addr += 2;
+		}
+		debugSendByte(' ');
+		size = CALLBACK_USB_GetDescriptor((DTYPE_String << 8) + 0x02, 0x0000, (const void **)&addr);
+		size = (size >> 1) - 1;
+		addr += 2;
+		while ( size-- ) {
+			debugSendByte(pgm_read_byte(addr));
+			addr += 2;
+		}
+		debugSendByte('\r');
+	}
 	#endif
 	USB_Init();
 	for ( ; ; ) {
@@ -229,6 +255,17 @@ int main(void) {
 		}
 	}
 }
+
+#ifdef DEBUG
+	const char Op0[] PROGMEM = "PROG_NOP";
+	const char Op1[] PROGMEM = "PROG_JTAG_ISSENDING_ISRECEIVING";
+	const char Op2[] PROGMEM = "PROG_JTAG_ISSENDING_NOTRECEIVING";
+	const char Op3[] PROGMEM = "PROG_JTAG_NOTSENDING_ISRECEIVING";
+	const char Op4[] PROGMEM = "PROG_JTAG_NOTSENDING_NOTRECEIVING";
+	const char Op5[] PROGMEM = "PROG_PARALLEL";
+	const char Op6[] PROGMEM = "PROG_SERIAL";
+	static const char *opNames[] PROGMEM = { Op0, Op1, Op2, Op3, Op4, Op5, Op6 };
+#endif
 
 #define FIFO_MODE 0x0000
 
@@ -265,15 +302,15 @@ void EVENT_USB_Device_ControlRequest(void) {
 			statusBuffer[2] = 'M';
 			statusBuffer[3] = 'I';
 			statusBuffer[4] = 0x00;                    // Last operation diagnostic code
-			statusBuffer[5] = (PINC & EPP_WAIT)?0x00:0x01;                    // Flags
+			statusBuffer[5] = (PINC & EPP_WAIT)?0x00:0x01;  // Flags
 			statusBuffer[6] = 0x24;                    // NeroJTAG endpoints
 			statusBuffer[7] = 0x24;                    // CommFPGA endpoints
-			statusBuffer[8] = 0x00;                    // Reserved
-			statusBuffer[9] = 0x00;                    // Reserved
-			statusBuffer[10] = 0x00;                   // Reserved
-			statusBuffer[11] = 0x00;                   // Reserved
-			statusBuffer[12] = 0x00;                   // Reserved
-			statusBuffer[13] = 0x00;                   // Reserved
+			statusBuffer[8] = 0xAA;                    // Firmware ID MSB
+			statusBuffer[9] = 0xAA;                    // Firmware ID LSB
+			statusBuffer[10] = (uint8)(DATE>>24);      // Version MSB
+			statusBuffer[11] = (uint8)(DATE>>16);      // Version
+			statusBuffer[12] = (uint8)(DATE>>8);       // Version
+			statusBuffer[13] = (uint8)DATE;            // Version LSB
 			statusBuffer[14] = 0x00;                   // Reserved
 			statusBuffer[15] = 0x00;                   // Reserved
 			Endpoint_Write_Control_Stream_LE(statusBuffer, 16);
@@ -284,19 +321,22 @@ void EVENT_USB_Device_ControlRequest(void) {
 	case CMD_JTAG_CLOCK_DATA:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			uint32 numBits;
+			const ProgOp operation = (ProgOp)USB_ControlRequest.wIndex;
+			const uint8 flagByte = (uint8)USB_ControlRequest.wValue;
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&numBits, 4);
 			#ifdef DEBUG
 				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_DATA("));
 				debugSendLongHex(numBits);
 				debugSendByte(',');
-				debugSendWordHex(USB_ControlRequest.wIndex);
+				debugSendFlashString(
+					(const char*)pgm_read_word(&opNames[operation]));
 				debugSendByte(',');
-				debugSendWordHex(USB_ControlRequest.wValue);
+				debugSendByteHex(flagByte);
 				debugSendByte(')');
 				debugSendByte('\r');
 			#endif
-			progShiftBegin(numBits, (ProgOp)USB_ControlRequest.wIndex, (uint8)USB_ControlRequest.wValue);
+			progShiftBegin(numBits, operation, flagByte);
 			Endpoint_ClearStatusStage();
 			// Now that numBits & flagByte are set, this operation will continue in mainLoop()...
 		}
@@ -308,6 +348,14 @@ void EVENT_USB_Device_ControlRequest(void) {
 			const uint8 transitionCount = (uint8)USB_ControlRequest.wValue;
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&bitPattern, 4);
+			#ifdef DEBUG
+				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_FSM("));
+				debugSendByteHex(transitionCount);
+				debugSendByte(',');
+				debugSendLongHex(bitPattern);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
 			Endpoint_ClearStatusStage();
 			progClockFSM(bitPattern, transitionCount);
 		}

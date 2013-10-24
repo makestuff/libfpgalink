@@ -22,27 +22,27 @@
 
 #ifdef DEBUG
 	void debugInit(void) {
-		DDRC = (1<<2);
-		PORTC = (1<<2);
+		DDRC = DEBUG_MASK;
+		PORTC = DEBUG_MASK;
 	}
 
 	void debugSendByte(uint8 byte) {
 		uint8 i = 8;
 		cli();
-		PORTC &= ~(1<<2);  // PC2 clear
+		PORTC &= ~DEBUG_MASK;  // PC2 clear
 		_delay_loop_1(44);
 		while ( i-- ) {
 			if ( byte & 0x01 ) {
-				PORTC |= (1<<2);
+				PORTC |= DEBUG_MASK;
 			} else {
-				PORTC &= ~(1<<2);
+				PORTC &= ~DEBUG_MASK;
 			}
 			byte >>= 1;
 			//_delay_loop_1(42);  42 43 44 45 46
 			//_delay_loop_1(46);        ^^
 			_delay_loop_1(44);
 		}
-		PORTC |= (1<<2);
+		PORTC |= DEBUG_MASK;
 		_delay_loop_1(44);
 		sei();
 	}

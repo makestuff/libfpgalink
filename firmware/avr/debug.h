@@ -29,6 +29,7 @@
 	void debugSendWordHex(uint16 word);
 	void debugSendLongHex(uint32 word);
 	void debugSendFlashString(const char *str);
+	#define DEBUG_MASK (1<<2)
 #endif
 
 #endif
