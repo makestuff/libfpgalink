@@ -162,7 +162,7 @@ static const char *spaces(ptrdiff_t n) {
 
 #define SET_BIT(port, bit, status, func) \
 	CHECK_STATUS( \
-		pinMap[port][bit] != UNUSED, FL_CONF_FORMAT, cleanup,					\
+		pinMap[port][bit] != PIN_UNUSED, FL_CONF_FORMAT, cleanup,					\
 		func"(): port '%c%d' is already used:\n  %s\n  %s^", port+'A', bit, portConfig, spaces(ptr-portConfig-1)); \
 	pinMap[port][bit] = status
 
@@ -186,11 +186,11 @@ static FLStatus populateMap(
 		GET_PAIR(thisPort, thisBit, "populateMap");
 		GET_CHAR("populateMap");
 		if ( ch == '+' ) {
-			SET_BIT(thisPort, thisBit, HIGH, "populateMap");
+			SET_BIT(thisPort, thisBit, PIN_HIGH, "populateMap");
 		} else if ( ch == '-' ) {
-			SET_BIT(thisPort, thisBit, LOW, "populateMap");
+			SET_BIT(thisPort, thisBit, PIN_LOW, "populateMap");
 		} else if ( ch == '?' ) {
-			SET_BIT(thisPort, thisBit, INPUT, "populateMap");
+			SET_BIT(thisPort, thisBit, PIN_INPUT, "populateMap");
 		} else {
 			CHECK_STATUS(
 				true, FL_CONF_FORMAT, cleanup,
@@ -324,29 +324,29 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	EXPECT_CHAR(':', "xProgram");
 
 	GET_PAIR(progPort, progBit, "xProgram");
-	SET_BIT(progPort, progBit, LOW, "xProgram");
+	SET_BIT(progPort, progBit, PIN_LOW, "xProgram");
 
 	GET_PAIR(initPort, initBit, "xProgram");
-	SET_BIT(initPort, initBit, INPUT, "xProgram");
+	SET_BIT(initPort, initBit, PIN_INPUT, "xProgram");
 
 	GET_PAIR(donePort, doneBit, "xProgram");
-	SET_BIT(donePort, doneBit, INPUT, "xProgram");
+	SET_BIT(donePort, doneBit, PIN_INPUT, "xProgram");
 
 	GET_PAIR(cclkPort, cclkBit, "xProgram");
-	SET_BIT(cclkPort, cclkBit, LOW, "xProgram");
+	SET_BIT(cclkPort, cclkBit, PIN_LOW, "xProgram");
 
 	GET_PORT(dataPort, "xProgram");
 	if ( progOp == PROG_PARALLEL ) {
 		for ( i = 0; i < 8; i++ ) {
 			GET_DIGIT(dataBit[i], "xProgram");
-			SET_BIT(dataPort, dataBit[i], LOW, "xProgram");
+			SET_BIT(dataPort, dataBit[i], PIN_LOW, "xProgram");
 		}
 		makeLookup(dataBit, lookupTable);
 	} else if ( progOp == PROG_SERIAL ) {
 		const uint8 bitOrder[8] = {7,6,5,4,3,2,1,0};
 		makeLookup(bitOrder, lookupTable);
 		GET_BIT(dataBit[0], "xProgram");
-		SET_BIT(dataPort, dataBit[0], LOW, "xProgram");
+		SET_BIT(dataPort, dataBit[0], PIN_LOW, "xProgram");
 	}
 
 	GET_CHAR("xProgram");
@@ -373,16 +373,16 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	}
 
 	// Assert PROG & wait for INIT & DONE to go low
-	fStatus = flSingleBitPortAccess(handle, initPort, initBit, INPUT, NULL, error); // INIT is input
+	fStatus = flSingleBitPortAccess(handle, initPort, initBit, PIN_INPUT, NULL, error); // INIT is input
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-	fStatus = flSingleBitPortAccess(handle, donePort, doneBit, INPUT, NULL, error); // DONE is input
+	fStatus = flSingleBitPortAccess(handle, donePort, doneBit, PIN_INPUT, NULL, error); // DONE is input
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-	fStatus = flSingleBitPortAccess(handle, progPort, progBit, LOW, NULL, error); // PROG is low
+	fStatus = flSingleBitPortAccess(handle, progPort, progBit, PIN_LOW, NULL, error); // PROG is low
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	do {
-		fStatus = flSingleBitPortAccess(handle, initPort, initBit, INPUT, &initStatus, error);
+		fStatus = flSingleBitPortAccess(handle, initPort, initBit, PIN_INPUT, &initStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-		fStatus = flSingleBitPortAccess(handle, donePort, doneBit, INPUT, &doneStatus, error);
+		fStatus = flSingleBitPortAccess(handle, donePort, doneBit, PIN_INPUT, &doneStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	} while ( initStatus || doneStatus );
 
@@ -391,13 +391,13 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 
 	// Apply requested configuration to each specified pin
-	pinMap[progPort][progBit] = UNUSED;
-	pinMap[initPort][initBit] = UNUSED;
-	pinMap[donePort][doneBit] = UNUSED;
+	pinMap[progPort][progBit] = PIN_UNUSED;
+	pinMap[initPort][initBit] = PIN_UNUSED;
+	pinMap[donePort][doneBit] = PIN_UNUSED;
 	for ( port = 0; port < 26; port++ ) {
 		for ( bit = 0; bit < 32; bit++ ) {
 			thisPin = pinMap[port][bit];
-			if ( thisPin != UNUSED ) {
+			if ( thisPin != PIN_UNUSED ) {
 				fStatus = flSingleBitPortAccess(handle, port, bit, thisPin, NULL, error);
 				CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 			}
@@ -405,10 +405,10 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	}
 
 	// Deassert PROG and wait for INIT to go high
-	fStatus = flSingleBitPortAccess(handle, progPort, progBit, HIGH, NULL, error); // PROG is high
+	fStatus = flSingleBitPortAccess(handle, progPort, progBit, PIN_HIGH, NULL, error); // PROG is high
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	do {
-		fStatus = flSingleBitPortAccess(handle, initPort, initBit, INPUT, &initStatus, error);
+		fStatus = flSingleBitPortAccess(handle, initPort, initBit, PIN_INPUT, &initStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	} while ( !initStatus );
 
@@ -418,9 +418,9 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 
 	i = 0;
 	for ( ; ; ) {
-		fStatus = flSingleBitPortAccess(handle, initPort, initBit, INPUT, &initStatus, error);
+		fStatus = flSingleBitPortAccess(handle, initPort, initBit, PIN_INPUT, &initStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-		fStatus = flSingleBitPortAccess(handle, donePort, doneBit, INPUT, &doneStatus, error);
+		fStatus = flSingleBitPortAccess(handle, donePort, doneBit, PIN_INPUT, &doneStatus, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 		if ( doneStatus ) {
 			// If DONE goes high, we've finished.
@@ -443,8 +443,8 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	for ( port = 0; port < 26; port++ ) {
 		for ( bit = 0; bit < 32; bit++ ) {
 			thisPin = pinMap[port][bit];
-			if ( thisPin != UNUSED ) {
-				fStatus = flSingleBitPortAccess(handle, port, bit, INPUT, NULL, error);
+			if ( thisPin != PIN_UNUSED ) {
+				fStatus = flSingleBitPortAccess(handle, port, bit, PIN_INPUT, NULL, error);
 				CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 			}
 		}
@@ -465,33 +465,33 @@ static FLStatus jtagOpenInternal(struct FLContext *handle, const char *portConfi
 
 	// Get all four JTAG bits and tell the micro which ones to use
 	GET_PAIR(tdoPort, tdoBit, "jtagOpen");        // TDO
-	SET_BIT(tdoPort, tdoBit, INPUT, "jtagOpen");
+	SET_BIT(tdoPort, tdoBit, PIN_INPUT, "jtagOpen");
 	fStatus = portMap(handle, PATCH_TDO, tdoPort, tdoBit, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
 
 	GET_PAIR(tdiPort, tdiBit, "jtagOpen");        // TDI
-	SET_BIT(tdiPort, tdiBit, LOW, "jtagOpen");
+	SET_BIT(tdiPort, tdiBit, PIN_LOW, "jtagOpen");
 	fStatus = portMap(handle, PATCH_TDI, tdiPort, tdiBit, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
 
 	GET_PAIR(tmsPort, tmsBit, "jtagOpen");        // TMS
-	SET_BIT(tmsPort, tmsBit, LOW, "jtagOpen");
+	SET_BIT(tmsPort, tmsBit, PIN_LOW, "jtagOpen");
 	fStatus = portMap(handle, PATCH_TMS, tmsPort, tmsBit, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
 
 	GET_PAIR(tckPort, tckBit, "jtagOpen");        // TCK
-	SET_BIT(tckPort, tckBit, LOW, "jtagOpen");
+	SET_BIT(tckPort, tckBit, PIN_LOW, "jtagOpen");
 	fStatus = portMap(handle, PATCH_TCK, tckPort, tckBit, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
 
 	// Set TDO as an input and the other three as outputs
-	fStatus = flSingleBitPortAccess(handle, tdoPort, tdoBit, INPUT, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, tdoPort, tdoBit, PIN_INPUT, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-	fStatus = flSingleBitPortAccess(handle, tdiPort, tdiBit, LOW, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, tdiPort, tdiBit, PIN_LOW, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-	fStatus = flSingleBitPortAccess(handle, tmsPort, tmsBit, LOW, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, tmsPort, tmsBit, PIN_LOW, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-	fStatus = flSingleBitPortAccess(handle, tckPort, tckBit, LOW, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, tckPort, tckBit, PIN_LOW, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
 
 	// Remember the ports and bits for the benefit of jtagClose()
@@ -558,13 +558,13 @@ DLLEXPORT(FLStatus) jtagClose(struct FLContext *handle, const char **error) {
 	FLStatus fStatus;
 
 	// Set TDO, TDI, TMS & TCK as inputs
-	fStatus = flSingleBitPortAccess(handle, handle->tdoPort, handle->tdoBit, INPUT, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, handle->tdoPort, handle->tdoBit, PIN_INPUT, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
-	fStatus = flSingleBitPortAccess(handle, handle->tdiPort, handle->tdiBit, INPUT, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, handle->tdiPort, handle->tdiBit, PIN_INPUT, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
-	fStatus = flSingleBitPortAccess(handle, handle->tmsPort, handle->tmsBit, INPUT, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, handle->tmsPort, handle->tmsBit, PIN_INPUT, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
-	fStatus = flSingleBitPortAccess(handle, handle->tckPort, handle->tckBit, INPUT, NULL, error);
+	fStatus = flSingleBitPortAccess(handle, handle->tckPort, handle->tckBit, PIN_INPUT, NULL, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
 cleanup:
 	return retVal;
@@ -867,11 +867,11 @@ DLLEXPORT(FLStatus) flMultiBitPortAccess(
 		GET_PAIR(thisPort, thisBit, "flMultiBitPortAccess");
 		GET_CHAR("flMultiBitPortAccess");
 		if ( ch == '+' ) {
-			pinConfig = HIGH;
+			pinConfig = PIN_HIGH;
 		} else if ( ch == '-' ) {
-			pinConfig = LOW;
+			pinConfig = PIN_LOW;
 		} else if ( ch == '?' ) {
-			pinConfig = INPUT;
+			pinConfig = PIN_INPUT;
 		} else {
 			CHECK_STATUS(
 				true, FL_CONF_FORMAT, cleanup,

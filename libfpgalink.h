@@ -83,10 +83,10 @@ extern "C" {
 	 * Enum used by \c flSingleBitPortAccess() to configure the pin direction and drive.
 	 */
 	typedef enum {
-		UNUSED, ///< These aren't the droids you're looking for. Move along.
-		HIGH,   ///< Configure the pin as an output and drive it high.
-		LOW,    ///< Configure the pin as an output and drive it low.
-		INPUT   ///< Configure the pin as an input.
+		PIN_UNUSED, ///< These aren't the droids you're looking for. Move along.
+		PIN_HIGH,   ///< Configure the pin as an output and drive it high.
+		PIN_LOW,    ///< Configure the pin as an output and drive it low.
+		PIN_INPUT   ///< Configure the pin as an input.
 	} PinConfig;
 	//@}
 
