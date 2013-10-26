@@ -23,10 +23,7 @@ static uint32 m_numBits = 0UL;
 static ProgOp m_progOp = PROG_NOP;
 static uint8 m_flagByte = 0x00;
 
-// Port and bits to use:
-#define JTAG_HWSPI
-
-#ifdef JTAG_HWSPI
+#if PROG_HWSPI == 1
 	// These are fixed for a given micro: the SPI pins
 	#define PROG_PORT B
 	#define bmTMS     0x01
@@ -69,7 +66,7 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 // it instead of bit-banging, which is much faster. Beware though, if SS is not used
 // as an output, the SPI engine doesn't seem to work.
 //
-#ifdef JTAG_HWSPI
+#if PROG_HWSPI == 1
 	// Use SPI hardware!
 
 	// TCK-clock the supplied byte into TDI, LSB first.

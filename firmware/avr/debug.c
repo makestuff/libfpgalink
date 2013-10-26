@@ -20,7 +20,7 @@
 #include <util/delay_basic.h>
 #include "debug.h"
 
-#ifdef DEBUG
+#if USART_DEBUG == 1
 	void debugInit(void) {
 		DDRC = DEBUG_MASK;
 		PORTC = DEBUG_MASK;

@@ -40,7 +40,7 @@ void fifoSetEnabled(uint8 mode) {
 	switch(mode) {
 	case 0:
 		// Port C and D inputs, pull-ups off
-		#ifdef DEBUG
+		#if USART_DEBUG == 1
 			DDRC &= DEBUG_MASK;
 			PORTC &= DEBUG_MASK;
 		#else
@@ -206,7 +206,9 @@ void doComms(void) {
 // Called once at startup
 //
 int main(void) {
-	REGCR |= (1 << REGDIS);  // Disable regulator: using JTAG supply rail, which may be 3.3V.
+	#if REG_ENABLED == 0
+		REGCR |= (1 << REGDIS);  // Disable regulator: using JTAG supply rail, which may be 3.3V.
+	#endif
 	MCUSR &= ~(1 << WDRF);
 	wdt_disable();
 	clock_prescale_set(clock_div_1);
@@ -218,7 +220,7 @@ int main(void) {
 	DDRD = 0x00;
 
 	sei();
-	#ifdef DEBUG
+	#if USART_DEBUG == 1
 	{
 		// Read the Manufacturer and Product strings and print them on the debug console...
 		uint16 size;
@@ -256,7 +258,7 @@ int main(void) {
 	}
 }
 
-#ifdef DEBUG
+#if USART_DEBUG == 1
 	const char Op0[] PROGMEM = "PROG_NOP";
 	const char Op1[] PROGMEM = "PROG_JTAG_ISSENDING_ISRECEIVING";
 	const char Op2[] PROGMEM = "PROG_JTAG_ISSENDING_NOTRECEIVING";
@@ -325,7 +327,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			const uint8 flagByte = (uint8)USB_ControlRequest.wValue;
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&numBits, 4);
-			#ifdef DEBUG
+			#if USART_DEBUG == 1
 				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_DATA("));
 				debugSendLongHex(numBits);
 				debugSendByte(',');
@@ -348,7 +350,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			const uint8 transitionCount = (uint8)USB_ControlRequest.wValue;
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&bitPattern, 4);
-			#ifdef DEBUG
+			#if USART_DEBUG == 1
 				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_FSM("));
 				debugSendByteHex(transitionCount);
 				debugSendByte(',');
