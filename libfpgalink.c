@@ -306,6 +306,9 @@ DLLEXPORT(FLStatus) flWriteChannel(
 	uint8 command[5];
 	USBStatus uStatus;
 	CHECK_STATUS(
+		count == 0, FL_PROTOCOL_ERR, cleanup,
+		"flWriteChannel(): Zero-length writes are illegal!");
+	CHECK_STATUS(
 		!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
 		"flWriteChannel(): This device does not support CommFPGA");
 
@@ -363,6 +366,9 @@ DLLEXPORT(FLStatus) flWriteChannelAsync(
 	uint8 command[5];
 	USBStatus uStatus;
 	CHECK_STATUS(
+		count == 0, FL_PROTOCOL_ERR, cleanup,
+		"flWriteChannelAsync(): Zero-length writes are illegal!");
+	CHECK_STATUS(
 		!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
 		"flWriteChannelAsync(): This device does not support CommFPGA");
 	if ( !handle->writePtr ) {
@@ -393,6 +399,9 @@ DLLEXPORT(FLStatus) flReadChannel(
 	size_t queueDepth;
 	USBStatus uStatus;
 	uint8 command[5];
+	CHECK_STATUS(
+		count == 0, FL_PROTOCOL_ERR, cleanup,
+		"flReadChannel(): Zero-length reads are illegal!");
 	CHECK_STATUS(
 		!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
 		"flReadChannel(): This device does not support CommFPGA");
@@ -454,7 +463,10 @@ DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 		!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
 		"flReadChannelAsyncSubmit(): This device does not support CommFPGA");
 	CHECK_STATUS(
-		count > 0x10000, FL_USB_ERR, cleanup,
+		count == 0, FL_PROTOCOL_ERR, cleanup,
+		"flReadChannelAsyncSubmit(): Zero-length reads are illegal!");
+	CHECK_STATUS(
+		count > 0x10000, FL_PROTOCOL_ERR, cleanup,
 		"flReadChannelAsyncSubmit(): Transfer length exceeds 0x10000");
 
 	// Write command
