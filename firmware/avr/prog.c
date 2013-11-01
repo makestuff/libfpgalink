@@ -75,7 +75,7 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 		while ( !(SPSR & (1<<SPIF)) );
 	}
 
-	// JTAG-clock the supplied byte into TDI, MSB first. Return the byte clocked out of TDO.
+	// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
 	static inline uint8 jtagShiftInOut(uint8 byte) {
 		SPDR = byte;
 		while ( !(SPSR & (1<<SPIF)) );
@@ -102,7 +102,7 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 		jtagBit(0x10); jtagBit(0x20); jtagBit(0x40); jtagBit(0x80);
 	}
 
-	// JTAG-clock the supplied byte into TDI, MSB first. Return the byte clocked out of TDO.
+	// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
 	static uint8 jtagShiftInOut(uint8 byte) {
 		uint8 tdoByte = 0x00;
 		setTDI(byte & 0x01);
@@ -339,7 +339,7 @@ static void jtagNotSendingNotReceiving(void) {
 	m_progOp = PROG_NOP;
 }
 
-static void doProgram(void) {
+static void spiSend(void) {
 	uint8 bytesRead;
 	uint8 buf[ENDPOINT_SIZE], *ptr;
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
@@ -355,6 +355,51 @@ static void doProgram(void) {
 	}
 	spiDisable();
 	Endpoint_ClearOUT();
+	m_progOp = PROG_NOP;
+}
+
+static void spiSendRecv(void) {
+	uint8 bytesRead, bytesRemaining;
+	uint8 buf[ENDPOINT_SIZE], *ptr;
+	spiEnable();
+	while ( m_numBits ) {
+		bytesRead = (m_numBits >= ENDPOINT_SIZE) ? ENDPOINT_SIZE : m_numBits;
+		Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+		Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
+		ptr = buf;
+		bytesRemaining = bytesRead;
+		while ( bytesRemaining-- ) {
+			*ptr = jtagShiftInOut(*ptr);
+			ptr++;
+		}
+		Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+		Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
+		m_numBits -= bytesRead;
+		Endpoint_ClearIN();
+		Endpoint_ClearOUT();
+	}
+	spiDisable();
+	m_progOp = PROG_NOP;
+}
+
+static void spiRecv(void) {
+	uint8 bytesRead, bytesRemaining;
+	uint8 buf[ENDPOINT_SIZE], *ptr;
+	spiEnable();
+	Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+	while ( m_numBits ) {
+		bytesRead = (m_numBits >= ENDPOINT_SIZE) ? ENDPOINT_SIZE : m_numBits;
+		ptr = buf;
+		bytesRemaining = bytesRead;
+		while ( bytesRemaining-- ) {
+			*ptr = jtagShiftInOut(0x00);
+			ptr++;
+		}
+		Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
+		m_numBits -= bytesRead;
+	}
+	spiDisable();
+	Endpoint_ClearIN();
 	m_progOp = PROG_NOP;
 }
 
@@ -378,8 +423,14 @@ void progShiftExecute(void) {
 	case PROG_JTAG_NOTSENDING_NOTRECEIVING:
 		jtagNotSendingNotReceiving();
 		break;
-	case PROG_SERIAL:
-		doProgram();
+	case PROG_SPI_SEND:
+		spiSend();
+		break;
+	case PROG_SPI_SEND_RECV:
+		spiSendRecv();
+		break;
+	case PROG_SPI_RECV:
+		spiRecv();
 		break;
 	case PROG_PARALLEL:  // Parallel not supported
 	case PROG_NOP:

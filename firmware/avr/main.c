@@ -35,6 +35,9 @@
 
 static uint8 m_fifoMode = 0;
 
+// start LUFA DFU bootloader programmatically
+void Jump_To_Bootloader(void);
+
 void fifoSetEnabled(uint8 mode) {
 	m_fifoMode = mode;
 	switch(mode) {
@@ -218,6 +221,8 @@ int main(void) {
 	DDRB = 0x00;
 	DDRC = 0x00;
 	DDRD = 0x00;
+
+	#include "init.inc"
 
 	sei();
 	#if USART_DEBUG == 1
@@ -417,6 +422,25 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Endpoint_ClearStatusStage();
 		}
 		break;
+
+	case CMD_BOOTLOADER:
+		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
+			Endpoint_ClearSETUP();
+			Endpoint_ClearStatusStage();
+			Jump_To_Bootloader();
+		}
+		break;
+
+	/*case 0x90:
+		if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
+			const uint8 tempByte = MCUSR;
+			MCUSR = 0x00;
+			Endpoint_ClearSETUP();
+			Endpoint_Write_Control_Stream_LE(&tempByte, 1);
+			Endpoint_ClearStatusStage();
+		}
+		break;
+	*/
 	}
 }
 

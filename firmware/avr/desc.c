@@ -46,7 +46,8 @@ static USBConfigurationDescriptor PROGMEM configurationDescriptor = {
 		.TotalInterfaces = 1,
 		.ConfigurationNumber = 1,
 		.ConfigurationStrIndex = NO_DESCRIPTOR,
-		.ConfigAttributes = (USB_CONFIG_ATTR_RESERVED | USB_CONFIG_ATTR_SELFPOWERED),
+		.ConfigAttributes = USB_CONFIG_ATTR_RESERVED,
+		//.ConfigAttributes = (USB_CONFIG_ATTR_RESERVED | USB_CONFIG_ATTR_SELFPOWERED),
 		.MaxPowerConsumption = USB_CONFIG_POWER_MA(100)
 	},
 	.Interface = {
