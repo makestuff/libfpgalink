@@ -23,6 +23,10 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <liberror.h>
+#include <libusbwrap.h>
+#include "private.h"
+#include "vendorCommands.h"
 
 /*
  * Platform-agnostic millisecond sleep function
@@ -72,4 +76,23 @@ DLLEXPORT(uint8*) flLoadFile(const char *name, uint32 *length) {
 
 DLLEXPORT(void) flFreeFile(uint8 *buffer) {
 	free((void*)buffer);
+}
+
+DLLEXPORT(FLStatus) flBootloader(
+	struct FLContext *handle, const char **error)
+{
+	FLStatus retVal = FL_SUCCESS;
+	USBStatus uStatus = usbControlWrite(
+		handle->device,
+		CMD_BOOTLOADER,  // bRequest
+		0x0000,          // wValue
+		0x0000,          // wIndex
+		NULL,            // buffer to receive current state of ports
+		0,               // wLength
+		1000,            // timeout (ms)
+		error
+	);
+	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flBootloader()");
+cleanup:
+	return retVal;
 }

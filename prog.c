@@ -52,7 +52,7 @@ static FLStatus beginShift(
 		CMD_JTAG_CLOCK_DATA,  // bRequest
 		(uint8)mode,          // wValue
 		(uint8)progOp,        // wIndex
-	   countUnion.bytes,     // send count
+		countUnion.bytes,     // send count
 		4,                    // wLength
 		5000,                 // timeout (ms)
 		error
@@ -61,8 +61,6 @@ static FLStatus beginShift(
 cleanup:
 	return retVal;
 }
-
-void foo(void);
 
 // Send a chunk of data to the micro on EP1OUT. The previous call to beginShift() specifies what the
 // micro should actually do with the data.
@@ -275,22 +273,32 @@ static void makeLookup(const uint8 bitOrder[8], uint8 lookupTable[256]) {
 //   xProgram() -> fileWrite() -> dataWrite()
 //   xProgram() -> dataWrite()
 //
-static FLStatus dataWrite(struct FLContext *handle, ProgOp progOp, const uint8 *buf, uint32 len, const uint8 lookupTable[256], const char **error) {
+static FLStatus dataWrite(struct FLContext *handle, ProgOp progOp, const uint8 *buf, uint32 len, const uint8 *lookupTable, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	uint16 chunkSize;
-	uint8 bitSwap[64];
-	uint16 i;
 	FLStatus fStatus = beginShift(handle, len, progOp, 0x00, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "dataWrite()");
-	while ( len ) {
-		chunkSize = (uint16)((len >= 64) ? 64 : len);
-		for ( i = 0; i < chunkSize; i++ ) {
-			bitSwap[i] = lookupTable[buf[i]];
+	if ( lookupTable ) {
+		uint8 bitSwap[64];
+		uint16 i;
+		while ( len ) {
+			chunkSize = (uint16)((len >= 64) ? 64 : len);
+			for ( i = 0; i < chunkSize; i++ ) {
+				bitSwap[i] = lookupTable[buf[i]];
+			}
+			fStatus = doSend(handle, bitSwap, chunkSize, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "dataWrite()");
+			buf += chunkSize;
+			len -= chunkSize;
 		}
-		fStatus = doSend(handle, bitSwap, chunkSize, error);
-		CHECK_STATUS(fStatus, fStatus, cleanup, "dataWrite()");
-		buf += chunkSize;
-		len -= chunkSize;
+	} else {
+		while ( len ) {
+			chunkSize = (uint16)((len >= 64) ? 64 : len);
+			fStatus = doSend(handle, buf, chunkSize, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "dataWrite()");
+			buf += chunkSize;
+			len -= chunkSize;
+		}
 	}
 cleanup:
 	return retVal;
@@ -319,7 +327,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	int i;
 	char ch;
 	CHECK_STATUS(
-		progOp != PROG_PARALLEL && progOp != PROG_SERIAL, FL_CONF_FORMAT, cleanup,
+		progOp != PROG_PARALLEL && progOp != PROG_SPI_SEND, FL_CONF_FORMAT, cleanup,
 		"xProgram(): unsupported ProgOp");
 	EXPECT_CHAR(':', "xProgram");
 
@@ -342,7 +350,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 			SET_BIT(dataPort, dataBit[i], PIN_LOW, "xProgram");
 		}
 		makeLookup(dataBit, lookupTable);
-	} else if ( progOp == PROG_SERIAL ) {
+	} else if ( progOp == PROG_SPI_SEND ) {
 		const uint8 bitOrder[8] = {7,6,5,4,3,2,1,0};
 		makeLookup(bitOrder, lookupTable);
 		GET_BIT(dataBit[0], "xProgram");
@@ -367,7 +375,7 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 	if ( progOp == PROG_PARALLEL ) {
 		fStatus = portMap(handle, PATCH_D8, dataPort, 0x00, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
-	} else if ( progOp == PROG_SERIAL ) {
+	} else if ( progOp == PROG_SPI_SEND ) {
 		fStatus = portMap(handle, PATCH_TDI, dataPort, dataBit[0], error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	}
@@ -745,7 +753,7 @@ DLLEXPORT(FLStatus) flProgramBlob(
 			return xProgram(handle, PROG_PARALLEL, portConfig, blobData, blobLength, error);
 		} else if ( algoType == 'S' ) {
 			// This is Xilinx Slave Serial
-			return xProgram(handle, PROG_SERIAL, portConfig, blobData, blobLength, error);
+			return xProgram(handle, PROG_SPI_SEND, portConfig, blobData, blobLength, error);
 		} else if ( algoType == '\0' ) {
 			CHECK_STATUS(true, FL_CONF_FORMAT, cleanup, "flProgram(): Missing Xilinx algorithm code");
 		} else {
@@ -824,6 +832,7 @@ cleanup:
 	return retVal;
 }
 
+// Actual values to send to microcontroller for PIN_UNUSED, PIN_HIGH, PIN_LOW and PIN_INPUT:
 static const uint16 indexValues[] = {0xFFFF, 0x0101, 0x0001, 0x0000};
 
 DLLEXPORT(FLStatus) flSingleBitPortAccess(

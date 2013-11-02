@@ -88,6 +88,14 @@ extern "C" {
 		PIN_LOW,    ///< Configure the pin as an output and drive it low.
 		PIN_INPUT   ///< Configure the pin as an input.
 	} PinConfig;
+
+	/**
+	 * Enum used by \c spiSend() and \c spiRecv() to set the order bits are clocked in.
+	 */
+	typedef enum {
+		SPI_MSBFIRST,  ///< Clock each byte most-significant bit first.
+		SPI_LSBFIRST   ///< Clock each byte least-significant bit first.
+	} BitOrder;
 	//@}
 
 	// Forward declarations
@@ -856,6 +864,56 @@ extern "C" {
 	DLLEXPORT(FLStatus) jtagClocks(
 		struct FLContext *handle, uint32 numClocks, const char **error
 	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Send a number of whole bytes over SPI, either LSB-first or MSB-first.
+	 *
+	 * Shift \c len bytes from \c buf into the microcontroller's SPI bus (if any), either MSB-first
+	 * or LSB-first.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param buf A pointer to the source data.
+	 * @param len The number of bytes to send.
+	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support SPI.
+	 *     - \c FL_USB_ERR if USB communications failed whilst sending the data.
+	 */
+	DLLEXPORT(FLStatus) spiSend(
+		struct FLContext *handle, const uint8 *buf, uint32 len, BitOrder bitOrder, const char **error
+	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Receive a number of whole bytes over SPI, either LSB-first or MSB-first.
+	 *
+	 * Shift \c len bytes from the microcontroller's SPI bus (if any) into \c buf, either MSB-first
+	 * or LSB-first.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param buf A pointer to a buffer to receive the data.
+	 * @param len The number of bytes to receive.
+	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support SPI.
+	 *     - \c FL_USB_ERR if USB communications failed whilst receiving the data.
+	 */
+	DLLEXPORT(FLStatus) spiRecv(
+		struct FLContext *handle, uint8 *buf, uint32 len, BitOrder bitOrder, const char **error
+	) WARN_UNUSED_RESULT;
+
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
@@ -1035,13 +1093,13 @@ extern "C" {
 	/**
 	 * @brief Configure a single port bit on the microcontroller.
 	 *
-	 * With this function you can set a single microcontroller port bit to either \c INPUT, \c HIGH
-	 * or \c LOW, and read back the current state of the bit.
+	 * With this function you can set a single microcontroller port bit to either \c PIN_INPUT,
+	 * \c PIN_HIGH or \c PIN_LOW, and read back the current state of the bit.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param portNumber Which port to configure (i.e 0=PortA, 1=PortB, 2=PortC, etc).
 	 * @param bitNumber The bit within the chosen port to use.
-	 * @param pinConfig Either INPUT, HIGH or LOW.
+	 * @param pinConfig Either PIN_INPUT, PIN_HIGH or PIN_LOW.
 	 * @param pinRead Pointer to a <code>uint8</code> to be set on exit to 0 or 1 depending on
 	 *            the current state of the pin. May be \c NULL if you're not interested.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
@@ -1061,11 +1119,11 @@ extern "C" {
 	/**
 	 * @brief Configure multiple port bits on the microcontroller.
 	 *
-	 * With this function you can set multiple microcontroller port bits to either \c INPUT, \c HIGH
-	 * or \c LOW, and read back the current state of each bit. This is achieved by sending a
-	 * comma-separated list of port configurations, e.g "A12-,B2+,C7?". A "+" or a "-" suffix sets
-	 * the port as an output, driven high or low respectively, and a "?" suffix sets the port as an
-	 * input. The current state of up to 32 bits are returned in \c readState, LSB first.
+	 * With this function you can set multiple microcontroller port bits to either \c PIN_INPUT,
+	 * \c PIN_HIGH or \c PIN_LOW, and read back the current state of each bit. This is achieved by
+	 * sending a comma-separated list of port configurations, e.g "A12-,B2+,C7?". A "+" or a "-"
+	 * suffix sets the port as an output, driven high or low respectively, and a "?" suffix sets the
+	 * port as an input. The current state of up to 32 bits are returned in \c readState, LSB first.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param portConfig A comma-separated sequence of port configurations.
@@ -1082,6 +1140,10 @@ extern "C" {
 	 */
 	DLLEXPORT(FLStatus) flMultiBitPortAccess(
 		struct FLContext *handle, const char *portConfig, uint32 *readState, const char **error
+	) WARN_UNUSED_RESULT;
+
+	DLLEXPORT(FLStatus) flBootloader(
+		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
 

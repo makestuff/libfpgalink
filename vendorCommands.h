@@ -28,6 +28,7 @@
 #define CMD_CALCULATOR        0x84
 #define CMD_PORT_BIT_IO       0x85
 #define CMD_PORT_MAP          0x86
+#define CMD_BOOTLOADER        0x87
 #define CMD_READ_WRITE_EEPROM 0xA2
 
 // Bits in the mode word
@@ -48,7 +49,9 @@ typedef enum {
 	PROG_JTAG_NOTSENDING_ISRECEIVING,
 	PROG_JTAG_NOTSENDING_NOTRECEIVING,
 	PROG_PARALLEL,
-	PROG_SERIAL
+	PROG_SPI_SEND,
+	PROG_SPI_SEND_RECV,
+	PROG_SPI_RECV
 } ProgOp;
 
 #define bmISLAST       (1<<0)

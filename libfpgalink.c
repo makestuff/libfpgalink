@@ -147,7 +147,7 @@ DLLEXPORT(FLStatus) flSelectConduit(
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus = usbControlWrite(
 		handle->device,
-		0x80,              // bRequest
+		CMD_MODE_STATUS,   // bRequest
 		0x0000,            // wValue
 		(uint16)conduit,   // wIndex
 		NULL,              // buffer to receive current state of ports
