@@ -62,149 +62,278 @@ void fifoSetEnabled(uint8 mode) {
 	}
 }
 
+static uint8 m_count = 0x00;
+
+#ifdef DUMMY_DEVICE
 void doComms(void) {
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
 	if ( Endpoint_IsOUTReceived() ) {
-		uint8 buf[64];
-		uint32 num64;
-		uint8 mod64;
-		uint8 i;
-		Endpoint_Read_Stream_LE(buf, 5, NULL);
-		Endpoint_ClearOUT();
-		i = buf[0];
-		num64 = buf[1];
-		num64 <<= 8;
-		num64 |= buf[2];
-		num64 <<= 8;
-		num64 |= buf[3];
-		num64 <<= 8;
-		num64 |= buf[4];
-		num64 >>= 6;
-		mod64 = buf[4] & 0x3F;
-
-		// Wait for FPGA to assert eppWait
-		while ( PINC & EPP_WAIT );
-
-		// Put addr on port D, strobe an addr write
-		PORTC &= ~EPP_WRITE;    // AVR writes to FPGA
-		PORTD = i;              // set value of data lines
-		DDRD = 0xFF;            // drive data lines
-		PORTC &= ~EPP_ADDRSTB;  // assert address strobe
-		
-		// Wait for FPGA to deassert eppWait
-		while ( !(PINC & EPP_WAIT) );
-		
-		// Deassert address strobe, telling FPGA that it's OK to end the cycle
-		PORTC |= EPP_ADDRSTB;
-		
-		if ( i & 0x80 ) {
-			// The host is reading a channel ----------------------------------------------------------
-
-			DDRD = 0x00;         // stop driving data lines
-			PORTC |= EPP_WRITE;  // FPGA writes to AVR
-
-			// We're reading from the FPGA and sending to the host
-			Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+		do {
+			// Got data from the host. Assume it's a command.
+			uint8 buf[64];
+			uint32 num64;
+			uint8 mod64;
+			uint8 i;
+			Endpoint_Read_Stream_LE(buf, 5, NULL);
+			i = buf[0];
+			num64 = buf[1];
+			num64 <<= 8;
+			num64 |= buf[2];
+			num64 <<= 8;
+			num64 |= buf[3];
+			num64 <<= 8;
+			num64 |= buf[4];
+			num64 >>= 6;
+			mod64 = buf[4] & 0x3F;
 			
-			while ( num64-- ) {
-				// Fetch 64 bytes from FPGA
-				for ( i = 0; i < 64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
-					
-					// Assert data strobe, to read a byte
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-
-					// Sample data lines
-					buf[i] = PIND;
-					
-					// Deassert data strobe, telling FPGA that it's OK to end the cycle
-					PORTC |= EPP_DATASTB;
+			#if USART_DEBUG == 1
+				if ( i & 0x80 ) {
+					debugSendFlashString(PSTR("READ(count=0x"));
+				} else {
+					debugSendFlashString(PSTR("WRITE(count=0x"));
 				}
+				debugSendByteHex(m_count++);
+				debugSendFlashString(PSTR(", chan=0x"));
+				debugSendByteHex(i & 0x7F);
+				debugSendFlashString(PSTR(", num64=0x"));
+				debugSendLongHex(num64);
+				debugSendFlashString(PSTR(", mod64=0x"));
+				debugSendWordHex(mod64);
+			#endif
 
-				// Send the data packet to host
-				while ( !Endpoint_IsINReady() );
-				Endpoint_Write_Stream_LE(buf, 64, NULL);
-				Endpoint_ClearIN();
-			}
-			
-			if ( mod64 ) {
-				// Get last few bytes of data from FPGA
-				for ( i = 0; i < mod64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
-					
-					// Put byte on port D, strobe a data read
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-					
-					// Sample data lines
-					buf[i] = PIND;
-					
-					// Signal FPGA that it's OK to end cycle
-					PORTC |= EPP_DATASTB;
+			if ( i & 0x80 ) {
+				// The host is reading a channel ----------------------------------------------------------
+				
+				// Clear the OUT endpoint we've been reading from ready for sending on the IN endpoint
+				Endpoint_ClearOUT();
+				
+				// We're reading from the FPGA and sending to the host
+				Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+				
+				// Send num64 64-byte dummy packets to the host
+				while ( num64-- ) {
+					// Make up a dummy data packet
+					for ( i = 0; i < 64; i++ ) {
+						buf[i] = i;
+					}
+
+					// Send it to the host
+					Endpoint_Write_Stream_LE(buf, 64, NULL);
 				}
 				
-				// And send it to the host
-				while ( !Endpoint_IsINReady() );
-				Endpoint_Write_Stream_LE(buf, mod64, NULL);
+				// Send the last few (mod64) bytes of dummy data to the host
+				if ( mod64 ) {
+					// Make up some dummy data
+					for ( i = 0; i < mod64; i++ ) {
+						buf[i] = i;
+					}
+
+					// Send it to the host
+					Endpoint_Write_Stream_LE(buf, mod64, NULL);
+				}
+				
+				// IN transactions are never consecutive, so expect a new command on the OUT
 				Endpoint_ClearIN();
-			}
-		} else {
-			// The host is writing a channel ----------------------------------------------------------
-
-			// Get num64 packets from host, sending each one in turn to the FPGA
-			while ( num64-- ) {
-				// Get a data packet from host
-				Endpoint_Read_Stream_LE(buf, 64, NULL);
-				Endpoint_ClearOUT();
-
-				for ( i = 0; i < 64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
+				Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+				#if USART_DEBUG == 1
+					debugSendFlashString(PSTR(")\r"));
+				#endif
+			} else {
+				// The host is writing a channel ----------------------------------------------------------
+				#if USART_DEBUG == 1
+					uint16 cksum = 0x0000;
+				#endif
+				
+				// Get num64 packets from host, sending each one in turn to the FPGA
+				while ( num64-- ) {
+					// Get data from the host
+					Endpoint_Read_Stream_LE(buf, 64, NULL);
 					
-					// Put byte on port D, strobe a data write
-					PORTD = buf[i];
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-					
-					// Signal FPGA that it's OK to end cycle
-					PORTC |= EPP_DATASTB;
+					// Checksum it
+					#if USART_DEBUG == 1
+						for ( i = 0; i < 64; i++ ) {
+							cksum += buf[i];
+						}
+					#endif
 				}
-			}
-			
-			// Get last few bytes of data from host
-			if ( mod64 ) {
-				Endpoint_Read_Stream_LE(buf, mod64, NULL);
-				Endpoint_ClearOUT();
-				for ( i = 0; i < mod64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
+				
+				// Get last few (mod64) bytes of data from host
+				if ( mod64 ) {
+					// Get data from the host
+					Endpoint_Read_Stream_LE(buf, mod64, NULL);
 					
-					// Put byte on port D, strobe a data write
-					PORTD = buf[i];
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-					
-					// Signal FPGA that it's OK to end cycle
-					PORTC |= EPP_DATASTB;
+					// Checksum it
+					#if USART_DEBUG == 1
+						for ( i = 0; i < mod64; i++ ) {
+							cksum += buf[i];
+						}
+					#endif
 				}
+				#if USART_DEBUG == 1
+					debugSendFlashString(PSTR(", cksum=0x"));
+					debugSendWordHex(cksum);
+					debugSendFlashString(PSTR(")\r"));
+				#endif
 			}
-
-			DDRD = 0x00;         // stop driving port D
-			PORTC |= EPP_WRITE;  // FPGA writes to AVR
-		}
+		} while ( Endpoint_IsReadWriteAllowed() );
+		Endpoint_ClearOUT();
 	}
 }
+#else
+void doComms(void) {
+	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+	if ( Endpoint_IsOUTReceived() ) {
+		do {
+			// Got data from the host. Assume it's a command.
+			uint8 buf[64];
+			uint32 num64;
+			uint8 mod64;
+			uint8 i;
+			Endpoint_Read_Stream_LE(buf, 5, NULL);
+			i = buf[0];
+			num64 = buf[1];
+			num64 <<= 8;
+			num64 |= buf[2];
+			num64 <<= 8;
+			num64 |= buf[3];
+			num64 <<= 8;
+			num64 |= buf[4];
+			num64 >>= 6;
+			mod64 = buf[4] & 0x3F;
+			
+			// Wait for FPGA to assert eppWait
+			while ( PINC & EPP_WAIT );
+			
+			// Put addr on port D, strobe an addr write
+			PORTC &= ~EPP_WRITE;    // AVR writes to FPGA
+			PORTD = i;              // set value of data lines
+			DDRD = 0xFF;            // drive data lines
+			PORTC &= ~EPP_ADDRSTB;  // assert address strobe
+			
+			// Wait for FPGA to deassert eppWait
+			while ( !(PINC & EPP_WAIT) );
+			
+			// Deassert address strobe, telling FPGA that it's OK to end the cycle
+			PORTC |= EPP_ADDRSTB;
+			
+			if ( i & 0x80 ) {
+				// The host is reading a channel ----------------------------------------------------------
+				
+				DDRD = 0x00;         // stop driving data lines
+				PORTC |= EPP_WRITE;  // FPGA writes to AVR
+				
+				// Clear the OUT endpoint we've been reading from ready for sending on the IN endpoint
+				Endpoint_ClearOUT();
+				
+				// We're reading from the FPGA and sending to the host
+				Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+				
+				// Fetch num64 64-byte packets from the FPGA, sending each back to the host
+				while ( num64-- ) {
+					// Fetch a 64-byte packet from the FPGA
+					for ( i = 0; i < 64; i++ ) {
+						// Wait for FPGA to assert eppWait
+						while ( PINC & EPP_WAIT );
+						
+						// Assert data strobe, to read a byte
+						PORTC &= ~EPP_DATASTB;
+						
+						// Wait for FPGA to deassert eppWait
+						while ( !(PINC & EPP_WAIT) );
+						
+						// Sample data lines
+						buf[i] = PIND;
+						
+						// Deassert data strobe, telling FPGA that it's OK to end the cycle
+						PORTC |= EPP_DATASTB;
+					}
+					
+					// Send it to the host
+					Endpoint_Write_Stream_LE(buf, 64, NULL);
+				}
+				
+				// Fetch the last few (mod64) bytes from the FPGA, and send it back to the host
+				if ( mod64 ) {
+					// Get last few bytes of data from FPGA
+					for ( i = 0; i < mod64; i++ ) {
+						// Wait for FPGA to assert eppWait
+						while ( PINC & EPP_WAIT );
+						
+						// Put byte on port D, strobe a data read
+						PORTC &= ~EPP_DATASTB;
+						
+						// Wait for FPGA to deassert eppWait
+						while ( !(PINC & EPP_WAIT) );
+						
+						// Sample data lines
+						buf[i] = PIND;
+						
+						// Signal FPGA that it's OK to end cycle
+						PORTC |= EPP_DATASTB;
+					}
+					
+					// And send it to the host
+					Endpoint_Write_Stream_LE(buf, mod64, NULL);
+				}
+
+				// IN transactions are never consecutive, so expect a new command on the OUT
+				Endpoint_ClearIN();
+				Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+			} else {
+				// The host is writing a channel ----------------------------------------------------------
+				
+				// Get num64 packets from the host, sending each one in turn to the FPGA
+				while ( num64-- ) {
+					// Get a data from host
+					Endpoint_Read_Stream_LE(buf, 64, NULL);
+					
+					// Send it to FPGA
+					for ( i = 0; i < 64; i++ ) {
+						// Wait for FPGA to assert eppWait
+						while ( PINC & EPP_WAIT );
+						
+						// Put byte on port D, strobe a data write
+						PORTD = buf[i];
+						PORTC &= ~EPP_DATASTB;
+						
+						// Wait for FPGA to deassert eppWait
+						while ( !(PINC & EPP_WAIT) );
+						
+						// Signal FPGA that it's OK to end cycle
+						PORTC |= EPP_DATASTB;
+					}
+				}
+				
+				// Get last few bytes from the host
+				if ( mod64 ) {
+					// Get data from host
+					Endpoint_Read_Stream_LE(buf, mod64, NULL);
+					
+					// Send it to FPGA
+					for ( i = 0; i < mod64; i++ ) {
+						// Wait for FPGA to assert eppWait
+						while ( PINC & EPP_WAIT );
+						
+						// Put byte on port D, strobe a data write
+						PORTD = buf[i];
+						PORTC &= ~EPP_DATASTB;
+						
+						// Wait for FPGA to deassert eppWait
+						while ( !(PINC & EPP_WAIT) );
+						
+						// Signal FPGA that it's OK to end cycle
+						PORTC |= EPP_DATASTB;
+					}
+				}
+				
+				DDRD = 0x00;         // stop driving port D
+				PORTC |= EPP_WRITE;  // FPGA writes to AVR
+			}
+		} while ( Endpoint_IsReadWriteAllowed() );
+		Endpoint_ClearOUT();
+	}
+}
+#endif
 
 // Called once at startup
 //
@@ -309,7 +438,8 @@ void EVENT_USB_Device_ControlRequest(void) {
 			statusBuffer[2] = 'M';
 			statusBuffer[3] = 'I';
 			statusBuffer[4] = 0x00;                    // Last operation diagnostic code
-			statusBuffer[5] = (PINC & EPP_WAIT)?0x00:0x01;  // Flags
+			statusBuffer[5] = 0x01;
+			//statusBuffer[5] = (PINC & EPP_WAIT)?0x00:0x01;  // Flags
 			statusBuffer[6] = 0x24;                    // NeroJTAG endpoints
 			statusBuffer[7] = 0x24;                    // CommFPGA endpoints
 			statusBuffer[8] = 0xAA;                    // Firmware ID MSB
