@@ -17,9 +17,6 @@
 #ifndef VENDORCOMMANDS_H
 #define VENDORCOMMANDS_H
 
-// The buffer available on the FX2LP firmware side
-#define CSVF_BUF_SIZE 128
-
 // Vendor commands
 #define CMD_MODE_STATUS       0x80
 #define CMD_JTAG_CLOCK_DATA   0x81

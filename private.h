@@ -78,8 +78,7 @@ extern "C" {
 	 * @param xsvfFile The XSVF filename.
 	 * @param csvfBuf A pointer to a \c Buffer to be populated with the CSVF data.
 	 * @param maxBufSize A pointer to a \c uint32 which will be set on exit to the number of bytes
-	 *            necessary for buffering in the playback logic. If this is greater than the
-	 *            \c CSVF_BUF_SIZE defined for the firmware, bad things will happen.
+	 *            necessary for buffering in the playback logic.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
