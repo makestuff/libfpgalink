@@ -59,13 +59,89 @@ void fifoSetEnabled(uint8 mode) {
 		DDRC &= ~EPP_WAIT;
 		DDRC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
 		break;
+	case 2:
+		UBRR1H = 0x00;
+		UBRR1L = 0x00; // 8M sync
+		//UBRR1L = 0x10; // 115200
+		UCSR1A = (1<<U2X1);
+		UCSR1B = (1<<TXEN1);
+		UCSR1C = (3<<UCSZ10) | (1<<UMSEL10);
+		//UCSR1D = (1<<CTSEN) | (1<<RTSEN);
+		//UCSR1C = (3<<UCSZ10);
+		PORTD |= 0x04;  // throttle pull-up
+		//DDRD &= ~0x10;  // CTS input
+		DDRD |= 0x28;  // TX & PD5(XCK) are outputs
+		//DDRD |= 0x40;  // PD6 is output
+		break;
 	}
 }
 
-static uint8 m_count = 0x00;
+static inline void usartSendByte(uint8 byte) {
+	while ( !(UCSR1A & (1<<UDRE1)) );
+	UDR1 = byte;
+}
+static inline uint8 usartRecvByte(void) {
+	while ( !(UCSR1A & (1<<RXC1)) );
+	return UDR1;
+}
+static inline void selectEndpoint(uint8 epNum) {
+	UENUM = epNum;
+}
+static inline bool gotPacket(void) {
+	return ((UEINTX & (1 << RXOUTI)) ? true : false);
+}
+static inline void ackPacket(void) {
+	UEINTX &= ~((1 << RXOUTI) | (1 << FIFOCON));
+}
+static inline bool bytesRemaining(void) {
+	return ((UEINTX & (1 << RWAL)) ? true : false);
+}
+static inline uint8 getByte(void) {
+	return UEDATX;
+}
+
+static inline uint8 fetchByte(void) {
+	while ( !bytesRemaining() ) {
+		ackPacket();
+		while ( !gotPacket() );
+	}
+	return getByte();
+}		
+
+void doSerial(void) {
+	selectEndpoint(OUT_ENDPOINT_ADDR);
+	if ( gotPacket() ) {
+		uint8 count, byte;
+		do {
+			// Got data from the host. Assume it's a command.
+			usartSendByte(fetchByte()); // r/w flag & channel
+			fetchByte();                // 1st ignored byte
+			fetchByte();                // 2nd ignored byte
+			fetchByte();                // 3rd ignored byte
+			count = fetchByte();        // message length
+			#if USART_DEBUG == 1
+				debugSendFlashString(PSTR("WRITE("));
+				debugSendByteHex(count);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
+			usartSendByte(count);
+			do {
+				byte = fetchByte();
+				while ( PIND & 0x04 );
+				usartSendByte(byte);
+				count--;
+			} while ( count );
+		} while ( bytesRemaining() );
+		ackPacket();
+	}
+}
 
 #ifdef DUMMY_DEVICE
-void doComms(void) {
+#if USART_DEBUG == 1
+	static uint8 m_count = 0x00;
+#endif
+void doEPP(void) {
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
 	if ( Endpoint_IsOUTReceived() ) {
 		do {
@@ -180,7 +256,7 @@ void doComms(void) {
 	}
 }
 #else
-void doComms(void) {
+void doEPP(void) {
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
 	if ( Endpoint_IsOUTReceived() ) {
 		do {
@@ -335,6 +411,17 @@ void doComms(void) {
 }
 #endif
 
+bool isReady(void) {
+	switch ( m_fifoMode ) {
+	case 1:
+		return (PINC & EPP_WAIT) == 0x00;
+	case 2:
+		return (PIND & 0x04) == 0x00;
+	default:
+		return false;
+	}
+}
+
 // Called once at startup
 //
 int main(void) {
@@ -386,7 +473,10 @@ int main(void) {
 			progShiftExecute();
 			break;
 		case 1:
-			doComms();
+			doEPP();
+			break;
+		case 2:
+			doSerial();
 			break;
 		}
 	}
@@ -428,6 +518,12 @@ void EVENT_USB_Device_ControlRequest(void) {
 				// Enable or disable FIFO mode
 				Endpoint_ClearSETUP();
 				fifoSetEnabled(value);
+				#if USART_DEBUG == 1
+					debugSendFlashString(PSTR("FIFO_MODE("));
+					debugSendByteHex(value);
+					debugSendByte(')');
+					debugSendByte('\r');
+				#endif
 				Endpoint_ClearStatusStage();
 			}
 		} else if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
@@ -438,7 +534,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			statusBuffer[2] = 'M';
 			statusBuffer[3] = 'I';
 			statusBuffer[4] = 0x00;                    // Last operation diagnostic code
-			statusBuffer[5] = 0x01;
+			statusBuffer[5] = isReady() ? 0x01 : 0x00;
 			//statusBuffer[5] = (PINC & EPP_WAIT)?0x00:0x01;  // Flags
 			statusBuffer[6] = 0x24;                    // NeroJTAG endpoints
 			statusBuffer[7] = 0x24;                    // CommFPGA endpoints
@@ -561,16 +657,45 @@ void EVENT_USB_Device_ControlRequest(void) {
 		}
 		break;
 
-	/*case 0x90:
-		if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
-			const uint8 tempByte = MCUSR;
-			MCUSR = 0x00;
+	case 0x90:
+		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
+			uint8 response[4];
 			Endpoint_ClearSETUP();
-			Endpoint_Write_Control_Stream_LE(&tempByte, 1);
+			debugSendFlashString(PSTR("Received: "));
+			usartSendByte(0x80);  // r/w flag & channel
+			usartSendByte(0x00);  // count MSB
+			usartSendByte(0x04);  // count LSB
+			UCSR1B = 0x00;                    // disable sender
+			debugSendFlashString(PSTR("... "));
+			//while ( !(UCSR1A & (1<<TXC1)) );  // wait for send complete
+			UCSR1B = (1<<RXEN1);              // enable receiver
+			response[0] = usartRecvByte();    // receive 1st byte
+			response[1] = usartRecvByte();    // receive 2nd byte
+			response[2] = usartRecvByte();    // receive 3rd byte
+			response[3] = usartRecvByte();    // receive 4th byte
+			UCSR1B = (1<<TXEN1);              // disable receiver, enable sender
+			debugSendByteHex(response[0]);    // print 1st byte
+			debugSendByteHex(response[1]);    // print 2nd byte
+			debugSendByteHex(response[2]);    // print 3rd byte
+			debugSendByteHex(response[3]);    // print 4th byte
+			debugSendByte('\r');
 			Endpoint_ClearStatusStage();
 		}
 		break;
-	*/
+
+	case 0x91:
+		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
+			Endpoint_ClearSETUP();
+			usartSendByte(0x00); // write channel 0
+			usartSendByte(0x00); // count MSB
+			usartSendByte(0x04); // count LSB
+			usartSendByte(0xCA);
+			usartSendByte(0xFE);
+			usartSendByte(0xBA);
+			usartSendByte(0xBE);
+			Endpoint_ClearStatusStage();
+		}
+		break;
 	}
 }
 

@@ -13,6 +13,8 @@ uint32_t Boot_Key ATTR_NO_INIT;
 
 #define MAGIC_BOOT_KEY 0xDC42ACCA
 #define BOOTLOADER_START_ADDRESS (FLASH_SIZE_BYTES - BOOTLOADER_SEC_SIZE_BYTES)
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 
 void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
 void Bootloader_Jump_Check(void)
@@ -23,7 +25,7 @@ void Bootloader_Jump_Check(void)
 		(Boot_Key == MAGIC_BOOT_KEY)
 	) {
 		Boot_Key = 0;
-		((void (*)(void))BOOTLOADER_START_ADDRESS)();
+		__asm volatile("jmp " STR(BOOTLOADER_START_ADDRESS)::);
 	}
 }
 
