@@ -55,44 +55,132 @@ static uint8 m_fifoMode = 0;
 // start LUFA DFU bootloader programmatically
 void Jump_To_Bootloader(void);
 
-void fifoSetEnabled(uint8 mode) {
-	switch(mode) {
-	case 0:
-		// Undo previous settings (if any)
-		if ( m_fifoMode == 1 ) {
-			EPP_CTRL_DDR &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
-			EPP_CTRL_PORT &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
-		} else if ( m_fifoMode == 2 ) {
-			UCSR1A = 0x00;
-			UCSR1B = 0x00;
-			UCSR1C = 0x00;
-			DDRD &= ~(SER_RX | SER_TX | SER_CK);
-			PORTD &= ~(SER_RX | SER_TX | SER_CK);
-		}
-		break;
-	case 1:
-		EPP_DATA_DDR = 0x00;
-		EPP_CTRL_PORT |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT);
-		EPP_CTRL_DDR &= ~EPP_WAIT; // WAIT is input
-		EPP_CTRL_DDR |= (EPP_ADDRSTB | EPP_DATASTB); // AS, DS are outputs
-		EPP_CTRL_PORT &= ~EPP_WRITE; // WR will be low
-		EPP_CTRL_DDR |= EPP_WRITE; // WR output low - FPGA in S_IDLE
-		break;
-	case 2:
-		PORTD |= SER_TX;  // TX high
-		PORTD &= ~SER_CK; // CK low
-		DDRD |= (SER_TX | SER_CK);  // TX & XCK are outputs
-		PORTD &= ~SER_TX;  // TX low - FPGA in S_RESET1
-		PORTD |= SER_TX;  // TX high - FPGA in S_IDLE
-		UBRR1H = 0x00;
-		UBRR1L = 0x00; // 8M sync
-		UCSR1A = (1<<U2X1);
-		UCSR1B = (1<<TXEN1);
-		UCSR1C = (3<<UCSZ10) | (1<<UMSEL10);
-		break;
-	}
-	m_fifoMode = mode;
+// EPP Operations ----------------------------------------------------------------------------------
+
+// Send an EPP data byte
+static inline void eppSendDataByte(uint8 byte) {
+	// Wait for FPGA to assert eppWait
+	while ( EPP_CTRL_PIN & EPP_WAIT );
+	
+	// Drive byte on data bus, strobe data write
+	EPP_DATA_PORT = byte;
+	EPP_CTRL_PORT &= ~EPP_DATASTB;
+	
+	// Wait for FPGA to deassert eppWait
+	while ( !(EPP_CTRL_PIN & EPP_WAIT) );
+	
+	// Signal FPGA that it's OK to end cycle
+	EPP_CTRL_PORT |= EPP_DATASTB;
 }
+
+// Send an EPP address byte
+static inline void eppSendAddrByte(uint8 byte) {
+	// Wait for FPGA to assert eppWait
+	while ( EPP_CTRL_PIN & EPP_WAIT );
+	
+	// Drive byte on data bus, strobe address write
+	EPP_DATA_PORT = byte;
+	EPP_CTRL_PORT &= ~EPP_ADDRSTB;
+	
+	// Wait for FPGA to deassert eppWait
+	while ( !(EPP_CTRL_PIN & EPP_WAIT) );
+	
+	// Signal FPGA that it's OK to end cycle
+	EPP_CTRL_PORT |= EPP_ADDRSTB;
+}
+
+// Receive an EPP data byte
+static inline uint8 eppRecvDataByte(void) {
+	uint8 byte;
+	
+	// Wait for FPGA to assert eppWait
+	while ( EPP_CTRL_PIN & EPP_WAIT );
+	
+	// Assert data strobe, to read a byte
+	EPP_CTRL_PORT &= ~EPP_DATASTB;
+	
+	// Wait for FPGA to deassert eppWait
+	while ( !(EPP_CTRL_PIN & EPP_WAIT) );
+	
+	// Sample data lines
+	byte = EPP_DATA_PIN;
+	
+	// Deassert data strobe, telling FPGA that it's OK to end the cycle
+	EPP_CTRL_PORT |= EPP_DATASTB;
+
+	return byte;
+}
+
+// Set the data bus direction to AVR->FPGA
+static inline void eppSending(void) {
+	EPP_DATA_DDR = 0xFF;
+	EPP_CTRL_PORT &= ~EPP_WRITE;
+}
+
+// Set the data bus direction to AVR<-FPGA
+static inline void eppReceiving(void) {
+	EPP_DATA_DDR = 0x00;
+	EPP_CTRL_PORT |= EPP_WRITE;
+}
+
+// Execute pending EPP read/write operations
+void doEPP(void) {
+	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+	if ( usbOutPacketReady() ) {
+		uint8 byte;
+		uint32 count;
+		do {
+			// Read/write flag & channel
+			byte = usbFetchByte(); eppSendAddrByte(byte);
+			
+			// Count high byte
+			count = usbFetchByte();
+			
+			// Count high mid byte
+			count <<= 8;
+			count |= usbFetchByte();
+			
+			// Count low mid byte
+			count <<= 8;
+			count |= usbFetchByte();
+			
+			// Count low byte
+			count <<= 8;
+			count |= usbFetchByte();
+			
+			if ( byte & 0x80 ) {
+				// The host is reading a channel
+				usbAckPacket();                        // acknowledge the OUT packet
+				usbSelectEndpoint(IN_ENDPOINT_ADDR);   // switch to the IN endpoint
+				eppReceiving();                        // AVR reads from FPGA
+				while ( !usbInPacketReady() );
+				do {
+					byte = eppRecvDataByte();
+					if ( !usbReadWriteAllowed() ) {
+						usbFlushPacket();
+						while ( !usbInPacketReady() );
+					}
+					usbSendByte(byte);
+					count--;
+				} while ( count );
+				eppSending();                          // AVR writes to FPGA again
+				usbFlushPacket();                      // flush final packet
+				usbSelectEndpoint(OUT_ENDPOINT_ADDR);  // ready for next command
+				return;
+			} else {
+				// The host is writing a channel
+				do {
+					byte = usbFetchByte();
+					eppSendDataByte(byte);
+					count--;
+				} while ( count );
+			}
+		} while ( usbReadWriteAllowed() );
+		usbAckPacket();
+	}
+}
+
+// Serial Operations -------------------------------------------------------------------------------
 
 // Send a USART byte.
 static inline void usartSendByte(uint8 byte) {
@@ -106,7 +194,7 @@ static inline uint8 usartRecvByte(void) {
 	return UDR1;
 }
 
-// Execute the serial I/O
+// Execute pending USART read/write operations
 void doSerial(void) {
 	usbSelectEndpoint(OUT_ENDPOINT_ADDR);
 	if ( usbOutPacketReady() ) {
@@ -137,7 +225,7 @@ void doSerial(void) {
 
 			// Check to see if it's a read or a write
 			if ( chan & 0x80 ) {
-				// The host is reading a channel -------------------------------------------------------
+				// The host is reading a channel
 				usbAckPacket();                        // acknowledge the OUT packet
 				usbSelectEndpoint(IN_ENDPOINT_ADDR);   // switch to the IN endpoint
 				#if USART_DEBUG == 1
@@ -178,7 +266,7 @@ void doSerial(void) {
 				usbSelectEndpoint(OUT_ENDPOINT_ADDR);  // ready for next command
 				return;                                // there cannot be any more work to do
 			} else {
-				// The host is writing a channel -------------------------------------------------------
+				// The host is writing a channel
 				#if USART_DEBUG == 1
 					debugSendFlashString(PSTR("WRITE("));
 					debugSendByteHex(count);
@@ -197,161 +285,49 @@ void doSerial(void) {
 	}
 }
 
-void doEPP(void) {
-	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
-	if ( Endpoint_IsOUTReceived() ) {
-		do {
-			// Got data from the host. Assume it's a command.
-			uint8 buf[64];
-			uint32 num64;
-			uint8 mod64;
-			uint8 i;
-			Endpoint_Read_Stream_LE(buf, 5, NULL);
-			i = buf[0];
-			num64 = buf[1];
-			num64 <<= 8;
-			num64 |= buf[2];
-			num64 <<= 8;
-			num64 |= buf[3];
-			num64 <<= 8;
-			num64 |= buf[4];
-			num64 >>= 6;
-			mod64 = buf[4] & 0x3F;
-			
-			// Wait for FPGA to assert eppWait
-			while ( EPP_CTRL_PIN & EPP_WAIT );
-			
-			// Drive addr on data lines, strobe addr write
-			EPP_CTRL_PORT &= ~EPP_WRITE;    // AVR writes to FPGA
-			EPP_DATA_PORT = i;              // set value of data lines
-			EPP_DATA_DDR = 0xFF;            // drive data lines
-			EPP_CTRL_PORT &= ~EPP_ADDRSTB;  // assert address strobe
-			
-			// Wait for FPGA to deassert eppWait
-			while ( !(EPP_CTRL_PIN & EPP_WAIT) );
-			
-			// Deassert address strobe, telling FPGA that it's OK to end the cycle
-			EPP_CTRL_PORT |= EPP_ADDRSTB;
-			
-			if ( i & 0x80 ) {
-				// The host is reading a channel ----------------------------------------------------------
-				
-				EPP_DATA_DDR = 0x00;         // stop driving data lines
-				EPP_CTRL_PORT |= EPP_WRITE;  // FPGA writes to AVR
-				
-				// Clear the OUT endpoint we've been reading from ready for sending on the IN endpoint
-				Endpoint_ClearOUT();
-				
-				// We're reading from the FPGA and sending to the host
-				Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
-				
-				// Fetch num64 64-byte packets from the FPGA, sending each back to the host
-				while ( num64-- ) {
-					// Fetch a 64-byte packet from the FPGA
-					for ( i = 0; i < 64; i++ ) {
-						// Wait for FPGA to assert eppWait
-						while ( EPP_CTRL_PIN & EPP_WAIT );
-						
-						// Assert data strobe, to read a byte
-						EPP_CTRL_PORT &= ~EPP_DATASTB;
-						
-						// Wait for FPGA to deassert eppWait
-						while ( !(EPP_CTRL_PIN & EPP_WAIT) );
-						
-						// Sample data lines
-						buf[i] = EPP_DATA_PIN;
-						
-						// Deassert data strobe, telling FPGA that it's OK to end the cycle
-						EPP_CTRL_PORT |= EPP_DATASTB;
-					}
-					
-					// Send it to the host
-					Endpoint_Write_Stream_LE(buf, 64, NULL);
-				}
-				
-				// Fetch the last few (mod64) bytes from the FPGA, and send it back to the host
-				if ( mod64 ) {
-					// Get last few bytes of data from FPGA
-					for ( i = 0; i < mod64; i++ ) {
-						// Wait for FPGA to assert eppWait
-						while ( EPP_CTRL_PIN & EPP_WAIT );
-						
-						// Put byte on port D, strobe a data read
-						EPP_CTRL_PORT &= ~EPP_DATASTB;
-						
-						// Wait for FPGA to deassert eppWait
-						while ( !(EPP_CTRL_PIN & EPP_WAIT) );
-						
-						// Sample data lines
-						buf[i] = EPP_DATA_PIN;
-						
-						// Signal FPGA that it's OK to end cycle
-						EPP_CTRL_PORT |= EPP_DATASTB;
-					}
-					
-					// And send it to the host
-					Endpoint_Write_Stream_LE(buf, mod64, NULL);
-				}
+// Conduit Operations ------------------------------------------------------------------------------
 
-				// IN transactions are never consecutive, so expect a new command on the OUT
-				Endpoint_ClearIN();
-				Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
-			} else {
-				// The host is writing a channel ----------------------------------------------------------
-				
-				// Get num64 packets from the host, sending each one in turn to the FPGA
-				while ( num64-- ) {
-					// Get a data from host
-					Endpoint_Read_Stream_LE(buf, 64, NULL);
-					
-					// Send it to FPGA
-					for ( i = 0; i < 64; i++ ) {
-						// Wait for FPGA to assert eppWait
-						while ( EPP_CTRL_PIN & EPP_WAIT );
-						
-						// Put byte on port D, strobe a data write
-						EPP_DATA_PORT = buf[i];
-						EPP_CTRL_PORT &= ~EPP_DATASTB;
-						
-						// Wait for FPGA to deassert eppWait
-						while ( !(EPP_CTRL_PIN & EPP_WAIT) );
-						
-						// Signal FPGA that it's OK to end cycle
-						EPP_CTRL_PORT |= EPP_DATASTB;
-					}
-				}
-				
-				// Get last few bytes from the host
-				if ( mod64 ) {
-					// Get data from host
-					Endpoint_Read_Stream_LE(buf, mod64, NULL);
-					
-					// Send it to FPGA
-					for ( i = 0; i < mod64; i++ ) {
-						// Wait for FPGA to assert eppWait
-						while ( EPP_CTRL_PIN & EPP_WAIT );
-						
-						// Put byte on port D, strobe a data write
-						EPP_DATA_PORT = buf[i];
-						EPP_CTRL_PORT &= ~EPP_DATASTB;
-						
-						// Wait for FPGA to deassert eppWait
-						while ( !(EPP_CTRL_PIN & EPP_WAIT) );
-						
-						// Signal FPGA that it's OK to end cycle
-						EPP_CTRL_PORT |= EPP_DATASTB;
-					}
-				}
-				
-				EPP_DATA_DDR = 0x00;         // stop driving port D
-				EPP_CTRL_PORT |= EPP_WRITE;  // FPGA writes to AVR
-			}
-		} while ( Endpoint_IsReadWriteAllowed() );
-		Endpoint_ClearOUT();
+// Select the conduit to use for future read/write operations
+void selectConduit(uint8 mode) {
+	switch(mode) {
+	case 0:
+		// Undo previous settings (if any)
+		if ( m_fifoMode == 1 ) {
+			EPP_CTRL_DDR &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
+			EPP_CTRL_PORT &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
+		} else if ( m_fifoMode == 2 ) {
+			UCSR1A = 0x00;
+			UCSR1B = 0x00;
+			UCSR1C = 0x00;
+			DDRD &= ~(SER_RX | SER_TX | SER_CK);
+			PORTD &= ~(SER_RX | SER_TX | SER_CK);
+		}
+		break;
+	case 1:
+		EPP_CTRL_PORT |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT);
+		EPP_CTRL_DDR &= ~EPP_WAIT; // WAIT is input
+		EPP_CTRL_DDR |= (EPP_ADDRSTB | EPP_DATASTB); // AS, DS are outputs
+		eppSending();
+		EPP_CTRL_DDR |= EPP_WRITE; // WR output low - FPGA in S_IDLE
+		break;
+	case 2:
+		PORTD |= SER_TX;  // TX high
+		PORTD &= ~SER_CK; // CK low
+		DDRD |= (SER_TX | SER_CK);  // TX & XCK are outputs
+		PORTD &= ~SER_TX;  // TX low - FPGA in S_RESET1
+		PORTD |= SER_TX;  // TX high - FPGA in S_IDLE
+		UBRR1H = 0x00;
+		UBRR1L = 0x00; // 8M sync
+		UCSR1A = (1<<U2X1);
+		UCSR1B = (1<<TXEN1);
+		UCSR1C = (3<<UCSZ10) | (1<<UMSEL10);
+		break;
 	}
+	m_fifoMode = mode;
 }
 
-bool isReady(void) {
+// Check to see if the FPGA is ready to do I/O on the selected conduit
+bool isConduitReady(void) {
 	switch ( m_fifoMode ) {
 	case 1:
 		return (EPP_CTRL_PIN & EPP_WAIT) == 0x00;
@@ -362,7 +338,7 @@ bool isReady(void) {
 	}
 }
 
-// Called once at startup
+// Main loop and control request callback ----------------------------------------------------------
 //
 int main(void) {
 	#if REG_ENABLED == 0
@@ -457,7 +433,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			if ( param == FIFO_MODE ) {
 				// Enable or disable FIFO mode
 				Endpoint_ClearSETUP();
-				fifoSetEnabled(value);
+				selectConduit(value);
 				#if USART_DEBUG == 1
 					debugSendFlashString(PSTR("FIFO_MODE("));
 					debugSendByteHex(value);
@@ -474,7 +450,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 			statusBuffer[2] = 'M';
 			statusBuffer[3] = 'I';
 			statusBuffer[4] = 0x00;                    // Last operation diagnostic code
-			statusBuffer[5] = isReady() ? 0x01 : 0x00;
+			statusBuffer[5] = isConduitReady() ? 0x01 : 0x00;
 			statusBuffer[6] = 0x24;                    // NeroJTAG endpoints
 			statusBuffer[7] = 0x24;                    // CommFPGA endpoints
 			statusBuffer[8] = 0xAA;                    // Firmware ID MSB
@@ -595,46 +571,6 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Jump_To_Bootloader();
 		}
 		break;
-
-	//case 0x90:
-	//	if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
-	//		uint8 response[4];
-	//		Endpoint_ClearSETUP();
-	//		debugSendFlashString(PSTR("Received: "));
-	//		usartSendByte(0x80);  // r/w flag & channel
-	//		usartSendByte(0x00);  // count MSB
-	//		usartSendByte(0x04);  // count LSB
-	//		UCSR1B = 0x00;                    // disable sender
-	//		debugSendFlashString(PSTR("... "));
-	//		//while ( !(UCSR1A & (1<<TXC1)) );  // wait for send complete
-	//		UCSR1B = (1<<RXEN1);              // enable receiver
-	//		response[0] = usartRecvByte();    // receive 1st byte
-	//		response[1] = usartRecvByte();    // receive 2nd byte
-	//		response[2] = usartRecvByte();    // receive 3rd byte
-	//		response[3] = usartRecvByte();    // receive 4th byte
-	//		UCSR1B = (1<<TXEN1);              // disable receiver, enable sender
-	//		debugSendByteHex(response[0]);    // print 1st byte
-	//		debugSendByteHex(response[1]);    // print 2nd byte
-	//		debugSendByteHex(response[2]);    // print 3rd byte
-	//		debugSendByteHex(response[3]);    // print 4th byte
-	//		debugSendByte('\r');
-	//		Endpoint_ClearStatusStage();
-	//	}
-	//	break;
-
-	//case 0x91:
-	//	if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
-	//		Endpoint_ClearSETUP();
-	//		usartSendByte(0x00); // write channel 0
-	//		usartSendByte(0x00); // count MSB
-	//		usartSendByte(0x04); // count LSB
-	//		usartSendByte(0xCA);
-	//		usartSendByte(0xFE);
-	//		usartSendByte(0xBA);
-	//		usartSendByte(0xBE);
-	//		Endpoint_ClearStatusStage();
-	//	}
-	//	break;
 	}
 }
 
