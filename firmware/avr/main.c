@@ -56,30 +56,34 @@ static uint8 m_fifoMode = 0;
 void Jump_To_Bootloader(void);
 
 void fifoSetEnabled(uint8 mode) {
-	m_fifoMode = mode;
 	switch(mode) {
 	case 0:
-		// Port C and D inputs, pull-ups off
-		#if USART_DEBUG == 1
-			DDRC &= DEBUG_MASK;
-			PORTC &= DEBUG_MASK;
-		#else
-			DDRC = 0x00;
-			PORTC = 0x00;
-		#endif
-		DDRD = 0x00;
-		PORTD = 0x00;
+		// Undo previous settings (if any)
+		if ( m_fifoMode == 1 ) {
+			EPP_CTRL_DDR &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
+			EPP_CTRL_PORT &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
+		} else if ( m_fifoMode == 2 ) {
+			UCSR1A = 0x00;
+			UCSR1B = 0x00;
+			UCSR1C = 0x00;
+			DDRD &= ~(SER_RX | SER_TX | SER_CK);
+			PORTD &= ~(SER_RX | SER_TX | SER_CK);
+		}
 		break;
 	case 1:
-		// EPP_WAIT pulled-up input, other port C lines outputs, high
-		EPP_CTRL_PORT |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE | EPP_WAIT);
-		EPP_CTRL_DDR &= ~EPP_WAIT;
-		EPP_CTRL_DDR |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
+		EPP_DATA_DDR = 0x00;
+		EPP_CTRL_PORT |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT);
+		EPP_CTRL_DDR &= ~EPP_WAIT; // WAIT is input
+		EPP_CTRL_DDR |= (EPP_ADDRSTB | EPP_DATASTB); // AS, DS are outputs
+		EPP_CTRL_PORT &= ~EPP_WRITE; // WR will be low
+		EPP_CTRL_DDR |= EPP_WRITE; // WR output low - FPGA in S_IDLE
 		break;
 	case 2:
 		PORTD |= SER_TX;  // TX high
-		//PORTD |= (SER_RX | SER_TX);  // RX pull-up, TX high
+		PORTD &= ~SER_CK; // CK low
 		DDRD |= (SER_TX | SER_CK);  // TX & XCK are outputs
+		PORTD &= ~SER_TX;  // TX low - FPGA in S_RESET1
+		PORTD |= SER_TX;  // TX high - FPGA in S_IDLE
 		UBRR1H = 0x00;
 		UBRR1L = 0x00; // 8M sync
 		UCSR1A = (1<<U2X1);
@@ -87,6 +91,7 @@ void fifoSetEnabled(uint8 mode) {
 		UCSR1C = (3<<UCSZ10) | (1<<UMSEL10);
 		break;
 	}
+	m_fifoMode = mode;
 }
 
 // Send a USART byte.
@@ -335,7 +340,7 @@ void doEPP(void) {
 			// Wait for FPGA to assert eppWait
 			while ( EPP_CTRL_PIN & EPP_WAIT );
 			
-			// Put addr on port D, strobe an addr write
+			// Drive addr on data lines, strobe addr write
 			EPP_CTRL_PORT &= ~EPP_WRITE;    // AVR writes to FPGA
 			EPP_DATA_PORT = i;              // set value of data lines
 			EPP_DATA_DDR = 0xFF;            // drive data lines

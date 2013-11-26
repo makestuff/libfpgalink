@@ -22,8 +22,8 @@
 
 #if USART_DEBUG == 1
 	void debugInit(void) {
-		DDRC = DEBUG_MASK;
-		PORTC = DEBUG_MASK;
+		PORTC |= DEBUG_MASK;
+		DDRC |= DEBUG_MASK;
 	}
 
 	void debugSendByte(uint8 byte) {
