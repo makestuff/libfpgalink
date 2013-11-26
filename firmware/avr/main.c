@@ -197,125 +197,6 @@ void doSerial(void) {
 	}
 }
 
-#ifdef DUMMY_DEVICE
-#if USART_DEBUG == 1
-	static uint8 m_count = 0x00;
-#endif
-void doEPP(void) {
-	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
-	if ( Endpoint_IsOUTReceived() ) {
-		do {
-			// Got data from the host. Assume it's a command.
-			uint8 buf[64];
-			uint32 num64;
-			uint8 mod64;
-			uint8 i;
-			Endpoint_Read_Stream_LE(buf, 5, NULL);
-			i = buf[0];
-			num64 = buf[1];
-			num64 <<= 8;
-			num64 |= buf[2];
-			num64 <<= 8;
-			num64 |= buf[3];
-			num64 <<= 8;
-			num64 |= buf[4];
-			num64 >>= 6;
-			mod64 = buf[4] & 0x3F;
-			
-			#if USART_DEBUG == 1
-				if ( i & 0x80 ) {
-					debugSendFlashString(PSTR("READ(count=0x"));
-				} else {
-					debugSendFlashString(PSTR("WRITE(count=0x"));
-				}
-				debugSendByteHex(m_count++);
-				debugSendFlashString(PSTR(", chan=0x"));
-				debugSendByteHex(i & 0x7F);
-				debugSendFlashString(PSTR(", num64=0x"));
-				debugSendLongHex(num64);
-				debugSendFlashString(PSTR(", mod64=0x"));
-				debugSendWordHex(mod64);
-			#endif
-
-			if ( i & 0x80 ) {
-				// The host is reading a channel ----------------------------------------------------------
-				
-				// Clear the OUT endpoint we've been reading from ready for sending on the IN endpoint
-				Endpoint_ClearOUT();
-				
-				// We're reading from the FPGA and sending to the host
-				Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
-				
-				// Send num64 64-byte dummy packets to the host
-				while ( num64-- ) {
-					// Make up a dummy data packet
-					for ( i = 0; i < 64; i++ ) {
-						buf[i] = i;
-					}
-
-					// Send it to the host
-					Endpoint_Write_Stream_LE(buf, 64, NULL);
-				}
-				
-				// Send the last few (mod64) bytes of dummy data to the host
-				if ( mod64 ) {
-					// Make up some dummy data
-					for ( i = 0; i < mod64; i++ ) {
-						buf[i] = i;
-					}
-
-					// Send it to the host
-					Endpoint_Write_Stream_LE(buf, mod64, NULL);
-				}
-				
-				// IN transactions are never consecutive, so expect a new command on the OUT
-				Endpoint_ClearIN();
-				Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
-				#if USART_DEBUG == 1
-					debugSendFlashString(PSTR(")\r"));
-				#endif
-			} else {
-				// The host is writing a channel ----------------------------------------------------------
-				#if USART_DEBUG == 1
-					uint16 cksum = 0x0000;
-				#endif
-				
-				// Get num64 packets from host, sending each one in turn to the FPGA
-				while ( num64-- ) {
-					// Get data from the host
-					Endpoint_Read_Stream_LE(buf, 64, NULL);
-					
-					// Checksum it
-					#if USART_DEBUG == 1
-						for ( i = 0; i < 64; i++ ) {
-							cksum += buf[i];
-						}
-					#endif
-				}
-				
-				// Get last few (mod64) bytes of data from host
-				if ( mod64 ) {
-					// Get data from the host
-					Endpoint_Read_Stream_LE(buf, mod64, NULL);
-					
-					// Checksum it
-					#if USART_DEBUG == 1
-						for ( i = 0; i < mod64; i++ ) {
-							cksum += buf[i];
-						}
-					#endif
-				}
-				#if USART_DEBUG == 1
-					debugSendFlashString(PSTR(", cksum=0x"));
-					debugSendWordHex(cksum);
-					debugSendFlashString(PSTR(")\r"));
-				#endif
-			}
-		} while ( Endpoint_IsReadWriteAllowed() );
-		Endpoint_ClearOUT();
-	}
-}
-#else
 void doEPP(void) {
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
 	if ( Endpoint_IsOUTReceived() ) {
@@ -469,7 +350,6 @@ void doEPP(void) {
 		Endpoint_ClearOUT();
 	}
 }
-#endif
 
 bool isReady(void) {
 	switch ( m_fifoMode ) {
