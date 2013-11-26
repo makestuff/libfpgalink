@@ -409,7 +409,7 @@ int main(void) {
 	static const char *opNames[] PROGMEM = { Op0, Op1, Op2, Op3, Op4, Op5, Op6 };
 #endif
 
-#define FIFO_MODE 0x0000
+#define SELECT_CONDUIT 0x0000
 
 #define updatePort(port) \
 	if ( CONCAT(DDR, port) | bitMask ) { \
@@ -430,12 +430,12 @@ void EVENT_USB_Device_ControlRequest(void) {
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			const uint16 param = USB_ControlRequest.wValue;
 			const uint16 value = USB_ControlRequest.wIndex;
-			if ( param == FIFO_MODE ) {
-				// Enable or disable FIFO mode
+			if ( param == SELECT_CONDUIT ) {
+				// Select conduit to use for future I/O
 				Endpoint_ClearSETUP();
 				selectConduit(value);
 				#if USART_DEBUG == 1
-					debugSendFlashString(PSTR("FIFO_MODE("));
+					debugSendFlashString(PSTR("SELECT_CONDUIT("));
 					debugSendByteHex(value);
 					debugSendByte(')');
 					debugSendByte('\r');
