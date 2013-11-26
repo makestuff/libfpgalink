@@ -17,6 +17,7 @@
 #include <avr/io.h>
 #include "prog.h"
 #include "desc.h"
+#include "usbio.h"
 #include "debug.h"
 
 static uint32 m_numBits = 0UL;
@@ -27,21 +28,44 @@ static uint8 m_flagByte = 0x00;
 	// These are fixed for a given micro: the SPI pins
 	#define PROG_PORT B
 	#define bmTMS     0x01
+	#define TCK_PORT  CONCAT(PORT, PROG_PORT)
 	#define bmTCK     0x02
+	#define TDI_PORT  CONCAT(PORT, PROG_PORT)
 	#define bmTDI     0x04
 	#define bmTDO     0x08
 #else
 	// These can be anything, depending on how JTAG is wired
 	#define PROG_PORT B
 	#define bmTMS     0x01
-	#define bmTCK     0x02
-	#define bmTDI     0x04
+	//#define TCK_PORT  PORTB
+	//#define bmTCK     0x02
+	//#define TDI_PORT  PORTB
+	//#define bmTDI     0x04
 	#define bmTDO     0x08
 #endif
 
 // Make PORT{B,C,D...} & PIN{B,C,D...} macros
 #define PORT CONCAT(PORT, PROG_PORT)
 #define PIN CONCAT(PIN, PROG_PORT)
+
+#define PAR_DDR DDRB
+#define PAR_PORT PORTB
+
+// Enable the parallel port
+static inline void parEnable(void) {
+	PAR_DDR = 0xFF;
+}
+
+// Disable the parallel port
+static inline void parDisable(void) {
+	PAR_DDR = 0x00;
+}
+
+// Send a byte over the parallel port
+static inline void parSendByte(uint8 byte) {
+	PAR_PORT = byte;
+	TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
+}
 
 // Transition the JTAG state machine to another state: clock "transitionCount" bits from
 // "bitPattern" into TMS, LSB-first.
@@ -53,14 +77,14 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 		} else {
 			PORT &= ~bmTMS;
 		}
-		PORT |= bmTCK;
-		PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK;
+		TCK_PORT &= ~bmTCK;
 		bitPattern >>= 1;
 	}
 }
 
-#define setTDI(x) if ( x ) { PORT |= bmTDI; } else { PORT &= ~bmTDI; }
-#define jtagBit(x) setTDI(byte & x); PORT |= bmTCK; PORT &= ~bmTCK
+#define setTDI(x) if ( x ) { TDI_PORT |= bmTDI; } else { TDI_PORT &= ~bmTDI; }
+#define jtagBit(x) setTDI(byte & x); TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK
 
 // If the JTAG lines are wired to the right pins on the AVR SPI port, we can use
 // it instead of bit-banging, which is much faster. Beware though, if SS is not used
@@ -107,28 +131,28 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 		uint8 tdoByte = 0x00;
 		setTDI(byte & 0x01);
 		if ( PIN & bmTDO ) { tdoByte |= 0x01; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		setTDI(byte & 0x02);
 		if ( PIN & bmTDO ) { tdoByte |= 0x02; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		setTDI(byte & 0x04);
 		if ( PIN & bmTDO ) { tdoByte |= 0x04; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		setTDI(byte & 0x08);
 		if ( PIN & bmTDO ) { tdoByte |= 0x08; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		setTDI(byte & 0x10);
 		if ( PIN & bmTDO ) { tdoByte |= 0x10; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		setTDI(byte & 0x20);
 		if ( PIN & bmTDO ) { tdoByte |= 0x20; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		setTDI(byte & 0x40);
 		if ( PIN & bmTDO ) { tdoByte |= 0x40; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		setTDI(byte & 0x80);
 		if ( PIN & bmTDO ) { tdoByte |= 0x80; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK; TCK_PORT &= ~bmTCK;
 		return tdoByte;
 	}
 
@@ -164,7 +188,7 @@ static void jtagIsSendingIsReceiving(void) {
 	while ( m_numBits ) {
 		bitsRead = (m_numBits >= (ENDPOINT_SIZE<<3)) ? ENDPOINT_SIZE<<3 : m_numBits;
 		bytesRead = bitsToBytes(bitsRead);
-		Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+		usbSelectEndpoint(OUT_ENDPOINT_ADDR);
 		Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
 		ptr = buf;
 		if ( bitsRead == m_numBits ) {
@@ -191,8 +215,8 @@ static void jtagIsSendingIsReceiving(void) {
 				if ( PIN & bmTDO ) {
 					tdoByte |= i;
 				}
-				PORT |= bmTCK;
-				PORT &= ~bmTCK;
+				TCK_PORT |= bmTCK;
+				TCK_PORT &= ~bmTCK;
 				i <<= 1;
 			}
 			*ptr = tdoByte;
@@ -204,11 +228,11 @@ static void jtagIsSendingIsReceiving(void) {
 				ptr++;
 			}
 		}
-		Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+		usbSelectEndpoint(IN_ENDPOINT_ADDR);
 		Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
 		m_numBits -= bitsRead;
-		Endpoint_ClearIN();
-		Endpoint_ClearOUT();
+		usbFlushPacket();
+		usbAckPacket();
 	}
 	m_progOp = PROG_NOP;
 }
@@ -218,7 +242,7 @@ static void jtagIsSendingNotReceiving(void) {
 	uint16 bitsRead, bitsRemaining;
 	uint8 bytesRead, bytesRemaining;
 	uint8 buf[ENDPOINT_SIZE], *ptr;
-	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+	usbSelectEndpoint(OUT_ENDPOINT_ADDR);
 	spiEnable();
 	while ( m_numBits ) {
 		bitsRead = (m_numBits >= (ENDPOINT_SIZE<<3)) ? ENDPOINT_SIZE<<3 : m_numBits;
@@ -244,8 +268,8 @@ static void jtagIsSendingNotReceiving(void) {
 				}
 				setTDI(tdiByte & 0x01);
 				tdiByte >>= 1;
-				PORT |= bmTCK;
-				PORT &= ~bmTCK;
+				TCK_PORT |= bmTCK;
+				TCK_PORT &= ~bmTCK;
 				i <<= 1;
 			}
 		} else {
@@ -257,7 +281,7 @@ static void jtagIsSendingNotReceiving(void) {
 		}
 		m_numBits -= bitsRead;
 	}
-	Endpoint_ClearOUT();
+	usbAckPacket();
 	m_progOp = PROG_NOP;
 }
 
@@ -267,7 +291,7 @@ static void jtagNotSendingIsReceiving(void) {
 	uint8 bytesRead, bytesRemaining;
 	uint8 buf[ENDPOINT_SIZE], *ptr;
 	const uint8 tdiByte = (m_flagByte & bmSENDONES) ? 0xFF : 0x00;
-	Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+	usbSelectEndpoint(IN_ENDPOINT_ADDR);
 	spiEnable();
 	while ( m_numBits ) {
 		bitsRead = (m_numBits >= (ENDPOINT_SIZE<<3)) ? ENDPOINT_SIZE<<3 : m_numBits;
@@ -294,8 +318,8 @@ static void jtagNotSendingIsReceiving(void) {
 				if ( PIN & bmTDO ) {
 					tdoByte |= i;
 				}
-				PORT |= bmTCK;
-				PORT &= ~bmTCK;
+				TCK_PORT |= bmTCK;
+				TCK_PORT &= ~bmTCK;
 				i <<= 1;
 			}
 			*ptr = tdoByte;
@@ -309,7 +333,7 @@ static void jtagNotSendingIsReceiving(void) {
 		Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
 		m_numBits -= bitsRead;
 	}
-	Endpoint_ClearIN();
+	usbFlushPacket();
 	m_progOp = PROG_NOP;
 }
 
@@ -332,17 +356,30 @@ static void jtagNotSendingNotReceiving(void) {
 		if ( (m_flagByte & bmISLAST) && !leftOver ) {
 			PORT |= bmTMS; // Exit Shift-DR state on next clock
 		}
-		PORT |= bmTCK;
-		PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK;
+		TCK_PORT &= ~bmTCK;
 	}
 	m_numBits = 0;
+	m_progOp = PROG_NOP;
+}
+
+static void parSend(void) {
+	uint8 byte;
+	usbSelectEndpoint(OUT_ENDPOINT_ADDR);
+	parEnable();
+	while ( m_numBits-- ) {
+		byte = usbFetchByte();
+		parSendByte(byte);
+	}
+	parDisable();
+	usbAckPacket();
 	m_progOp = PROG_NOP;
 }
 
 static void spiSend(void) {
 	uint8 bytesRead;
 	uint8 buf[ENDPOINT_SIZE], *ptr;
-	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+	usbSelectEndpoint(OUT_ENDPOINT_ADDR);
 	spiEnable();
 	while ( m_numBits ) {
 		bytesRead = (m_numBits >= ENDPOINT_SIZE) ? ENDPOINT_SIZE : m_numBits;
@@ -354,7 +391,7 @@ static void spiSend(void) {
 		}
 	}
 	spiDisable();
-	Endpoint_ClearOUT();
+	usbAckPacket();
 	m_progOp = PROG_NOP;
 }
 
@@ -364,7 +401,7 @@ static void spiSendRecv(void) {
 	spiEnable();
 	while ( m_numBits ) {
 		bytesRead = (m_numBits >= ENDPOINT_SIZE) ? ENDPOINT_SIZE : m_numBits;
-		Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
+		usbSelectEndpoint(OUT_ENDPOINT_ADDR);
 		Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
 		ptr = buf;
 		bytesRemaining = bytesRead;
@@ -372,11 +409,11 @@ static void spiSendRecv(void) {
 			*ptr = jtagShiftInOut(*ptr);
 			ptr++;
 		}
-		Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+		usbSelectEndpoint(IN_ENDPOINT_ADDR);
 		Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
 		m_numBits -= bytesRead;
-		Endpoint_ClearIN();
-		Endpoint_ClearOUT();
+		usbFlushPacket();
+		usbAckPacket();
 	}
 	spiDisable();
 	m_progOp = PROG_NOP;
@@ -386,7 +423,7 @@ static void spiRecv(void) {
 	uint8 bytesRead, bytesRemaining;
 	uint8 buf[ENDPOINT_SIZE], *ptr;
 	spiEnable();
-	Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
+	usbSelectEndpoint(IN_ENDPOINT_ADDR);
 	while ( m_numBits ) {
 		bytesRead = (m_numBits >= ENDPOINT_SIZE) ? ENDPOINT_SIZE : m_numBits;
 		ptr = buf;
@@ -399,7 +436,7 @@ static void spiRecv(void) {
 		m_numBits -= bytesRead;
 	}
 	spiDisable();
-	Endpoint_ClearIN();
+	usbFlushPacket();
 	m_progOp = PROG_NOP;
 }
 
@@ -432,7 +469,9 @@ void progShiftExecute(void) {
 	case PROG_SPI_RECV:
 		spiRecv();
 		break;
-	case PROG_PARALLEL:  // Parallel not supported
+	case PROG_PARALLEL:
+		parSend();
+		break;
 	case PROG_NOP:
 	default:
 		break;
@@ -443,7 +482,7 @@ void progShiftExecute(void) {
 //
 void progClocks(uint32 numClocks) {
 	while ( numClocks-- ) {
-		PORT |= bmTCK;
-		PORT &= ~bmTCK;
+		TCK_PORT |= bmTCK;
+		TCK_PORT &= ~bmTCK;
 	}
 }
