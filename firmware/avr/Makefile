@@ -62,9 +62,6 @@
 # The version of LUFA to download and use
 LUFA_VERSION=130303
 
-# MCU name
-MCU = at90usb162
-
 # Identifiers for the device
 MAKESTUFF_TODAY_DATE := $(shell date +%Y%m%d)
 VID := 1D50
@@ -72,12 +69,12 @@ PID := 602B
 DID := 0001
 
 # Options
-REG_ENABLED = 0
-PROG_HWSPI = 1
-USART_DEBUG = 0
-FLASH_SIZE_BYTES = 16384
-BOOTLOADER_SEC_SIZE_BYTES = 4096
-CONFIG_OPTS = "-DTCK_PORT=PORTB -DbmTCK=0x02 -DTDI_PORT=PORTB -DbmTDI=0x04"
+USART_DEBUG := 0
+BSP := mojo
+
+# Numbers in BSP needed for Makefile
+MCU := $(word 3,$(shell grep MCU boards/$(BSP).h))
+F_CPU := $(word 3,$(shell grep XTAL boards/$(BSP).h))
 
 # Target architecture (see library "Board Types" documentation).
 ARCH = AVR8
@@ -100,7 +97,7 @@ BOARD = BUMBLEB
 #     does not *change* the processor frequency - it should merely be updated to
 #     reflect the processor speed set externally so that the code can use accurate
 #     software delays.
-F_CPU = 16000000
+#F_CPU = 16000000 - see grep for XTAL above
 
 
 # Input clock frequency.
@@ -202,12 +199,8 @@ CSTANDARD = -std=c99
 # Place -D or -U options here for C sources
 CDEFS  = -DF_CPU=$(F_CPU)UL
 CDEFS += -DF_USB=$(F_USB)UL
-CDEFS += $(CONFIG_OPTS)
-CDEFS += -DREG_ENABLED=$(REG_ENABLED)
-CDEFS += -DPROG_HWSPI=$(PROG_HWSPI)
+CDEFS += -DBSP=$(BSP)
 CDEFS += -DUSART_DEBUG=$(USART_DEBUG)
-CDEFS += -DFLASH_SIZE_BYTES=$(FLASH_SIZE_BYTES)
-CDEFS += -DBOOTLOADER_SEC_SIZE_BYTES=$(BOOTLOADER_SEC_SIZE_BYTES)
 CDEFS += -DBOARD=BOARD_$(BOARD) -DARCH=ARCH_$(ARCH)
 CDEFS += $(LUFA_OPTS)
 

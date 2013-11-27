@@ -22,6 +22,7 @@
 #include <LUFA/Version.h>
 #include <LUFA/Drivers/USB/USB.h>
 #include "makestuff.h"
+#include STR(boards/BSP.h)
 #include "desc.h"
 #include "prog.h"
 #include "../../vendorCommands.h"
@@ -29,22 +30,29 @@
 #include "debug.h"
 #include "date.h"
 
-//#define EPP_ADDRSTB (1<<4)
-//#define EPP_DATASTB (1<<5)
-//#define EPP_WRITE   (1<<6)
-//#define EPP_WAIT    (1<<7)
+// Digilent
+//#define bmEPP_ADDR (1<<4)
+//#define bmEPP_DATA (1<<5)
+//#define bmEPP_WRITE   (1<<6)
+//#define bmEPP_WAIT    (1<<7)
 
-#define EPP_ADDRSTB (1<<1)
-#define EPP_DATASTB (1<<5)
-#define EPP_WRITE   (1<<3)
-#define EPP_WAIT    (1<<2)
+// Mojo
+//#define bmEPP_ADDRSTB (1<<1)
+//#define bmEPP_DATASTB (1<<5)
+//#define bmEPP_WRITE   (1<<3)
+//#define bmEPP_WAIT    (1<<2)
 
-#define EPP_CTRL_PORT    PORTD
-#define EPP_CTRL_PIN     PIND
-#define EPP_CTRL_DDR     DDRD
-#define EPP_DATA_PORT    PORTB
-#define EPP_DATA_PIN     PINB
-#define EPP_DATA_DDR     DDRB
+#define bmEPP_ADDRSTB (1<<EPP_ADDRSTB)
+#define bmEPP_DATASTB (1<<EPP_DATASTB)
+#define bmEPP_WRITE   (1<<EPP_WRITE)
+#define bmEPP_WAIT    (1<<EPP_WAIT)
+
+#define EPP_CTRL_PORT CONCAT(PORT, EPP_CTRL)
+#define EPP_CTRL_PIN  CONCAT(PIN, EPP_CTRL)
+#define EPP_CTRL_DDR  CONCAT(DDR, EPP_CTRL)
+#define EPP_DATA_PORT CONCAT(PORT, EPP_DATA)
+#define EPP_DATA_PIN  CONCAT(PIN, EPP_DATA)
+#define EPP_DATA_DDR  CONCAT(DDR, EPP_DATA)
 
 #define SER_RX      (1<<2)
 #define SER_TX      (1<<3)
@@ -60,33 +68,33 @@ void Jump_To_Bootloader(void);
 // Send an EPP data byte
 static inline void eppSendDataByte(uint8 byte) {
 	// Wait for FPGA to assert eppWait
-	while ( EPP_CTRL_PIN & EPP_WAIT );
+	while ( EPP_CTRL_PIN & bmEPP_WAIT );
 	
 	// Drive byte on data bus, strobe data write
 	EPP_DATA_PORT = byte;
-	EPP_CTRL_PORT &= ~EPP_DATASTB;
+	EPP_CTRL_PORT &= ~bmEPP_DATASTB;
 	
 	// Wait for FPGA to deassert eppWait
-	while ( !(EPP_CTRL_PIN & EPP_WAIT) );
+	while ( !(EPP_CTRL_PIN & bmEPP_WAIT) );
 	
 	// Signal FPGA that it's OK to end cycle
-	EPP_CTRL_PORT |= EPP_DATASTB;
+	EPP_CTRL_PORT |= bmEPP_DATASTB;
 }
 
 // Send an EPP address byte
 static inline void eppSendAddrByte(uint8 byte) {
 	// Wait for FPGA to assert eppWait
-	while ( EPP_CTRL_PIN & EPP_WAIT );
+	while ( EPP_CTRL_PIN & bmEPP_WAIT );
 	
 	// Drive byte on data bus, strobe address write
 	EPP_DATA_PORT = byte;
-	EPP_CTRL_PORT &= ~EPP_ADDRSTB;
+	EPP_CTRL_PORT &= ~bmEPP_ADDRSTB;
 	
 	// Wait for FPGA to deassert eppWait
-	while ( !(EPP_CTRL_PIN & EPP_WAIT) );
+	while ( !(EPP_CTRL_PIN & bmEPP_WAIT) );
 	
 	// Signal FPGA that it's OK to end cycle
-	EPP_CTRL_PORT |= EPP_ADDRSTB;
+	EPP_CTRL_PORT |= bmEPP_ADDRSTB;
 }
 
 // Receive an EPP data byte
@@ -94,19 +102,19 @@ static inline uint8 eppRecvDataByte(void) {
 	uint8 byte;
 	
 	// Wait for FPGA to assert eppWait
-	while ( EPP_CTRL_PIN & EPP_WAIT );
+	while ( EPP_CTRL_PIN & bmEPP_WAIT );
 	
 	// Assert data strobe, to read a byte
-	EPP_CTRL_PORT &= ~EPP_DATASTB;
+	EPP_CTRL_PORT &= ~bmEPP_DATASTB;
 	
 	// Wait for FPGA to deassert eppWait
-	while ( !(EPP_CTRL_PIN & EPP_WAIT) );
+	while ( !(EPP_CTRL_PIN & bmEPP_WAIT) );
 	
 	// Sample data lines
 	byte = EPP_DATA_PIN;
 	
 	// Deassert data strobe, telling FPGA that it's OK to end the cycle
-	EPP_CTRL_PORT |= EPP_DATASTB;
+	EPP_CTRL_PORT |= bmEPP_DATASTB;
 
 	return byte;
 }
@@ -114,13 +122,13 @@ static inline uint8 eppRecvDataByte(void) {
 // Set the data bus direction to AVR->FPGA
 static inline void eppSending(void) {
 	EPP_DATA_DDR = 0xFF;
-	EPP_CTRL_PORT &= ~EPP_WRITE;
+	EPP_CTRL_PORT &= ~bmEPP_WRITE;
 }
 
 // Set the data bus direction to AVR<-FPGA
 static inline void eppReceiving(void) {
 	EPP_DATA_DDR = 0x00;
-	EPP_CTRL_PORT |= EPP_WRITE;
+	EPP_CTRL_PORT |= bmEPP_WRITE;
 }
 
 // Execute pending EPP read/write operations
@@ -293,8 +301,8 @@ void selectConduit(uint8 mode) {
 	case 0:
 		// Undo previous settings (if any)
 		if ( m_fifoMode == 1 ) {
-			EPP_CTRL_DDR &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
-			EPP_CTRL_PORT &= ~(EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT | EPP_WRITE);
+			EPP_CTRL_DDR &= ~(bmEPP_ADDRSTB | bmEPP_DATASTB | bmEPP_WAIT | bmEPP_WRITE);
+			EPP_CTRL_PORT &= ~(bmEPP_ADDRSTB | bmEPP_DATASTB | bmEPP_WAIT | bmEPP_WRITE);
 		} else if ( m_fifoMode == 2 ) {
 			UCSR1A = 0x00;
 			UCSR1B = 0x00;
@@ -304,11 +312,11 @@ void selectConduit(uint8 mode) {
 		}
 		break;
 	case 1:
-		EPP_CTRL_PORT |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WAIT);
-		EPP_CTRL_DDR &= ~EPP_WAIT; // WAIT is input
-		EPP_CTRL_DDR |= (EPP_ADDRSTB | EPP_DATASTB); // AS, DS are outputs
+		EPP_CTRL_PORT |= (bmEPP_ADDRSTB | bmEPP_DATASTB | bmEPP_WAIT);
+		EPP_CTRL_DDR &= ~bmEPP_WAIT; // WAIT is input
+		EPP_CTRL_DDR |= (bmEPP_ADDRSTB | bmEPP_DATASTB); // AS, DS are outputs
 		eppSending();
-		EPP_CTRL_DDR |= EPP_WRITE; // WR output low - FPGA in S_IDLE
+		EPP_CTRL_DDR |= bmEPP_WRITE; // WR output low - FPGA in S_IDLE
 		break;
 	case 2:
 		PORTD |= SER_TX;  // TX high
@@ -330,7 +338,7 @@ void selectConduit(uint8 mode) {
 bool isConduitReady(void) {
 	switch ( m_fifoMode ) {
 	case 1:
-		return (EPP_CTRL_PIN & EPP_WAIT) == 0x00;
+		return (EPP_CTRL_PIN & bmEPP_WAIT) == 0x00;
 	case 2:
 		return (PIND & SER_RX) == 0x00;  // ready when RX is low
 	default:

@@ -9,12 +9,13 @@
 #include <LUFA/Common/Common.h>
 #include <LUFA/Drivers/USB/USB.h>
 
+#include <makestuff.h>
+#include STR(boards/BSP.h)
+
 uint32_t Boot_Key ATTR_NO_INIT;
 
 #define MAGIC_BOOT_KEY 0xDC42ACCA
 #define BOOTLOADER_START_ADDRESS (FLASH_SIZE_BYTES - BOOTLOADER_SEC_SIZE_BYTES)
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
 
 void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
 void Bootloader_Jump_Check(void)

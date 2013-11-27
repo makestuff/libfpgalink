@@ -15,6 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <avr/io.h>
+#include "makestuff.h"
+#include STR(boards/BSP.h)
 #include "prog.h"
 #include "desc.h"
 #include "usbio.h"
