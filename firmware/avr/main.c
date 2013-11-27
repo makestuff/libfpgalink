@@ -54,9 +54,11 @@
 #define EPP_DATA_PIN  CONCAT(PIN, EPP_DATA)
 #define EPP_DATA_DDR  CONCAT(DDR, EPP_DATA)
 
-#define SER_RX      (1<<2)
-#define SER_TX      (1<<3)
-#define SER_CK      (1<<5)
+#define bmSER_RX (1<<SER_RX)
+#define bmSER_TX (1<<SER_TX)
+#define bmSER_CK (1<<SER_CK)
+#define SER_PORT CONCAT(PORT, SER_PORT_NAME)
+#define SER_DDR  CONCAT(DDR, SER_PORT_NAME)
 
 static uint8 m_fifoMode = 0;
 
@@ -255,21 +257,21 @@ void doSerial(void) {
 					::);
 				UCSR1B = (1<<RXEN1);                   // TX disabled, RX enabled
 				while ( !usbInPacketReady() );
-				PORTD &= ~SER_TX;                      // TX low says "I'm ready"
+				SER_PORT &= ~bmSER_TX;                      // TX low says "I'm ready"
 				chan = 0;
 				do {
 					byte = usartRecvByte();
 					if ( !usbReadWriteAllowed() ) {
-						PORTD |= SER_TX;                 // TX high says "I'm not ready"
+						SER_PORT |= bmSER_TX;                 // TX high says "I'm not ready"
 						usbFlushPacket();
 						while ( !usbInPacketReady() );
-						PORTD &= ~SER_TX;                // TX low says "OK I'm ready now"
+						SER_PORT &= ~bmSER_TX;                // TX low says "OK I'm ready now"
 					}
 					usbSendByte(byte);
 					count--;
 				} while ( count );
 				UCSR1B = (1<<TXEN1);                   // TX enabled, RX disabled
-				PORTD |= SER_TX;                       // TX high says "I acknowledge receipt of your data"
+				SER_PORT |= bmSER_TX;                       // TX high says "I acknowledge receipt of your data"
 				usbFlushPacket();                      // flush final packet
 				usbSelectEndpoint(OUT_ENDPOINT_ADDR);  // ready for next command
 				return;                                // there cannot be any more work to do
@@ -283,7 +285,7 @@ void doSerial(void) {
 				#endif
 				do {
 					byte = usbFetchByte();
-					while ( PIND & SER_RX );            // ensure RX is still low
+					while ( PIND & bmSER_RX );            // ensure RX is still low
 					usartSendByte(byte);
 					count--;
 				} while ( count );
@@ -307,8 +309,8 @@ void selectConduit(uint8 mode) {
 			UCSR1A = 0x00;
 			UCSR1B = 0x00;
 			UCSR1C = 0x00;
-			DDRD &= ~(SER_RX | SER_TX | SER_CK);
-			PORTD &= ~(SER_RX | SER_TX | SER_CK);
+			SER_DDR &= ~(bmSER_RX | bmSER_TX | bmSER_CK);
+			SER_PORT &= ~(bmSER_RX | bmSER_TX | bmSER_CK);
 		}
 		break;
 	case 1:
@@ -319,11 +321,11 @@ void selectConduit(uint8 mode) {
 		EPP_CTRL_DDR |= bmEPP_WRITE; // WR output low - FPGA in S_IDLE
 		break;
 	case 2:
-		PORTD |= SER_TX;  // TX high
-		PORTD &= ~SER_CK; // CK low
-		DDRD |= (SER_TX | SER_CK);  // TX & XCK are outputs
-		PORTD &= ~SER_TX;  // TX low - FPGA in S_RESET1
-		PORTD |= SER_TX;  // TX high - FPGA in S_IDLE
+		SER_PORT |= bmSER_TX;  // TX high
+		SER_PORT &= ~bmSER_CK; // CK low
+		SER_DDR |= (bmSER_TX | bmSER_CK);  // TX & XCK are outputs
+		SER_PORT &= ~bmSER_TX;  // TX low - FPGA in S_RESET1
+		SER_PORT |= bmSER_TX;  // TX high - FPGA in S_IDLE
 		UBRR1H = 0x00;
 		UBRR1L = 0x00; // 8M sync
 		UCSR1A = (1<<U2X1);
@@ -340,7 +342,7 @@ bool isConduitReady(void) {
 	case 1:
 		return (EPP_CTRL_PIN & bmEPP_WAIT) == 0x00;
 	case 2:
-		return (PIND & SER_RX) == 0x00;  // ready when RX is low
+		return (PIND & bmSER_RX) == 0x00;  // ready when RX is low
 	default:
 		return false;
 	}
