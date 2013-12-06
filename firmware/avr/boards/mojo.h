@@ -16,15 +16,15 @@
 #define bmTDI       0x80
 
 // EPP definitions
-#define EPP_CTRL    D
-#define EPP_DATA    B
-#define EPP_ADDRSTB 1
-#define EPP_DATASTB 5
-#define EPP_WRITE   3
-#define EPP_WAIT    2
+#define EPP_CTRL_NAME D
+#define EPP_DATA_NAME B
+#define EPP_ADDRSTB   1
+#define EPP_DATASTB   5
+#define EPP_WRITE     3
+#define EPP_WAIT      2
 
 // Serial port definitions
-#define SER_PORT_NAME D
+#define SER_NAME D
 #define SER_RX 2
 #define SER_TX 3
 #define SER_CK 5
