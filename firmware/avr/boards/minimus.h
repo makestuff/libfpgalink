@@ -1,5 +1,5 @@
-#ifndef MOJO_H
-#define MOJO_H
+#ifndef MINIMUS_H
+#define MINIMUS_H
 
 // Platform definitions
 #define MCU at90usb162
@@ -9,7 +9,14 @@
 #define FLASH_SIZE_BYTES          16384
 #define BOOTLOADER_SEC_SIZE_BYTES 4096
 
-// JTAG/SPI definitions
+// Hardware SPI bits
+#define SPI_PORT 1
+#define SS_BIT   0
+#define SCK_BIT  1
+#define MOSI_BIT 2
+#define MISO_BIT 3
+
+// JTAG/SPI definitions (all unused - we use hardware SPI instead)
 #define TDO_PORT 1
 #define TDI_PORT 1
 #define TMS_PORT 1
@@ -33,7 +40,10 @@
 #define SER_TX 3
 #define SER_CK 5
 
-#define PROG_HWSPI  0
+// Parallel port definitions
+#define PAR_PORT 3
+
+// Miscellaneous
 #define REG_ENABLED 0
 
 #endif

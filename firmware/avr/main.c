@@ -414,8 +414,9 @@ int main(void) {
 	const char Op3[] PROGMEM = "PROG_JTAG_NOTSENDING_ISRECEIVING";
 	const char Op4[] PROGMEM = "PROG_JTAG_NOTSENDING_NOTRECEIVING";
 	const char Op5[] PROGMEM = "PROG_PARALLEL";
-	const char Op6[] PROGMEM = "PROG_SERIAL";
-	static const char *opNames[] PROGMEM = { Op0, Op1, Op2, Op3, Op4, Op5, Op6 };
+	const char Op6[] PROGMEM = "PROG_SPI_SEND";
+	const char Op7[] PROGMEM = "PROG_SPI_RECV";
+	static const char *opNames[] PROGMEM = { Op0, Op1, Op2, Op3, Op4, Op5, Op6, Op7 };
 #endif
 
 #define SELECT_CONDUIT 0x0000

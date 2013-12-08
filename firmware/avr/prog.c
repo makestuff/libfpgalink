@@ -27,43 +27,9 @@ static uint32 m_numBits = 0UL;
 static ProgOp m_progOp = PROG_NOP;
 static uint8 m_flagByte = 0x00;
 
-#if PROG_HWSPI == 1
-	// These are fixed for a given micro: the SPI pins
-	#define PROG_PORT B
-	#define bmTMS     0x01
-	#define TCK_PORT  CONCAT(PORT, PROG_PORT)
-	#define bmTCK     0x02
-	#define TDI_PORT  CONCAT(PORT, PROG_PORT)
-	#define bmTDI     0x04
-	#define bmTDO     0x08
-#else
-	// These can be anything, depending on how JTAG is wired
-	//#define PROG_PORT B
-	//#define bmTMS     0x01
-	//#define TCK_PORT  PORTB
-	//#define bmTCK     0x02
-	//#define TDI_PORT  PORTB
-	//#define bmTDI     0x04
-	//#define bmTDO     0x08
-#endif
-
 #define PORT(x) CONCAT(PORT_NUM_, x)
 #define PIN(x) CONCAT(PIN_NUM_, x)
-
-#define SPI_PORT 1
-#define SS_BIT   0
-#define SCK_BIT  1
-#define MOSI_BIT 2
-#define MISO_BIT 3
-
-#define TDO_IN PIN(TDO_PORT)
-#define bmTDO  (1<<TDO_BIT)
-#define TDI_OUT PORT(TDI_PORT)
-#define bmTDI  (1<<TDI_BIT)
-#define TMS_OUT PORT(TMS_PORT)
-#define bmTMS  (1<<TMS_BIT)
-#define TCK_OUT PORT(TCK_PORT)
-#define bmTCK  (1<<TCK_BIT)
+#define DDR(x) CONCAT(DDR_NUM_, x)
 
 #define PORT_NUM_0 PORTA
 #define PORT_NUM_1 PORTB
@@ -75,9 +41,14 @@ static uint8 m_flagByte = 0x00;
 #define PIN_NUM_2 PINC
 #define PIN_NUM_3 PIND
 #define PIN_NUM_4 PINE
+#define DDR_NUM_0 DDRA
+#define DDR_NUM_1 DDRB
+#define DDR_NUM_2 DDRC
+#define DDR_NUM_3 DDRD
+#define DDR_NUM_4 DDRE
 
-#define PAR_DDR DDRB
-#define PAR_PORT PORTB
+#define PAR_DDR DDR(PAR_PORT)
+#define PAR_IO PORT(PAR_PORT)
 
 // Enable the parallel port
 static inline void parEnable(void) {
@@ -89,110 +60,31 @@ static inline void parDisable(void) {
 	PAR_DDR = 0x00;
 }
 
-// Send a byte over the parallel port
-static inline void parSendByte(uint8 byte) {
-	PAR_PORT = byte;
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-}
-
-// Transition the JTAG state machine to another state: clock "transitionCount" bits from
-// "bitPattern" into TMS, LSB-first.
-//
-void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
-	while ( transitionCount-- ) {
-		if ( bitPattern & 1 ) {
-			TMS_OUT |= bmTMS;
-		} else {
-			TMS_OUT &= ~bmTMS;
-		}
-		TCK_OUT |= bmTCK;
-		TCK_OUT &= ~bmTCK;
-		bitPattern >>= 1;
-	}
-}
-
 // If the JTAG lines are wired to the right pins on the AVR SPI port, we can use
 // it instead of bit-banging, which is much faster. Beware though, if SS is not used
 // as an output, the SPI engine doesn't seem to work.
-//
-#if PROG_HWSPI == 1
-	// Use SPI hardware!
 
-	// TCK-clock the supplied byte into TDI, LSB first.
-	static inline void jtagShiftOut(uint8 byte) {
-		SPDR = byte;
-		while ( !(SPSR & (1<<SPIF)) );
-	}
+// Enable the SPI port
+static inline void hwSpiEnable(void) {
+	SPSR = (1<<SPI2X);
+	SPCR = (1<<SPE) | (1<<DORD) | (1<<MSTR) | (0<<SPR0);
+}
 
-	// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
-	static inline uint8 jtagShiftInOut(uint8 byte) {
-		SPDR = byte;
-		while ( !(SPSR & (1<<SPIF)) );
-		return SPDR;
-	}
+// Disable the SPI port
+static inline void hwSpiDisable(void) {
+	SPSR = 0x00;
+	SPCR = 0x00;
+}
 
-	// Enable the SPI port
-	static inline void spiEnable(void) {
-		SPSR = (1<<SPI2X);
-		SPCR = (1<<SPE) | (1<<DORD) | (1<<MSTR) | (0<<SPR0);
-	}
+// Enable the SPI port
+static inline void bbSpiEnable(void) {
+	// We're bit-banging, so nothing needs to be done
+}
 
-	// Disable the SPI port
-	static inline void spiDisable(void) {
-		SPSR = 0x00;
-		SPCR = 0x00;
-	}
-#else
-	// Use bit-banging!
-	#define tdiSet(x) if ( x ) { TDI_OUT |= bmTDI; } else { TDI_OUT &= ~bmTDI; }
-	#define tdiBit(x) tdiSet(byte & x); TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK
-
-	// TCK-clock the supplied byte into TDI, LSB first
-	static void bbShiftOut(uint8 byte) {
-		tdiBit(0x01); tdiBit(0x02); tdiBit(0x04); tdiBit(0x08);
-		tdiBit(0x10); tdiBit(0x20); tdiBit(0x40); tdiBit(0x80);
-	}
-
-	// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
-	static uint8 bbShiftInOut(uint8 byte) {
-		uint8 tdoByte = 0x00;
-		tdiSet(byte & 0x01);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x01; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		tdiSet(byte & 0x02);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x02; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		tdiSet(byte & 0x04);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x04; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		tdiSet(byte & 0x08);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x08; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		tdiSet(byte & 0x10);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x10; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		tdiSet(byte & 0x20);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x20; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		tdiSet(byte & 0x40);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x40; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		tdiSet(byte & 0x80);
-		if ( TDO_IN & bmTDO ) { tdoByte |= 0x80; }
-		TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-		return tdoByte;
-	}
-
-	// Enable the SPI port
-	static inline void bbSpiEnable(void) {
-		// We're bit-banging, so nothing needs to be done
-	}
-
-	// Disable the SPI port
-	static inline void bbSpiDisable(void) {
-		// We're bit-banging, so nothing needs to be done
-	}
-#endif
+// Disable the SPI port
+static inline void bbSpiDisable(void) {
+	// We're bit-banging, so nothing needs to be done
+}
 
 // Kick off a shift operation. Next time progExecuteShift() runs, it will execute the shift.
 //
@@ -209,6 +101,75 @@ void progShiftBegin(uint32 numBits, ProgOp progOp, uint8 flagByte) {
 // Bit-bang version of prog ops:
 #define OP_HDR bb
 #include "prog_ops.h"
+
+// TCK-clock the supplied byte into TDI, LSB first
+static inline void bbShiftOut(uint8 byte) {
+	tdiBit(0x01); tdiBit(0x02); tdiBit(0x04); tdiBit(0x08);
+	tdiBit(0x10); tdiBit(0x20); tdiBit(0x40); tdiBit(0x80);
+}
+
+// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
+static inline uint8 bbShiftInOut(uint8 byte) {
+	uint8 tdoByte = 0x00;
+	tdiSet(byte & 0x01);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x01; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	tdiSet(byte & 0x02);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x02; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	tdiSet(byte & 0x04);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x04; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	tdiSet(byte & 0x08);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x08; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	tdiSet(byte & 0x10);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x10; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	tdiSet(byte & 0x20);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x20; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	tdiSet(byte & 0x40);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x40; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	tdiSet(byte & 0x80);
+	if ( TDO_IN & bmTDO ) { tdoByte |= 0x80; }
+	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	return tdoByte;
+}
+
+// Hardware SPI version of prog ops:
+#undef  TDO_PORT
+#undef  TDI_PORT
+#undef  TMS_PORT
+#undef  TCK_PORT
+#undef  TDO_BIT
+#undef  TDI_BIT
+#undef  TMS_BIT
+#undef  TCK_BIT
+#define TDO_PORT SPI_PORT
+#define TDI_PORT SPI_PORT
+#define TMS_PORT SPI_PORT
+#define TCK_PORT SPI_PORT
+#define TDO_BIT  MISO_BIT
+#define TDI_BIT  MOSI_BIT
+#define TMS_BIT  SS_BIT
+#define TCK_BIT  SCK_BIT
+#define OP_HDR   hw
+#include "prog_ops.h"
+
+// TCK-clock the supplied byte into TDI, LSB first.
+static inline void hwShiftOut(uint8 byte) {
+	SPDR = byte;
+	while ( !(SPSR & (1<<SPIF)) );
+}
+
+// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
+static inline uint8 hwShiftInOut(uint8 byte) {
+	SPDR = byte;
+	while ( !(SPSR & (1<<SPIF)) );
+	return SPDR;
+}
 
 static void nullFunc(void) {
 	m_progOp = PROG_NOP;
@@ -242,6 +203,14 @@ static const IndirectionTable indirectionTable[] PROGMEM = {
 		bbSerSend,
 		bbSerRecv,
 		bbParSend
+	}, {
+		hwIsSendingIsReceiving, // bit-bang implementations
+		hwIsSendingNotReceiving,
+		hwNotSendingIsReceiving,
+		hwNotSendingNotReceiving,
+		hwSerSend,
+		hwSerRecv,
+		hwParSend
 	}
 };
 static uint8 m_funcIndex = 1;
@@ -302,6 +271,23 @@ void progClocks(uint32 numClocks) {
 	switch ( m_funcIndex ) {
 	case 1:
 		bbProgClocks(numClocks);
+		return;
+	case 2:
+		hwProgClocks(numClocks);
+		return;
+	}
+}
+
+// Transition the JTAG state machine to another state: clock "transitionCount" bits from
+// "bitPattern" into TMS, LSB-first.
+//
+void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
+	switch ( m_funcIndex ) {
+	case 1:
+		bbProgClockFSM(bitPattern, transitionCount);
+		return;
+	case 2:
+		hwProgClockFSM(bitPattern, transitionCount);
 		return;
 	}
 }
