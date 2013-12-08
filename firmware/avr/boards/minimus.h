@@ -3,7 +3,7 @@
 
 // Platform definitions
 #define MCU at90usb162
-#define XTAL 8000000
+#define XTAL 16000000
 
 // Bootloader definitions
 #define FLASH_SIZE_BYTES          16384
@@ -13,19 +13,19 @@
 #define TDO_PORT 1
 #define TDI_PORT 1
 #define TMS_PORT 1
-#define TCK_PORT 3
+#define TCK_PORT 1
 #define TDO_BIT  3
 #define TDI_BIT  2
 #define TMS_BIT  0
-#define TCK_BIT  0
+#define TCK_BIT  1
 
 // EPP definitions
-#define EPP_CTRL_NAME D
-#define EPP_DATA_NAME B
-#define EPP_ADDRSTB   1
+#define EPP_CTRL_NAME C
+#define EPP_DATA_NAME D
+#define EPP_ADDRSTB   4
 #define EPP_DATASTB   5
-#define EPP_WRITE     3
-#define EPP_WAIT      2
+#define EPP_WRITE     6
+#define EPP_WAIT      7
 
 // Serial port definitions
 #define SER_NAME D

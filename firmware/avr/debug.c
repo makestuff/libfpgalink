@@ -26,11 +26,19 @@
 		DDRC |= DEBUG_MASK;
 	}
 
+	#if F_CPU == 8000000
+		#define DEBUG_COUNT 20
+	#elif F_CPU == 16000000
+		#define DEBUG_COUNT 44
+	#else
+		#error Unsupported XTAL frequency
+	#endif
+
 	void debugSendByte(uint8 byte) {
 		uint8 i = 8;
 		cli();
 		PORTC &= ~DEBUG_MASK;  // PC2 clear
-		_delay_loop_1(44);
+		_delay_loop_1(DEBUG_COUNT);
 		while ( i-- ) {
 			if ( byte & 0x01 ) {
 				PORTC |= DEBUG_MASK;
@@ -40,10 +48,10 @@
 			byte >>= 1;
 			//_delay_loop_1(42);  42 43 44 45 46
 			//_delay_loop_1(46);        ^^
-			_delay_loop_1(44);
+			_delay_loop_1(DEBUG_COUNT);
 		}
 		PORTC |= DEBUG_MASK;
-		_delay_loop_1(44);
+		_delay_loop_1(DEBUG_COUNT);
 		sei();
 	}
 

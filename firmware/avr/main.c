@@ -141,22 +141,22 @@ void doEPP(void) {
 		uint32 count;
 		do {
 			// Read/write flag & channel
-			byte = usbFetchByte(); eppSendAddrByte(byte);
+			byte = usbRecvByte(); eppSendAddrByte(byte);
 			
 			// Count high byte
-			count = usbFetchByte();
+			count = usbRecvByte();
 			
 			// Count high mid byte
 			count <<= 8;
-			count |= usbFetchByte();
+			count |= usbRecvByte();
 			
 			// Count low mid byte
 			count <<= 8;
-			count |= usbFetchByte();
+			count |= usbRecvByte();
 			
 			// Count low byte
 			count <<= 8;
-			count |= usbFetchByte();
+			count |= usbRecvByte();
 			
 			if ( byte & 0x80 ) {
 				// The host is reading a channel
@@ -170,7 +170,7 @@ void doEPP(void) {
 						usbFlushPacket();
 						while ( !usbInPacketReady() );
 					}
-					usbSendByte(byte);
+					usbPutByte(byte);
 					count--;
 				} while ( count );
 				eppSending();                          // AVR writes to FPGA again
@@ -180,7 +180,7 @@ void doEPP(void) {
 			} else {
 				// The host is writing a channel
 				do {
-					byte = usbFetchByte();
+					byte = usbRecvByte();
 					eppSendDataByte(byte);
 					count--;
 				} while ( count );
@@ -212,24 +212,24 @@ void doSerial(void) {
 		uint32 count;
 		do {
 			// Read/write flag & channel
-			chan = usbFetchByte(); usartSendByte(chan);
+			chan = usbRecvByte(); usartSendByte(chan);
 			
 			// Count high byte
-			byte = usbFetchByte(); usartSendByte(byte);
+			byte = usbRecvByte(); usartSendByte(byte);
 			count = byte;
 			
 			// Count high mid byte
-			byte = usbFetchByte(); usartSendByte(byte);
+			byte = usbRecvByte(); usartSendByte(byte);
 			count <<= 8;
 			count |= byte;
 			
 			// Count low mid byte
-			byte = usbFetchByte(); usartSendByte(byte);
+			byte = usbRecvByte(); usartSendByte(byte);
 			count <<= 8;
 			count |= byte;
 			
 			// Count low byte
-			byte = usbFetchByte(); usartSendByte(byte);
+			byte = usbRecvByte(); usartSendByte(byte);
 			count <<= 8;
 			count |= byte;
 
@@ -257,21 +257,20 @@ void doSerial(void) {
 					::);
 				UCSR1B = (1<<RXEN1);                   // TX disabled, RX enabled
 				while ( !usbInPacketReady() );
-				SER_PORT &= ~bmSER_TX;                      // TX low says "I'm ready"
-				chan = 0;
+				SER_PORT &= ~bmSER_TX;                 // TX low says "I'm ready"
 				do {
 					byte = usartRecvByte();
 					if ( !usbReadWriteAllowed() ) {
-						SER_PORT |= bmSER_TX;                 // TX high says "I'm not ready"
+						SER_PORT |= bmSER_TX;            // TX high says "I'm not ready"
 						usbFlushPacket();
 						while ( !usbInPacketReady() );
-						SER_PORT &= ~bmSER_TX;                // TX low says "OK I'm ready now"
+						SER_PORT &= ~bmSER_TX;           // TX low says "OK I'm ready now"
 					}
-					usbSendByte(byte);
+					usbPutByte(byte);
 					count--;
 				} while ( count );
 				UCSR1B = (1<<TXEN1);                   // TX enabled, RX disabled
-				SER_PORT |= bmSER_TX;                       // TX high says "I acknowledge receipt of your data"
+				SER_PORT |= bmSER_TX;                  // TX high says "I acknowledge receipt of your data"
 				usbFlushPacket();                      // flush final packet
 				usbSelectEndpoint(OUT_ENDPOINT_ADDR);  // ready for next command
 				return;                                // there cannot be any more work to do
@@ -284,8 +283,8 @@ void doSerial(void) {
 					debugSendByte('\r');
 				#endif
 				do {
-					byte = usbFetchByte();
-					while ( PIND & bmSER_RX );            // ensure RX is still low
+					byte = usbRecvByte();
+					while ( PIND & bmSER_RX );          // ensure RX is still low
 					usartSendByte(byte);
 					count--;
 				} while ( count );

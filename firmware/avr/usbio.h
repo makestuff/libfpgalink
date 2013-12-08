@@ -48,22 +48,31 @@ static inline bool usbReadWriteAllowed(void) {
 }
 
 // Get the next byte from the OUT buffer.
-static inline uint8 usbRecvByte(void) {
+static inline uint8 usbGetByte(void) {
 	return UEDATX;
 }
 
 // Put another byte in the IN buffer.
-static inline void usbSendByte(uint8 byte) {
+static inline void usbPutByte(uint8 byte) {
 	UEDATX = byte;
 }
 
 // Get another OUT byte, acknowledging this packet and waiting for another, if necessary.
-static inline uint8 usbFetchByte(void) {
+static inline uint8 usbRecvByte(void) {
 	while ( !usbReadWriteAllowed() ) {
 		usbAckPacket();
 		while ( !usbOutPacketReady() );
 	}
-	return usbRecvByte();
-}		
+	return usbGetByte();
+}
+
+// Flush the current IN packet if necessary, then put a byte in the IN buffer.
+static inline void usbSendByte(uint8 byte) {
+	if ( !usbReadWriteAllowed() ) {
+		usbFlushPacket();
+		while ( !usbInPacketReady() );
+	}
+	usbPutByte(byte);
+}
 
 #endif
