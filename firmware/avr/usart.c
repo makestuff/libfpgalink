@@ -22,11 +22,11 @@
 #include "ports.h"
 #include "debug.h"
 
-#define bmSER_RX (1<<SER_RX)
-#define bmSER_TX (1<<SER_TX)
-#define bmSER_CK (1<<SER_CK)
-#define SER_PORT CONCAT(PORT, SER_NAME)
-#define SER_DDR  CONCAT(DDR, SER_NAME)
+#define USART_OUT PORT(USART_PORT)
+#define USART_DDR DDR(USART_PORT)
+#define bmRX      (1<<RX_BIT)
+#define bmTX      (1<<TX_BIT)
+#define bmXCK     (1<<XCK_BIT)
 
 // Send a USART byte.
 static inline void usartSendByte(uint8 byte) {
@@ -93,20 +93,20 @@ void usartExecute(void) {
 					::);
 				UCSR1B = (1<<RXEN1);                   // TX disabled, RX enabled
 				while ( !usbInPacketReady() );
-				SER_PORT &= ~bmSER_TX;                 // TX low says "I'm ready"
+				USART_OUT &= ~bmTX;                 // TX low says "I'm ready"
 				do {
 					byte = usartRecvByte();
 					if ( !usbReadWriteAllowed() ) {
-						SER_PORT |= bmSER_TX;            // TX high says "I'm not ready"
+						USART_OUT |= bmTX;            // TX high says "I'm not ready"
 						usbFlushPacket();
 						while ( !usbInPacketReady() );
-						SER_PORT &= ~bmSER_TX;           // TX low says "OK I'm ready now"
+						USART_OUT &= ~bmTX;           // TX low says "OK I'm ready now"
 					}
 					usbPutByte(byte);
 					count--;
 				} while ( count );
 				UCSR1B = (1<<TXEN1);                   // TX enabled, RX disabled
-				SER_PORT |= bmSER_TX;                  // TX high says "I acknowledge receipt of your data"
+				USART_OUT |= bmTX;                  // TX high says "I acknowledge receipt of your data"
 				usbFlushPacket();                      // flush final packet
 				usbSelectEndpoint(OUT_ENDPOINT_ADDR);  // ready for next command
 				return;                                // there cannot be any more work to do
@@ -120,7 +120,7 @@ void usartExecute(void) {
 				#endif
 				do {
 					byte = usbRecvByte();
-					while ( PIND & bmSER_RX );          // ensure RX is still low
+					while ( PIND & bmRX );          // ensure RX is still low
 					usartSendByte(byte);
 					count--;
 				} while ( count );
@@ -131,11 +131,11 @@ void usartExecute(void) {
 }
 
 void usartEnable(void) {
-	SER_PORT |= bmSER_TX;  // TX high
-	SER_PORT &= ~bmSER_CK; // CK low
-	SER_DDR |= (bmSER_TX | bmSER_CK);  // TX & XCK are outputs
-	SER_PORT &= ~bmSER_TX;  // TX low - FPGA in S_RESET1
-	SER_PORT |= bmSER_TX;  // TX high - FPGA in S_IDLE
+	USART_OUT |= bmTX;  // TX high
+	USART_OUT &= ~bmXCK; // CK low
+	USART_DDR |= (bmTX | bmXCK);  // TX & XCK are outputs
+	USART_OUT &= ~bmTX;  // TX low - FPGA in S_RESET1
+	USART_OUT |= bmTX;  // TX high - FPGA in S_IDLE
 	UBRR1H = 0x00;
 	UBRR1L = 0x00; // 8M sync
 	UCSR1A = (1<<U2X1);
@@ -147,10 +147,10 @@ void usartDisable(void) {
 	UCSR1A = 0x00;
 	UCSR1B = 0x00;
 	UCSR1C = 0x00;
-	SER_DDR &= ~(bmSER_RX | bmSER_TX | bmSER_CK);
-	SER_PORT &= ~(bmSER_RX | bmSER_TX | bmSER_CK);
+	USART_DDR &= ~(bmRX | bmTX | bmXCK);
+	USART_OUT &= ~(bmRX | bmTX | bmXCK);
 }
 
 bool usartIsReady(void) {
-	return (SER_PORT & bmSER_RX) == 0x00;  // ready when RX is low
+	return (USART_OUT & bmRX) == 0x00;  // ready when RX is low
 }
