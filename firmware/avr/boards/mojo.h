@@ -27,12 +27,12 @@
 #define TCK_BIT  0
 
 // EPP definitions
-#define EPP_CTRL_NAME D
-#define EPP_DATA_NAME B
-#define EPP_ADDRSTB   1
-#define EPP_DATASTB   5
-#define EPP_WRITE     3
-#define EPP_WAIT      2
+#define CTRL_PORT   3
+#define DATA_PORT   1
+#define ADDRSTB_BIT 1
+#define DATASTB_BIT 5
+#define WRITE_BIT   3
+#define WAIT_BIT    2
 
 // Serial port definitions
 #define SER_NAME D
