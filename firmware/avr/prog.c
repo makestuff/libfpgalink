@@ -24,12 +24,72 @@
 #include "debug.h"
 #include "ports.h"
 
+typedef enum {
+	NONE,
+	HW,
+	BB
+} PortMapping;
+static PortMapping m_funcIndex = NONE;
 static uint32 m_numBits = 0UL;
 static ProgOp m_progOp = PROG_NOP;
 static uint8 m_flagByte = 0x00;
 
 #define PAR_DDR DDR(PAR_PORT)
 #define PAR_IO PORT(PAR_PORT)
+
+static bool choose(PortMapping m) {
+	if ( m_funcIndex == m ) {
+		return true;
+	}
+	if ( m_funcIndex == NONE ) {
+		m_funcIndex = m;
+		return true;
+	}
+	return false;
+}
+
+bool progPortMap(LogicalPort logicalPort, uint8 physicalPort, uint8 physicalBit) {
+	switch ( logicalPort ) {
+	case LP_RESET:
+		m_funcIndex = NONE;
+		return true;
+	case LP_MISO:
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_MISO_BIT ) {
+			return choose(HW); // choose hardware SPI
+		} else if ( physicalPort == BB_MISO_PORT && physicalBit == BB_MISO_BIT ) {
+			return choose(BB); // choose bit-bang SPI
+		} else {
+			return false; // invalid choice
+		}
+	case LP_MOSI:
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_MOSI_BIT ) {
+			return choose(HW); // choose hardware SPI
+		} else if ( physicalPort == BB_MOSI_PORT && physicalBit == BB_MOSI_BIT ) {
+			return choose(BB); // choose bit-bang SPI
+		} else {
+			return false; // invalid choice
+		}
+	case LP_SS:
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_SS_BIT ) {
+			return choose(HW); // choose hardware SPI
+		} else if ( physicalPort == BB_SS_PORT && physicalBit == BB_SS_BIT ) {
+			return choose(BB); // choose bit-bang SPI
+		} else {
+			return false; // invalid choice
+		}
+	case LP_SCK:
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_SCK_BIT ) {
+			return choose(HW); // choose hardware SPI
+		} else if ( physicalPort == BB_SCK_PORT && physicalBit == BB_SCK_BIT ) {
+			return choose(BB); // choose physicalBit-bang SPI
+		} else {
+			return false; // invalid choice
+		}
+	case LP_D8:
+		return true;
+	}
+	return false;
+}
 
 // Enable the parallel port
 static inline void parEnable(void) {
@@ -80,72 +140,80 @@ void progShiftBegin(uint32 numBits, ProgOp progOp, uint8 flagByte) {
 #define bitsToBytes(x) ((x>>3) + (x&7 ? 1 : 0))
 
 // Bit-bang version of prog ops:
-#define OP_HDR bb
+#define MISO_PORT BB_MISO_PORT
+#define MOSI_PORT BB_MOSI_PORT
+#define SS_PORT BB_SS_PORT
+#define SCK_PORT BB_SCK_PORT
+#define MISO_BIT  BB_MISO_BIT
+#define MOSI_BIT  BB_MOSI_BIT
+#define SS_BIT  BB_SS_BIT
+#define SCK_BIT  BB_SCK_BIT
+#define OP_HDR   bb
 #include "prog_ops.h"
 
-// TCK-clock the supplied byte into TDI, LSB first
+// SCK-clock the supplied byte into MOSI, LSB first
 static inline void bbShiftOut(uint8 byte) {
-	tdiBit(0x01); tdiBit(0x02); tdiBit(0x04); tdiBit(0x08);
-	tdiBit(0x10); tdiBit(0x20); tdiBit(0x40); tdiBit(0x80);
+	mosiBit(0x01); mosiBit(0x02); mosiBit(0x04); mosiBit(0x08);
+	mosiBit(0x10); mosiBit(0x20); mosiBit(0x40); mosiBit(0x80);
 }
 
-// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
+// JTAG-clock the supplied byte into MOSI, LSB first. Return the byte clocked out of MISO.
 static inline uint8 bbShiftInOut(uint8 byte) {
-	uint8 tdoByte = 0x00;
-	tdiSet(byte & 0x01);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x01; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	tdiSet(byte & 0x02);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x02; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	tdiSet(byte & 0x04);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x04; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	tdiSet(byte & 0x08);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x08; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	tdiSet(byte & 0x10);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x10; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	tdiSet(byte & 0x20);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x20; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	tdiSet(byte & 0x40);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x40; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	tdiSet(byte & 0x80);
-	if ( TDO_IN & bmTDO ) { tdoByte |= 0x80; }
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
-	return tdoByte;
+	uint8 misoByte = 0x00;
+	mosiSet(byte & 0x01);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x01; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x02);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x02; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x04);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x04; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x08);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x08; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x10);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x10; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x20);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x20; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x40);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x40; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x80);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x80; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	return misoByte;
 }
 
 // Hardware SPI version of prog ops:
-#undef  TDO_PORT
-#undef  TDI_PORT
-#undef  TMS_PORT
-#undef  TCK_PORT
-#undef  TDO_BIT
-#undef  TDI_BIT
-#undef  TMS_BIT
-#undef  TCK_BIT
-#define TDO_PORT SPI_PORT
-#define TDI_PORT SPI_PORT
-#define TMS_PORT SPI_PORT
-#define TCK_PORT SPI_PORT
-#define TDO_BIT  MISO_BIT
-#define TDI_BIT  MOSI_BIT
-#define TMS_BIT  SS_BIT
-#define TCK_BIT  SCK_BIT
+#undef  MISO_PORT
+#undef  MOSI_PORT
+#undef  SS_PORT
+#undef  SCK_PORT
+#undef  MISO_BIT
+#undef  MOSI_BIT
+#undef  SS_BIT
+#undef  SCK_BIT
+#define MISO_PORT HW_SPI_PORT
+#define MOSI_PORT HW_SPI_PORT
+#define SS_PORT HW_SPI_PORT
+#define SCK_PORT HW_SPI_PORT
+#define MISO_BIT  HW_MISO_BIT
+#define MOSI_BIT  HW_MOSI_BIT
+#define SS_BIT  HW_SS_BIT
+#define SCK_BIT  HW_SCK_BIT
 #define OP_HDR   hw
 #include "prog_ops.h"
 
-// TCK-clock the supplied byte into TDI, LSB first.
+// SCK-clock the supplied byte into MOSI, LSB first.
 static inline void hwShiftOut(uint8 byte) {
 	SPDR = byte;
 	while ( !(SPSR & (1<<SPIF)) );
 }
 
-// JTAG-clock the supplied byte into TDI, LSB first. Return the byte clocked out of TDO.
+// JTAG-clock the supplied byte into MOSI, LSB first. Return the byte clocked out of MISO.
 static inline uint8 hwShiftInOut(uint8 byte) {
 	SPDR = byte;
 	while ( !(SPSR & (1<<SPIF)) );
@@ -177,14 +245,6 @@ static const IndirectionTable indirectionTable[] PROGMEM = {
 		nullFunc,
 		nullFunc
 	}, {
-		bbIsSendingIsReceiving, // bit-bang implementations
-		bbIsSendingNotReceiving,
-		bbNotSendingIsReceiving,
-		bbNotSendingNotReceiving,
-		bbSerSend,
-		bbSerRecv,
-		bbParSend
-	}, {
 		hwIsSendingIsReceiving, // bit-bang implementations
 		hwIsSendingNotReceiving,
 		hwNotSendingIsReceiving,
@@ -192,9 +252,16 @@ static const IndirectionTable indirectionTable[] PROGMEM = {
 		hwSerSend,
 		hwSerRecv,
 		hwParSend
+	}, {
+		bbIsSendingIsReceiving, // bit-bang implementations
+		bbIsSendingNotReceiving,
+		bbNotSendingIsReceiving,
+		bbNotSendingNotReceiving,
+		bbSerSend,
+		bbSerRecv,
+		bbParSend
 	}
 };
-static uint8 m_funcIndex = 1;
 
 static inline FuncPtr getFunc(uint8 index, uint8 offset) {
 	const void *const baseAddr = &indirectionTable[index];
@@ -250,11 +317,13 @@ void progShiftExecute(void) {
 //
 void progClocks(uint32 numClocks) {
 	switch ( m_funcIndex ) {
-	case 1:
+	case HW:
+		hwProgClocks(numClocks);
+		return;
+	case BB:
 		bbProgClocks(numClocks);
 		return;
-	case 2:
-		hwProgClocks(numClocks);
+	default:
 		return;
 	}
 }
@@ -264,11 +333,13 @@ void progClocks(uint32 numClocks) {
 //
 void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
 	switch ( m_funcIndex ) {
-	case 1:
+	case HW:
+		hwProgClockFSM(bitPattern, transitionCount);
+		return;
+	case BB:
 		bbProgClockFSM(bitPattern, transitionCount);
 		return;
-	case 2:
-		hwProgClockFSM(bitPattern, transitionCount);
+	default:
 		return;
 	}
 }

@@ -67,7 +67,7 @@ DLLEXPORT(FLStatus) spiSend(
 	// Request the SPI send operation
 	countUnion.u32 = littleEndian32(len);
 	uStatus = usbControlWrite(
-		handle->device, CMD_JTAG_CLOCK_DATA, 0x0000, PROG_SPI_SEND,
+		handle->device, CMD_PROG_CLOCK_DATA, 0x0000, PROG_SPI_SEND,
 		countUnion.bytes, 4, 1000, NULL);
 	CHECK_STATUS(uStatus, FL_PROTOCOL_ERR, cleanup, "spiSend(): device doesn't support SPI send");
 
@@ -99,7 +99,7 @@ DLLEXPORT(FLStatus) spiRecv(
 	// Request the SPI receive operation
 	countUnion.u32 = littleEndian32(len);
 	uStatus = usbControlWrite(
-		handle->device, CMD_JTAG_CLOCK_DATA, 0x0000, PROG_SPI_RECV,
+		handle->device, CMD_PROG_CLOCK_DATA, 0x0000, PROG_SPI_RECV,
 		countUnion.bytes, 4, 1000, NULL);
 	CHECK_STATUS(uStatus, FL_PROTOCOL_ERR, cleanup, "spiRecv(): device doesn't support SPI receive");
 

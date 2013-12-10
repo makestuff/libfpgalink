@@ -1,34 +1,34 @@
-#undef TDO_IN
-#undef bmTDO
-#undef TDI_OUT
-#undef bmTDI
-#undef TMS_OUT
-#undef bmTMS
-#undef TCK_OUT
-#undef bmTCK
-#undef tdiSet
-#undef tdiBit
+#undef MISO_IN
+#undef bmMISO
+#undef MOSI_OUT
+#undef bmMOSI
+#undef SS_OUT
+#undef bmSS
+#undef SCK_OUT
+#undef bmSCK
+#undef mosiSet
+#undef mosiBit
 
-#define TDO_IN PIN(TDO_PORT)
-#define bmTDO  (1<<TDO_BIT)
-#define TDI_OUT PORT(TDI_PORT)
-#define bmTDI  (1<<TDI_BIT)
-#define TMS_OUT PORT(TMS_PORT)
-#define bmTMS  (1<<TMS_BIT)
-#define TCK_OUT PORT(TCK_PORT)
-#define bmTCK  (1<<TCK_BIT)
+#define MISO_IN  PIN(MISO_PORT)
+#define bmMISO   (1<<MISO_BIT)
+#define MOSI_OUT PORT(MOSI_PORT)
+#define bmMOSI   (1<<MOSI_BIT)
+#define SS_OUT   PORT(SS_PORT)
+#define bmSS     (1<<SS_BIT)
+#define SCK_OUT  PORT(SCK_PORT)
+#define bmSCK    (1<<SCK_BIT)
 
 static inline void CONCAT(OP_HDR, ShiftOut)(uint8 byte);
 static inline uint8 CONCAT(OP_HDR, ShiftInOut)(uint8 byte);
 
 // Utility macros for bit-banging
-#define tdiSet(x) if ( x ) { TDI_OUT |= bmTDI; } else { TDI_OUT &= ~bmTDI; }
-#define tdiBit(x) tdiSet(byte & x); TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK
+#define mosiSet(x) if ( x ) { MOSI_OUT |= bmMOSI; } else { MOSI_OUT &= ~bmMOSI; }
+#define mosiBit(x) mosiSet(byte & x); SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK
 
 // Send a byte over the parallel port
 static inline void CONCAT(OP_HDR, ParSendByte)(uint8 byte) {
 	PAR_IO = byte;
-	TCK_OUT |= bmTCK; TCK_OUT &= ~bmTCK;
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
 }
 
 // The host is giving us data and is expecting a response. This is useful for simultaneously
@@ -47,7 +47,7 @@ static void CONCAT(OP_HDR, IsSendingIsReceiving)(void) {
 		ptr = buf;
 		if ( bitsRead == m_numBits ) {
 			// This is the last chunk
-			uint8 tdoByte, tdiByte, leftOver, i;
+			uint8 misoByte, mosiByte, leftOver, i;
 			bitsRemaining = (bitsRead-1) & 0xFFF8;        // Now an integer number of bytes
 			leftOver = (uint8)(bitsRead - bitsRemaining); // How many bits in last byte (1-8)
 			bytesRemaining = (bitsRemaining>>3);
@@ -56,24 +56,24 @@ static void CONCAT(OP_HDR, IsSendingIsReceiving)(void) {
 				ptr++;
 			}
 			CONCAT(OP_HDR, SpiDisable)();
-			tdiByte = *ptr;  // Now do the bits in the final byte
-			tdoByte = 0x00;
+			mosiByte = *ptr;  // Now do the bits in the final byte
+			misoByte = 0x00;
 			i = 1;
 			while ( i && leftOver ) {
 				leftOver--;
 				if ( (m_flagByte & bmISLAST) && !leftOver ) {
-					TMS_OUT |= bmTMS; // Exit Shift-DR state on next clock
+					SS_OUT |= bmSS; // Exit Shift-DR state on next clock
 				}
-				tdiSet(tdiByte & 0x01);
-				tdiByte >>= 1;
-				if ( TDO_IN & bmTDO ) {
-					tdoByte |= i;
+				mosiSet(mosiByte & 0x01);
+				mosiByte >>= 1;
+				if ( MISO_IN & bmMISO ) {
+					misoByte |= i;
 				}
-				TCK_OUT |= bmTCK;
-				TCK_OUT &= ~bmTCK;
+				SCK_OUT |= bmSCK;
+				SCK_OUT &= ~bmSCK;
 				i <<= 1;
 			}
-			*ptr = tdoByte;
+			*ptr = misoByte;
 		} else {
 			// This is not the last chunk
 			bytesRemaining = (bitsRead>>3);
@@ -115,20 +115,20 @@ static void CONCAT(OP_HDR, IsSendingNotReceiving)(void) {
 	bitsRemaining--;  // handle final bit separately
 	while ( bitsRemaining ) {
 		bitsRemaining--;
-		tdiSet(byte & 0x01);
+		mosiSet(byte & 0x01);
 		byte >>= 1;
-		TCK_OUT |= bmTCK;
-		TCK_OUT &= ~bmTCK;
+		SCK_OUT |= bmSCK;
+		SCK_OUT &= ~bmSCK;
 	}
 
 	// Now do the final bit
-	tdiSet(byte & 0x01);
+	mosiSet(byte & 0x01);
 	byte >>= 1;
 	if ( m_flagByte & bmISLAST ) {
-		TMS_OUT |= bmTMS; // Exit Shift-DR state on next clock
+		SS_OUT |= bmSS; // Exit Shift-DR state on next clock
 	}
-	TCK_OUT |= bmTCK;
-	TCK_OUT &= ~bmTCK;
+	SCK_OUT |= bmSCK;
+	SCK_OUT &= ~bmSCK;
 	usbAckPacket();
 	m_progOp = PROG_NOP;
 }
@@ -140,7 +140,7 @@ static void CONCAT(OP_HDR, IsSendingNotReceiving)(void) {
 static void CONCAT(OP_HDR, NotSendingIsReceiving)(void) {
 	uint32 bytesRemaining = (m_numBits >> 3);
 	uint8 byte, bitsRemaining = (uint8)(m_numBits & 0x07);
-	const uint8 tdiByte = (m_flagByte & bmSENDONES) ? 0xFF : 0x00;
+	const uint8 mosiByte = (m_flagByte & bmSENDONES) ? 0xFF : 0x00;
 	uint8 mask = 0x01;
 	if ( !bitsRemaining ) {
 		// Ensure at least one bit is handled manually
@@ -151,34 +151,34 @@ static void CONCAT(OP_HDR, NotSendingIsReceiving)(void) {
 	while ( !usbInPacketReady() );
 	CONCAT(OP_HDR, SpiEnable)();
 	while ( bytesRemaining-- ) {
-		byte = CONCAT(OP_HDR, ShiftInOut)(tdiByte);
+		byte = CONCAT(OP_HDR, ShiftInOut)(mosiByte);
 		usbSendByte(byte);
 	}
 	CONCAT(OP_HDR, SpiDisable)();
 
 	// Now do the bits in the final byte - there'll be at least one bit, and <= 8
 	byte = 0x00;
-	tdiSet(tdiByte & 0x01);
+	mosiSet(mosiByte & 0x01);
 	bitsRemaining--;  // handle final bit separately
 	while ( bitsRemaining ) {
 		bitsRemaining--;
-		if ( TDO_IN & bmTDO ) {
+		if ( MISO_IN & bmMISO ) {
 			byte |= mask;
 		}
-		TCK_OUT |= bmTCK;
-		TCK_OUT &= ~bmTCK;
+		SCK_OUT |= bmSCK;
+		SCK_OUT &= ~bmSCK;
 		mask <<= 1;
 	}
 
 	// Now do the final bit
 	if ( m_flagByte & bmISLAST ) {
-		TMS_OUT |= bmTMS; // Exit Shift-DR state on next clock
+		SS_OUT |= bmSS; // Exit Shift-DR state on next clock
 	}
-	if ( TDO_IN & bmTDO ) {
+	if ( MISO_IN & bmMISO ) {
 		byte |= mask;
 	}
-	TCK_OUT |= bmTCK;
-	TCK_OUT &= ~bmTCK;
+	SCK_OUT |= bmSCK;
+	SCK_OUT &= ~bmSCK;
 	usbSendByte(byte);
 	usbFlushPacket();
 	m_progOp = PROG_NOP;
@@ -191,23 +191,23 @@ static void CONCAT(OP_HDR, NotSendingIsReceiving)(void) {
 static void CONCAT(OP_HDR, NotSendingNotReceiving)(void) {
 	uint32 bitsRemaining, bytesRemaining;
 	uint8 leftOver;
-	const uint8 tdiByte = (m_flagByte & bmSENDONES) ? 0xFF : 0x00;
+	const uint8 mosiByte = (m_flagByte & bmSENDONES) ? 0xFF : 0x00;
 	bitsRemaining = (m_numBits-1) & 0xFFFFFFF8;    // Now an integer number of bytes
 	leftOver = (uint8)(m_numBits - bitsRemaining); // How many bits in last byte (1-8)
 	bytesRemaining = (bitsRemaining>>3);
 	CONCAT(OP_HDR, SpiEnable)();
 	while ( bytesRemaining-- ) {
-		CONCAT(OP_HDR, ShiftOut)(tdiByte);
+		CONCAT(OP_HDR, ShiftOut)(mosiByte);
 	}
 	CONCAT(OP_HDR, SpiDisable)();
-	tdiSet(tdiByte & 0x01);
+	mosiSet(mosiByte & 0x01);
 	while ( leftOver ) {
 		leftOver--;
 		if ( (m_flagByte & bmISLAST) && !leftOver ) {
-			TMS_OUT |= bmTMS; // Exit Shift-DR state on next clock
+			SS_OUT |= bmSS; // Exit Shift-DR state on next clock
 		}
-		TCK_OUT |= bmTCK;
-		TCK_OUT &= ~bmTCK;
+		SCK_OUT |= bmSCK;
+		SCK_OUT &= ~bmSCK;
 	}
 	m_numBits = 0;
 	m_progOp = PROG_NOP;
@@ -263,8 +263,8 @@ static void CONCAT(OP_HDR, SerRecv)(void) {
 //
 static void CONCAT(OP_HDR, ProgClocks)(uint32 numClocks) {
 	while ( numClocks-- ) {
-		TCK_OUT |= bmTCK;
-		TCK_OUT &= ~bmTCK;
+		SCK_OUT |= bmSCK;
+		SCK_OUT &= ~bmSCK;
 	}
 }
 
@@ -274,12 +274,12 @@ static void CONCAT(OP_HDR, ProgClocks)(uint32 numClocks) {
 static void CONCAT(OP_HDR, ProgClockFSM)(uint32 bitPattern, uint8 transitionCount) {
 	while ( transitionCount-- ) {
 		if ( bitPattern & 1 ) {
-			TMS_OUT |= bmTMS;
+			SS_OUT |= bmSS;
 		} else {
-			TMS_OUT &= ~bmTMS;
+			SS_OUT &= ~bmSS;
 		}
-		TCK_OUT |= bmTCK;
-		TCK_OUT &= ~bmTCK;
+		SCK_OUT |= bmSCK;
+		SCK_OUT &= ~bmSCK;
 		bitPattern >>= 1;
 	}
 }

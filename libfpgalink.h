@@ -73,7 +73,7 @@ extern "C" {
 		FL_PROG_JTAG_CLOCKS,     ///< There was a problem issuing clocks during programming.
 		FL_PROG_SVF_COMPARE,     ///< An SVF compare operation failed.
 		FL_PROG_SVF_UNKNOWN_CMD, ///< An unknown SVF command was encountered.
-		FL_PROG_ERR,             ///< The device failed to start after programmign.
+		FL_PROG_ERR,             ///< The device failed to start after programming.
 		FL_PORT_IO,              ///< There was a problem doing port I/O.
 		FL_BAD_STATE,            ///< You're trying to do something that is illegal in this state.
 		FL_INTERNAL_ERR          ///< An internal error occurred. Please report it!
@@ -96,6 +96,18 @@ extern "C" {
 		SPI_MSBFIRST,  ///< Clock each byte most-significant bit first.
 		SPI_LSBFIRST   ///< Clock each byte least-significant bit first.
 	} BitOrder;
+
+	/**
+	 * Enum used by \c progGetPort() and \c progGetBit() to identify the programming pins.
+	 */
+	typedef enum {
+		LP_RESET, ///< These are also not the droids you're looking for. Keep moving along.
+		LP_MISO,  ///< The master-in, slave-out pin (TDO).
+		LP_MOSI,  ///< The master-out, slave-in pin (TDI).
+		LP_SS,    ///< The slave-select pin (TMS).
+		LP_SCK,   ///< The serial clock pin (TCK).
+		LP_D8     ///< The parallel data port.
+	} LogicalPort;
 	//@}
 
 	// Forward declarations
@@ -173,7 +185,9 @@ extern "C" {
 	/**
 	 * @brief Close the connection to the FPGALink device.
 	 *
-	 * @param handle The handle returned by \c flOpen().
+	 * If the handle is NULL, this function does nothing.
+	 *
+	 * @param handle The handle returned by \c flOpen(), or NULL.
 	 */
 	DLLEXPORT(void) flClose(
 		struct FLContext *handle
@@ -222,7 +236,7 @@ extern "C" {
 	 *
 	 * NeroProg is the collective name for all the various programming algorithms supported by
 	 * FPGALink, including but not limited to JTAG. An affirmative response means you are free to
-	 * call \c flProgram(), \c jtagScanChain(), \c jtagOpen(), \c jtagClose(), \c jtagShift(),
+	 * call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c jtagClose(), \c jtagShift(),
 	 * \c jtagClockFSM() and \c jtagClocks().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
@@ -746,14 +760,14 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Open a JTAG connection.
+	 * @brief Open an SPI/JTAG connection.
 	 *
-	 * Open a JTAG connection using the supplied \c portConfig. You must open a JTAG connection
-	 * before calling \c jtagShift(), \c jtagClockFSM() or \c jtagClocks(). And you must close the
-	 * connection when you're finished with \c jtagClose().
+	 * Open a SPI/JTAG connection using the supplied \c portConfig. You must open a connection
+	 * before calling \c jtagShift(), \c jtagClockFSM(), \c jtagClocks(), \c spiSend() or
+	 * \c spiRecv(). And you must close the connection when you're finished, with \c progClose().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param portConfig The port bits to use for TDO, TDI, TMS & TCK, or NULL to use the default.
+	 * @param portConfig The port bits to use for MISO(TDO), MOSI(TDI), SS(TMS) & SCK(TCK).
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -765,14 +779,14 @@ extern "C" {
 	 *     - \c FL_PROG_PORTMAP if the micro refused to map its ports to those given.
 	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
 	 */
-	DLLEXPORT(FLStatus) jtagOpen(
+	DLLEXPORT(FLStatus) progOpen(
 		struct FLContext *handle, const char *portConfig, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Close a JTAG connection.
+	 * @brief Close an SPI/JTAG connection.
 	 *
-	 * Close a JTAG connection previously opened by \c jtagOpen(), and tri-state the four JTAG lines.
+	 * Close an SPI/JTAG connection previously opened by \c progOpen(), and tri-state the four lines.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
@@ -784,7 +798,7 @@ extern "C" {
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
 	 */
-	DLLEXPORT(FLStatus) jtagClose(
+	DLLEXPORT(FLStatus) progClose(
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -866,10 +880,32 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
+	 * @brief Get the physical port number of the specified logical port.
+	 *
+	 * Get the physical port number assigned to the specified logical port by the preceding call to
+	 * \c progOpen().
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param port The \c LogicalPort to query for.
+	 */
+	DLLEXPORT(uint8) progGetPort(struct FLContext *handle, LogicalPort port);
+
+	/**
+	 * @brief Get the physical bit number of the specified logical port.
+	 *
+	 * Get the physical bit number assigned to the specified logical port by the preceding call to
+	 * \c progOpen().
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param port The \c LogicalPort to query for.
+	 */
+	DLLEXPORT(uint8) progGetBit(struct FLContext *handle, LogicalPort port);
+
+	/**
 	 * @brief Send a number of whole bytes over SPI, either LSB-first or MSB-first.
 	 *
 	 * Shift \c len bytes from \c buf into the microcontroller's SPI bus (if any), either MSB-first
-	 * or LSB-first.
+	 * or LSB-first. You must have previously called \c progOpen().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param buf A pointer to the source data.
@@ -894,7 +930,7 @@ extern "C" {
 	 * @brief Receive a number of whole bytes over SPI, either LSB-first or MSB-first.
 	 *
 	 * Shift \c len bytes from the microcontroller's SPI bus (if any) into \c buf, either MSB-first
-	 * or LSB-first.
+	 * or LSB-first. You must have previously called \c progOpen().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param buf A pointer to a buffer to receive the data.

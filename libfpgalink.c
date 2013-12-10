@@ -599,3 +599,37 @@ static FLStatus getStatus(struct FLContext *handle, uint8 *statusBuffer, const c
 cleanup:
 	return retVal;
 }
+
+DLLEXPORT(uint8) progGetPort(struct FLContext *handle, LogicalPort port) {
+	switch ( port ) {
+	case LP_MISO:
+		return handle->misoPort;
+	case LP_MOSI:
+		return handle->mosiPort;
+	case LP_SS:
+		return handle->ssPort;
+	case LP_SCK:
+		return handle->sckPort;
+	case LP_RESET:
+	case LP_D8:
+	default:
+		return 0xFF;
+	}
+}
+
+DLLEXPORT(uint8) progGetBit(struct FLContext *handle, LogicalPort port) {
+	switch ( port ) {
+	case LP_MISO:
+		return handle->misoBit;
+	case LP_MOSI:
+		return handle->mosiBit;
+	case LP_SS:
+		return handle->ssBit;
+	case LP_SCK:
+		return handle->sckBit;
+	case LP_RESET:
+	case LP_D8:
+	default:
+		return 0xFF;
+	}
+}

@@ -131,15 +131,22 @@ int main(void) {
 }
 
 #if USART_DEBUG == 1
-	const char Op0[] PROGMEM = "PROG_NOP";
-	const char Op1[] PROGMEM = "PROG_JTAG_ISSENDING_ISRECEIVING";
-	const char Op2[] PROGMEM = "PROG_JTAG_ISSENDING_NOTRECEIVING";
-	const char Op3[] PROGMEM = "PROG_JTAG_NOTSENDING_ISRECEIVING";
-	const char Op4[] PROGMEM = "PROG_JTAG_NOTSENDING_NOTRECEIVING";
-	const char Op5[] PROGMEM = "PROG_PARALLEL";
-	const char Op6[] PROGMEM = "PROG_SPI_SEND";
-	const char Op7[] PROGMEM = "PROG_SPI_RECV";
-	static const char *opNames[] PROGMEM = { Op0, Op1, Op2, Op3, Op4, Op5, Op6, Op7 };
+	const char progOp0[] PROGMEM = "PROG_NOP";
+	const char progOp1[] PROGMEM = "PROG_JTAG_ISSENDING_ISRECEIVING";
+	const char progOp2[] PROGMEM = "PROG_JTAG_ISSENDING_NOTRECEIVING";
+	const char progOp3[] PROGMEM = "PROG_JTAG_NOTSENDING_ISRECEIVING";
+	const char progOp4[] PROGMEM = "PROG_JTAG_NOTSENDING_NOTRECEIVING";
+	const char progOp5[] PROGMEM = "PROG_PARALLEL";
+	const char progOp6[] PROGMEM = "PROG_SPI_SEND";
+	const char progOp7[] PROGMEM = "PROG_SPI_RECV";
+	static const char *progOpName[] PROGMEM = { progOp0, progOp1, progOp2, progOp3, progOp4, progOp5, progOp6, progOp7 };
+	const char lp0[] PROGMEM = "LP_RESET";
+	const char lp1[] PROGMEM = "LP_MISO";
+	const char lp2[] PROGMEM = "LP_MOSI";
+	const char lp3[] PROGMEM = "LP_SS";
+	const char lp4[] PROGMEM = "LP_SCK";
+	const char lp5[] PROGMEM = "LP_D8";
+	static const char *logicalPortName[] PROGMEM = { lp0, lp1, lp2, lp3, lp4, lp5 };
 #endif
 
 #define SELECT_CONDUIT 0x0000
@@ -199,7 +206,7 @@ void EVENT_USB_Device_ControlRequest(void) {
 		}
 		break;
 
-	case CMD_JTAG_CLOCK_DATA:
+	case CMD_PROG_CLOCK_DATA:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			uint32 numBits;
 			const ProgOp operation = (ProgOp)USB_ControlRequest.wIndex;
@@ -207,11 +214,11 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&numBits, 4);
 			#if USART_DEBUG == 1
-				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_DATA("));
+				debugSendFlashString(PSTR("CMD_PROG_CLOCK_DATA("));
 				debugSendLongHex(numBits);
 				debugSendByte(',');
 				debugSendFlashString(
-					(const char*)pgm_read_word(&opNames[operation]));
+					(const char*)pgm_read_word(&progOpName[operation]));
 				debugSendByte(',');
 				debugSendByteHex(flagByte);
 				debugSendByte(')');
@@ -248,6 +255,12 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Endpoint_ClearSETUP();
 			numCycles <<= 16;
 			numCycles |= USB_ControlRequest.wValue;
+			#if USART_DEBUG == 1
+				debugSendFlashString(PSTR("CMD_JTAG_CLOCK("));
+				debugSendLongHex(numCycles);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
 			progClocks(numCycles);
 			Endpoint_ClearStatusStage();
 		}
@@ -292,8 +305,24 @@ void EVENT_USB_Device_ControlRequest(void) {
 
 	case CMD_PORT_MAP:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
-			Endpoint_ClearSETUP();
-			Endpoint_ClearStatusStage();
+			const LogicalPort logicalPort = (LogicalPort)(USB_ControlRequest.wIndex & 0x00FF);
+			const uint8 physicalPort = USB_ControlRequest.wIndex >> 8;
+			const uint8 physicalBit = USB_ControlRequest.wValue & 0x00FF;
+			#if USART_DEBUG == 1
+				debugSendFlashString(PSTR("CMD_PORT_MAP("));
+				debugSendFlashString(
+					(const char*)pgm_read_word(&logicalPortName[logicalPort]));
+				debugSendByte(',');
+				debugSendByteHex(physicalPort);
+				debugSendByte(',');
+				debugSendByteHex(physicalBit);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
+			if ( progPortMap(logicalPort, physicalPort, physicalBit) ) {
+				Endpoint_ClearSETUP();
+				Endpoint_ClearStatusStage();
+			}
 		}
 		break;
 

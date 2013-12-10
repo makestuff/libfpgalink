@@ -49,7 +49,7 @@ static FLStatus beginShift(
 	countUnion.u32 = littleEndian32(count);
 	uStatus = usbControlWrite(
 		handle->device,
-		CMD_JTAG_CLOCK_DATA,  // bRequest
+		CMD_PROG_CLOCK_DATA,  // bRequest
 		(uint8)mode,          // wValue
 		(uint8)progOp,        // wIndex
 		countUnion.bytes,     // send count
@@ -204,16 +204,14 @@ cleanup:
 	return retVal;
 }
 
-// This function re-maps the port used by the micro for one of the five PatchOp operations, which
-// are currently the four JTAG pins TDO, TDI, TMS & TCK plus the parallel programming port. For
-// serial programming we re-use the TDI bit for DIN and the TCK bit for CCLK.
+// This function re-maps the physical port used by the micro for its logical programming ports.
 //
 // Called by:
 //   xProgram() -> portMap()
-//   jtagOpen() -> portMap()
+//   progOpen() -> portMap()
 //
 static FLStatus portMap(
-	struct FLContext *handle, PatchOp patchOp, uint8 port, uint8 bit,
+	struct FLContext *handle, LogicalPort patchOp, uint8 port, uint8 bit,
 	const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
@@ -370,13 +368,15 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		"xProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
 
 	// Map the CCLK bit & the SelectMAP data bus
-	fStatus = portMap(handle, PATCH_TCK, cclkPort, cclkBit, error);
+	fStatus = portMap(handle, LP_RESET, 0x00, 0x00, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
+	fStatus = portMap(handle, LP_SCK, cclkPort, cclkBit, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	if ( progOp == PROG_PARALLEL ) {
-		fStatus = portMap(handle, PATCH_D8, dataPort, 0x00, error);
+		fStatus = portMap(handle, LP_D8, dataPort, 0x00, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	} else if ( progOp == PROG_SPI_SEND ) {
-		fStatus = portMap(handle, PATCH_TDI, dataPort, dataBit[0], error);
+		fStatus = portMap(handle, LP_MOSI, dataPort, dataBit[0], error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	}
 
@@ -461,56 +461,58 @@ cleanup:
 	return retVal;
 }
 
-static FLStatus jtagOpenInternal(struct FLContext *handle, const char *portConfig, const char *ptr, const char **error) {
+static FLStatus progOpenInternal(struct FLContext *handle, const char *portConfig, const char *ptr, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	FLStatus fStatus;
-	uint8 tdoPort, tdoBit;
-	uint8 tdiPort, tdiBit;
-	uint8 tmsPort, tmsBit;
-	uint8 tckPort, tckBit;
+	uint8 misoPort, misoBit;
+	uint8 mosiPort, mosiBit;
+	uint8 ssPort, ssBit;
+	uint8 sckPort, sckBit;
 	PinConfig pinMap[26][32] = {{0,},};
 	char ch;
 
 	// Get all four JTAG bits and tell the micro which ones to use
-	GET_PAIR(tdoPort, tdoBit, "jtagOpen");        // TDO
-	SET_BIT(tdoPort, tdoBit, PIN_INPUT, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TDO, tdoPort, tdoBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	GET_PAIR(misoPort, misoBit, "progOpen");        // MISO/TDO
+	SET_BIT(misoPort, misoBit, PIN_INPUT, "progOpen");
+	fStatus = portMap(handle, LP_RESET, 0x00, 0x00, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
+	fStatus = portMap(handle, LP_MISO, misoPort, misoBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 
-	GET_PAIR(tdiPort, tdiBit, "jtagOpen");        // TDI
-	SET_BIT(tdiPort, tdiBit, PIN_LOW, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TDI, tdiPort, tdiBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	GET_PAIR(mosiPort, mosiBit, "progOpen");        // MOSI/TDI
+	SET_BIT(mosiPort, mosiBit, PIN_LOW, "progOpen");
+	fStatus = portMap(handle, LP_MOSI, mosiPort, mosiBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 
-	GET_PAIR(tmsPort, tmsBit, "jtagOpen");        // TMS
-	SET_BIT(tmsPort, tmsBit, PIN_LOW, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TMS, tmsPort, tmsBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	GET_PAIR(ssPort, ssBit, "progOpen");        // SS/TMS
+	SET_BIT(ssPort, ssBit, PIN_LOW, "progOpen");
+	fStatus = portMap(handle, LP_SS, ssPort, ssBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 
-	GET_PAIR(tckPort, tckBit, "jtagOpen");        // TCK
-	SET_BIT(tckPort, tckBit, PIN_LOW, "jtagOpen");
-	fStatus = portMap(handle, PATCH_TCK, tckPort, tckBit, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	GET_PAIR(sckPort, sckBit, "progOpen");        // SCK/TCK
+	SET_BIT(sckPort, sckBit, PIN_LOW, "progOpen");
+	fStatus = portMap(handle, LP_SCK, sckPort, sckBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 
-	// Set TDO as an input and the other three as outputs
-	fStatus = flSingleBitPortAccess(handle, tdoPort, tdoBit, PIN_INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-	fStatus = flSingleBitPortAccess(handle, tdiPort, tdiBit, PIN_LOW, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-	fStatus = flSingleBitPortAccess(handle, tmsPort, tmsBit, PIN_LOW, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
-	fStatus = flSingleBitPortAccess(handle, tckPort, tckBit, PIN_LOW, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagOpen()");
+	// Set MISO/TDO as an input and the other three as outputs
+	fStatus = flSingleBitPortAccess(handle, misoPort, misoBit, PIN_INPUT, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
+	fStatus = flSingleBitPortAccess(handle, mosiPort, mosiBit, PIN_LOW, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
+	fStatus = flSingleBitPortAccess(handle, ssPort, ssBit, PIN_LOW, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
+	fStatus = flSingleBitPortAccess(handle, sckPort, sckBit, PIN_LOW, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 
-	// Remember the ports and bits for the benefit of jtagClose()
-	handle->tdoPort = tdoPort;
-	handle->tdoBit = tdoBit;
-	handle->tdiPort = tdiPort;
-	handle->tdiBit = tdiBit;
-	handle->tmsPort = tmsPort;
-	handle->tmsBit = tmsBit;
-	handle->tckPort = tckPort;
-	handle->tckBit = tckBit;
+	// Remember the ports and bits for the benefit of progClose()
+	handle->misoPort = misoPort;
+	handle->misoBit = misoBit;
+	handle->mosiPort = mosiPort;
+	handle->mosiBit = mosiBit;
+	handle->ssPort = ssPort;
+	handle->ssBit = ssBit;
+	handle->sckPort = sckPort;
+	handle->sckBit = sckBit;
 cleanup:
 	return retVal;
 }
@@ -526,11 +528,11 @@ static FLStatus jProgram(struct FLContext *handle, const char *portConfig, const
 	const char *ptr = portConfig + 1;
 	char ch;
 	EXPECT_CHAR(':', "jProgram");
-	fStatus = jtagOpenInternal(handle, portConfig, ptr, error);
+	fStatus = progOpenInternal(handle, portConfig, ptr, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jProgram()");
 	fStatus = csvfPlay(handle, csvfData, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jProgram()");
-	fStatus = jtagClose(handle, error);
+	fStatus = progClose(handle, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jProgram()");
 cleanup:
 	return retVal;
@@ -557,23 +559,23 @@ static void swap(uint32 *array, uint32 numWritten) {
 // Implementation of public functions
 // -------------------------------------------------------------------------------------------------
 
-DLLEXPORT(FLStatus) jtagOpen(struct FLContext *handle, const char *portConfig, const char **error) {
-	return jtagOpenInternal(handle, portConfig, portConfig, error);
+DLLEXPORT(FLStatus) progOpen(struct FLContext *handle, const char *portConfig, const char **error) {
+	return progOpenInternal(handle, portConfig, portConfig, error);
 }
 
-DLLEXPORT(FLStatus) jtagClose(struct FLContext *handle, const char **error) {
+DLLEXPORT(FLStatus) progClose(struct FLContext *handle, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	FLStatus fStatus;
 
-	// Set TDO, TDI, TMS & TCK as inputs
-	fStatus = flSingleBitPortAccess(handle, handle->tdoPort, handle->tdoBit, PIN_INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
-	fStatus = flSingleBitPortAccess(handle, handle->tdiPort, handle->tdiBit, PIN_INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
-	fStatus = flSingleBitPortAccess(handle, handle->tmsPort, handle->tmsBit, PIN_INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
-	fStatus = flSingleBitPortAccess(handle, handle->tckPort, handle->tckBit, PIN_INPUT, NULL, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagClose()");
+	// Set MISO/TDO, MOSI/TDI, SS/TMS & SCK/TCK as inputs
+	fStatus = flSingleBitPortAccess(handle, handle->misoPort, handle->misoBit, PIN_INPUT, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progClose()");
+	fStatus = flSingleBitPortAccess(handle, handle->mosiPort, handle->mosiBit, PIN_INPUT, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progClose()");
+	fStatus = flSingleBitPortAccess(handle, handle->ssPort, handle->ssBit, PIN_INPUT, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progClose()");
+	fStatus = flSingleBitPortAccess(handle, handle->sckPort, handle->sckBit, PIN_INPUT, NULL, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progClose()");
 cleanup:
 	return retVal;
 }
@@ -645,7 +647,7 @@ cleanup:
 	return retVal;
 }
 
-// Apply the supplied bit pattern to TMS, to move the TAP to a specific state.
+// Apply the supplied bit pattern to SS/TMS, to move the TAP to a specific state.
 //
 DLLEXPORT(FLStatus) jtagClockFSM(
 	struct FLContext *handle, uint32 bitPattern, uint8 transitionCount, const char **error)
@@ -672,7 +674,7 @@ cleanup:
 	return retVal;
 }
 
-// Cycle the TCK line for the given number of times.
+// Cycle the SCK/TCK line for the given number of times.
 //
 DLLEXPORT(FLStatus) jtagClocks(struct FLContext *handle, uint32 numClocks, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
@@ -705,7 +707,7 @@ DLLEXPORT(FLStatus) jtagScanChain(
 		uint32 idCode;
 		uint8 bytes[4];
 	} u;
-	fStatus = jtagOpenInternal(handle, portConfig, portConfig, error);
+	fStatus = progOpenInternal(handle, portConfig, portConfig, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagScanChain()");
 
 	i = 0;
@@ -730,7 +732,7 @@ DLLEXPORT(FLStatus) jtagScanChain(
 		*numDevices = i;
 	}
 
-	fStatus = jtagClose(handle, error);
+	fStatus = progClose(handle, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagScanChain()");
 
 cleanup:

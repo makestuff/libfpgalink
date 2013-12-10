@@ -44,10 +44,10 @@ extern "C" {
 		bool isNeroCapable;
 		uint8 progOutEP;
 		uint8 progInEP;
-		uint8 tdoPort, tdoBit;
-		uint8 tdiPort, tdiBit;
-		uint8 tmsPort, tmsBit;
-		uint8 tckPort, tckBit;
+		uint8 misoPort, misoBit;  // TDO
+		uint8 mosiPort, mosiBit;  // TDI
+		uint8 ssPort, ssBit;      // TMS
+		uint8 sckPort, sckBit;    // TCK
 
 		// Async API context
 		struct CompletionReport completionReport;

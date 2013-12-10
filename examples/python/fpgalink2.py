@@ -78,30 +78,24 @@ fpgalink.flIsCommCapable.argtypes = [FLHandle]
 fpgalink.flIsCommCapable.restype = uint8
 
 # CommFPGA Operations
-fpgalink.flFifoMode.argtypes = [FLHandle, uint8, POINTER(ErrorString)]
-fpgalink.flFifoMode.restype = FLStatus
+fpgalink.flSelectConduit.argtypes = [FLHandle, uint8, POINTER(ErrorString)]
+fpgalink.flSelectConduit.restype = FLStatus
 fpgalink.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flIsFPGARunning.restype = FLStatus
 fpgalink.flWriteChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flWriteChannel.restype = FLStatus
 fpgalink.flReadChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flReadChannel.restype = FLStatus
-fpgalink.flCleanWriteBuffer.argtypes = [FLHandle]
-fpgalink.flCleanWriteBuffer.restype = None
-fpgalink.flAppendWriteChannelCommand.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flAppendWriteChannelCommand.restype = FLStatus
-fpgalink.flPlayWriteBuffer.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
-fpgalink.flPlayWriteBuffer.restype = FLStatus
 
 # NeroProg Operations
 fpgalink.flProgram.argtypes = [FLHandle, c_char_p, c_char_p, POINTER(ErrorString)]
 fpgalink.flProgram.restype = FLStatus
 fpgalink.jtagScanChain.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
 fpgalink.jtagScanChain.restype = FLStatus
-fpgalink.jtagOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
-fpgalink.jtagOpen.restype = FLStatus
-fpgalink.jtagClose.argtypes = [FLHandle, POINTER(ErrorString)]
-fpgalink.jtagClose.restype = FLStatus
+fpgalink.progOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+fpgalink.progOpen.restype = FLStatus
+fpgalink.progClose.argtypes = [FLHandle, POINTER(ErrorString)]
+fpgalink.progClose.restype = FLStatus
 fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
 fpgalink.jtagClockFSM.restype = FLStatus
 fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
@@ -344,18 +338,18 @@ def jtagScanChain(handle, portConfig):
     return result
 
 # Open a JTAG port
-def jtagOpen(handle, portConfig):
+def progOpen(handle, portConfig):
     error = ErrorString()
-    status = fpgalink.jtagOpen(handle, portConfig.encode('ascii'), byref(error))
+    status = fpgalink.progOpen(handle, portConfig.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
 
 # Close a JTAG port
-def jtagClose(handle):
+def progClose(handle):
     error = ErrorString()
-    status = fpgalink.jtagClose(handle, byref(error))
+    status = fpgalink.progClose(handle, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
