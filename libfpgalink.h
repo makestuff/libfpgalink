@@ -272,6 +272,33 @@ extern "C" {
 	 * @returns An 8-bit integer: 1 if the device supports CommFPGA, else 0.
 	 */
 	DLLEXPORT(uint8) flIsCommCapable(struct FLContext *handle, uint8 conduit);
+
+	/**
+	 * @brief Get the firmware ID.
+	 *
+	 * Each firmware (or fork of an existing firmware) has its own 16-bit ID, which this function
+	 * retrieves.
+	 *
+	 * This function merely returns information determined by \c flOpen(), so it cannot fail.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @returns A 16-bit unsigned integer giving the firmware ID.
+	 */
+	DLLEXPORT(uint16) flGetFirmwareID(struct FLContext *handle);
+
+	/**
+	 * @brief Get the firmware version.
+	 *
+	 * Each firmware knows the GitHub tag from which is was built, or if it was built from a trunk,
+	 * it knows the date on which it was built. This function returns a 32-bit integer giving that
+	 * information. If printed as a hex number, it gives an eight-digit ISO date.
+	 *
+	 * This function merely returns information determined by \c flOpen(), so it cannot fail.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @returns A 32-bit unsigned integer giving the firmware version.
+	 */
+	DLLEXPORT(uint32) flGetFirmwareVersion(struct FLContext *handle);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------

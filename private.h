@@ -38,7 +38,8 @@ extern "C" {
 		bool isCommCapable;
 		uint8 commOutEP;
 		uint8 commInEP;
-		struct Buffer writeBuffer;
+		uint16 firmwareID;
+		uint32 firmwareVersion;
 
 		// JTAG stuff
 		bool isNeroCapable;

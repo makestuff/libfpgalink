@@ -89,6 +89,16 @@ DLLEXPORT(FLStatus) flOpen(const char *vp, struct FLContext **handle, const char
 		newCxt->commOutEP = (commEndpoints >> 4);
 		newCxt->commInEP = (commEndpoints & 0x0F);
 	}
+	newCxt->firmwareID = (uint16)(
+		(statusBuffer[8] << 8) |
+		statusBuffer[9]
+	);
+	newCxt->firmwareVersion = (uint32)(
+		(statusBuffer[10] << 24) |
+		(statusBuffer[11] << 16) |
+		(statusBuffer[12] << 8)  |
+		statusBuffer[13]
+	);
 	newCxt->chunkSize = 0x10000;  // default maximum libusbwrap chunk size
 	*handle = newCxt;
 	return retVal;
@@ -115,9 +125,6 @@ DLLEXPORT(void) flClose(struct FLContext *handle) {
 			uStatus = usbBulkAwaitCompletion(handle->device, &completionReport, NULL);
 		}
 		usbCloseDevice(handle->device, 0);
-		if ( handle->writeBuffer.data ) {
-			bufDestroy(&handle->writeBuffer);
-		}
 		free((void*)handle);
 		(void)fStatus;
 		(void)uStatus;
@@ -136,6 +143,18 @@ DLLEXPORT(uint8) flIsCommCapable(struct FLContext *handle, uint8 conduit) {
 	// TODO: actually consider conduit
 	(void)conduit;
 	return handle->isCommCapable ? 0x01 : 0x00;
+}
+
+// Retrieve the firmware ID (e.g FX2 trunk = 0xFFFF, AVR trunk = 0xAAAA).
+//
+DLLEXPORT(uint16) flGetFirmwareID(struct FLContext *handle) {
+	return handle->firmwareID;
+}
+
+// Retrieve the firmware version (e.g 0x20131217). This is an 8-digit ISO date when printed in hex.
+//
+DLLEXPORT(uint32) flGetFirmwareVersion(struct FLContext *handle) {
+	return handle->firmwareVersion;
 }
 
 // Select the conduit that should be used to communicate with the FPGA. Each device may support one

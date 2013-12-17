@@ -59,11 +59,19 @@
 # To rebuild project do "make clean" then "make all".
 #----------------------------------------------------------------------------
 
+# Determine branch:
+BRANCH := $(shell TRY=$(CURDIR); BRANCH=dev; while [ "$${TRY}" != "/" ]; do if [ -e "$${TRY}/.branch" ]; then BRANCH=$$(cat "$${TRY}/.branch"); break; fi; TRY=$$(dirname $${TRY}); done; echo $${BRANCH})
+USE_BRANCH := $(shell echo $(BRANCH) | grep -Pc '^2\d\d\d\d\d\d\d$$')
+
 # The version of LUFA to download and use
 LUFA_VERSION=130303
 
 # Identifiers for the device
-MAKESTUFF_TODAY_DATE := $(shell date +%Y%m%d)
+ifeq ($(USE_BRANCH),0)
+	FIRMWARE_VERSION := $(shell date +%Y%m%d)
+else
+	FIRMWARE_VERSION := $(BRANCH)
+endif
 VID := 1D50
 PID := 602B
 DID := 0001
@@ -484,7 +492,7 @@ ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 all: date.h LUFA-$(LUFA_VERSION) begin gccversion sizebefore build sizeafter end
 
 date.h:
-	echo "#define DATE 0x$(MAKESTUFF_TODAY_DATE)" > $@
+	echo "#define DATE 0x$(FIRMWARE_VERSION)" > $@
 	echo "#define VID 0x$(VID)" >> $@
 	echo "#define PID 0x$(PID)" >> $@
 	echo "#define DID 0x$(DID)" >> $@
