@@ -86,7 +86,9 @@ int main(void) {
 	DDRC = 0x00;
 	DDRD = 0x00;
 
-	#include "init.inc"
+	#ifdef BSP_INIT
+		#include BSP_INIT
+	#endif
 
 	sei();
 	#if USART_DEBUG == 1

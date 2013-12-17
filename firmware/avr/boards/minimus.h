@@ -6,7 +6,7 @@
 #define XTAL 16000000
 
 // Miscellaneous
-#define REG_ENABLED  0
+#define REG_ENABLED  1
 
 // Bootloader definitions
 #define FLASH_SIZE_BYTES          16384
