@@ -215,23 +215,17 @@ static FLStatus portMap(
 	const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
-	union {
-		uint16 word;
-		uint8 bytes[2];
-	} index, value;
 	USBStatus uStatus;
-	index.bytes[0] = (uint8)patchOp;
-	index.bytes[1] = port;
-	value.bytes[0] = bit;
-	value.bytes[1] = 0x00;
+	const uint16 index = (uint16)(port << 8 | patchOp);
+	const uint16 value = (uint16)bit;
 	uStatus = usbControlWrite(
 		handle->device,
-		CMD_PORT_MAP,      // bRequest
-		value.word,        // wValue
-		index.word,        // wIndex
-		NULL,              // no data
-		0,                 // wLength
-		1000,              // timeout (ms)
+		CMD_PORT_MAP,  // bRequest
+		value,         // wValue
+		index,         // wIndex
+		NULL,          // no data
+		0,             // wLength
+		1000,          // timeout (ms)
 		error
 	);
 	CHECK_STATUS(uStatus, FL_PROG_PORT_MAP, cleanup, "portMap()");
