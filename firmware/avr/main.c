@@ -141,14 +141,14 @@ int main(void) {
 	const char progOp5[] PROGMEM = "PROG_PARALLEL";
 	const char progOp6[] PROGMEM = "PROG_SPI_SEND";
 	const char progOp7[] PROGMEM = "PROG_SPI_RECV";
-	static const char *progOpName[] PROGMEM = { progOp0, progOp1, progOp2, progOp3, progOp4, progOp5, progOp6, progOp7 };
+	static const char *const progOpName[] PROGMEM = { progOp0, progOp1, progOp2, progOp3, progOp4, progOp5, progOp6, progOp7 };
 	const char lp0[] PROGMEM = "LP_RESET";
 	const char lp1[] PROGMEM = "LP_MISO";
 	const char lp2[] PROGMEM = "LP_MOSI";
 	const char lp3[] PROGMEM = "LP_SS";
 	const char lp4[] PROGMEM = "LP_SCK";
 	const char lp5[] PROGMEM = "LP_D8";
-	static const char *logicalPortName[] PROGMEM = { lp0, lp1, lp2, lp3, lp4, lp5 };
+	static const char *const logicalPortName[] PROGMEM = { lp0, lp1, lp2, lp3, lp4, lp5 };
 #endif
 
 #define SELECT_CONDUIT 0x0000

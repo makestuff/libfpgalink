@@ -64,7 +64,7 @@ BRANCH := $(shell TRY=$(CURDIR); BRANCH=dev; while [ "$${TRY}" != "/" ]; do if [
 USE_BRANCH := $(shell echo $(BRANCH) | grep -Pc '^2\d\d\d\d\d\d\d$$')
 
 # The version of LUFA to download and use
-LUFA_VERSION=130303
+LUFA_VERSION=130901
 
 # Identifiers for the device
 ifeq ($(USE_BRANCH),0)
