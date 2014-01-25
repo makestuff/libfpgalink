@@ -134,8 +134,6 @@ void usartEnable(void) {
 	USART_OUT |= bmTX;  // TX high
 	USART_OUT &= ~bmXCK; // CK low
 	USART_DDR |= (bmTX | bmXCK);  // TX & XCK are outputs
-	USART_OUT &= ~bmTX;  // TX low - FPGA in S_RESET1
-	USART_OUT |= bmTX;  // TX high - FPGA in S_IDLE
 	UBRR1H = 0x00;
 	UBRR1L = 0x00; // 8M sync
 	UCSR1A = (1<<U2X1);
@@ -144,11 +142,10 @@ void usartEnable(void) {
 }
 
 void usartDisable(void) {
+	USART_DDR &= ~(bmRX | bmTX | bmXCK);  // RX, TX & XCK all inputs (therefore float high).
 	UCSR1A = 0x00;
 	UCSR1B = 0x00;
 	UCSR1C = 0x00;
-	USART_DDR &= ~(bmRX | bmTX | bmXCK);
-	USART_OUT &= ~(bmRX | bmTX | bmXCK);
 }
 
 bool usartIsReady(void) {
