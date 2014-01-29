@@ -40,6 +40,13 @@ static const uint8 swapTable[] = {
 	0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
 };
 
+DLLEXPORT(void) spiBitSwap(uint8 *buffer, uint32 length) {
+	while ( length-- ) {
+		*buffer = swapTable[*buffer];
+		buffer++;
+	}
+}
+
 DLLEXPORT(FLStatus) spiSend(
 	struct FLContext *handle, const uint8 *buf, uint32 len, BitOrder bitOrder, const char **error)
 {

@@ -977,6 +977,15 @@ extern "C" {
 		struct FLContext *handle, uint8 *buf, uint32 len, BitOrder bitOrder, const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Swap the bits in a byte.
+	 *
+	 * Swap the bits in a byte, so that 0x01 -> 0x80, 0x02 -> 0x40 etc.
+	 *
+	 * @param byte The byte to be bit-swapped.
+	 * @returns The byte, bit-swapped.
+	 */
+	DLLEXPORT(void) spiBitSwap(uint8 *buffer, uint32 length);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
