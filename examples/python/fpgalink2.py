@@ -74,7 +74,7 @@ fpgalink.flIsDeviceAvailable.argtypes = [c_char_p, POINTER(uint8), POINTER(Error
 fpgalink.flIsDeviceAvailable.restype = FLStatus
 fpgalink.flIsNeroCapable.argtypes = [FLHandle]
 fpgalink.flIsNeroCapable.restype = uint8
-fpgalink.flIsCommCapable.argtypes = [FLHandle]
+fpgalink.flIsCommCapable.argtypes = [FLHandle, uint8]
 fpgalink.flIsCommCapable.restype = uint8
 
 # CommFPGA Operations
@@ -82,9 +82,9 @@ fpgalink.flSelectConduit.argtypes = [FLHandle, uint8, POINTER(ErrorString)]
 fpgalink.flSelectConduit.restype = FLStatus
 fpgalink.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flIsFPGARunning.restype = FLStatus
-fpgalink.flWriteChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flWriteChannel.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flWriteChannel.restype = FLStatus
-fpgalink.flReadChannel.argtypes = [FLHandle, uint32, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flReadChannel.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flReadChannel.restype = FLStatus
 
 # NeroProg Operations
@@ -154,8 +154,8 @@ def flIsNeroCapable(handle):
         return False
 
 # Query CommFPGA capability
-def flIsCommCapable(handle):
-    if ( fpgalink.flIsCommCapable(handle) ):
+def flIsCommCapable(handle, conduit):
+    if ( fpgalink.flIsCommCapable(handle, conduit) ):
         return True
     else:
         return False
@@ -183,9 +183,9 @@ def flMultiBitPortAccess(handle, portConfig):
     return readState.value
 
 # Set the FIFO mode
-def flFifoMode(handle, fifoMode):
+def flSelectConduit(handle, fifoMode):
     error = ErrorString()
-    status = fpgalink.flFifoMode(handle, fifoMode, byref(error))
+    status = fpgalink.flSelectConduit(handle, fifoMode, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -206,26 +206,26 @@ def flIsFPGARunning(handle):
         return False
 
 # Write one or more bytes to the specified channel
-def flWriteChannel(handle, timeout, chan, values):
+def flWriteChannel(handle, chan, values):
     error = ErrorString()
     if ( isinstance(values, bytearray) ):
         # Write the contents of the byte array:
         numValues = len(values)
         BufType = uint8*numValues
         buf = BufType.from_buffer(values)
-        status = fpgalink.flWriteChannel(handle, timeout, chan, numValues, buf, byref(error))
+        status = fpgalink.flWriteChannel(handle, chan, numValues, buf, byref(error))
     elif ( isinstance(values, int) ):
         # Write a single integer
         if ( values > 0xFF ):
             raise FLException("Supplied value won't fit in a byte!")
-        status = fpgalink.flWriteChannel(handle, timeout, chan, 1, (uint8*1)(values), byref(error))
+        status = fpgalink.flWriteChannel(handle, chan, 1, (uint8*1)(values), byref(error))
     else:
         # Write the contents of a file
         fileLen = uint32()
         fileData = fpgalink.flLoadFile(values.encode('ascii'), byref(fileLen))
         if ( fileData == None ):
             raise FLException("Cannot load file!")
-        status = fpgalink.flWriteChannel(handle, timeout, chan, fileLen, fileData, byref(error))
+        status = fpgalink.flWriteChannel(handle, chan, fileLen, fileData, byref(error))
         fpgalink.flFreeFile(fileData)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
@@ -233,19 +233,19 @@ def flWriteChannel(handle, timeout, chan, values):
         raise FLException(s)
 
 # Read one or more values from the specified channel
-def flReadChannel(handle, timeout, chan, count = 1):
+def flReadChannel(handle, chan, count = 1):
     error = ErrorString()
     if ( count == 1 ):
         # Read a single byte
         buf = uint8()
-        status = fpgalink.flReadChannel(handle, timeout, chan, 1, byref(buf), byref(error))
+        status = fpgalink.flReadChannel(handle, chan, 1, byref(buf), byref(error))
         returnValue = buf.value
     else:
         # Read multiple bytes
         byteArray = bytearray(count)
         BufType = uint8*count
         buf = BufType.from_buffer(byteArray)
-        status = fpgalink.flReadChannel(handle, timeout, chan, count, buf, byref(error))
+        status = fpgalink.flReadChannel(handle, chan, count, buf, byref(error))
         returnValue = byteArray
     if ( status != FL_SUCCESS ):
         s = str(error.value)
@@ -414,7 +414,7 @@ if __name__ == "__main__":
             fpgalink.flSleep(100)
 
         isNeroCapable = flIsNeroCapable(handle)
-        isCommCapable = flIsCommCapable(handle)
+        isCommCapable = flIsCommCapable(handle, 1)
         if ( argList.q ):
             if ( isNeroCapable ):
                 chain = jtagScanChain(handle, argList.q[0])
@@ -440,20 +440,20 @@ if __name__ == "__main__":
 
         if ( isCommCapable ):
             print "Zeroing R1 & R2..."
-            flFifoMode(handle, 1)
-            flWriteChannel(handle, 1000, 0x01, 0x00)
-            flWriteChannel(handle, 1000, 0x02, 0x00)
+            flSelectConduit(handle, 1)
+            flWriteChannel(handle, 0x01, 0x00)
+            flWriteChannel(handle, 0x02, 0x00)
             if ( argList.f ):
                 dataFile = argList.f[0]
                 print "Writing %s to FPGALink device %s..." % (dataFile, vp)
-                flWriteChannel(handle, 32760, 0x00, dataFile)
+                flWriteChannel(handle, 0x00, dataFile)
             
             print "Reading channel 0..."
-            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x00)
+            print "Got 0x%02X" % flReadChannel(handle, 0x00)
             print "Reading channel 1..."
-            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x01)
+            print "Got 0x%02X" % flReadChannel(handle, 0x01)
             print "Reading channel 2..."
-            print "Got 0x%02X" % flReadChannel(handle, 1000, 0x02)
+            print "Got 0x%02X" % flReadChannel(handle, 0x02)
 
     except FLException, ex:
         print ex
