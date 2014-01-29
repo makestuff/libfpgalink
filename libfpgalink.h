@@ -236,7 +236,7 @@ extern "C" {
 	 *
 	 * NeroProg is the collective name for all the various programming algorithms supported by
 	 * FPGALink, including but not limited to JTAG. An affirmative response means you are free to
-	 * call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c jtagClose(), \c jtagShift(),
+	 * call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c progClose(), \c jtagShift(),
 	 * \c jtagClockFSM() and \c jtagClocks().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
