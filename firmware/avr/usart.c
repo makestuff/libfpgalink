@@ -24,6 +24,7 @@
 
 #define USART_OUT PORT(USART_PORT)
 #define USART_DDR DDR(USART_PORT)
+#define USART_PIN PIN(USART_PORT)
 #define bmRX      (1<<RX_BIT)
 #define bmTX      (1<<TX_BIT)
 #define bmXCK     (1<<XCK_BIT)
@@ -46,6 +47,7 @@ void usartExecute(void) {
 	if ( usbOutPacketReady() ) {
 		uint8 byte, chan;
 		uint32 count;
+		//uint16 count;
 		do {
 			// Read/write flag & channel
 			chan = usbRecvByte(); usartSendByte(chan);
@@ -63,7 +65,8 @@ void usartExecute(void) {
 			byte = usbRecvByte(); usartSendByte(byte);
 			count <<= 8;
 			count |= byte;
-			
+			//count = byte;
+
 			// Count low byte
 			byte = usbRecvByte(); usartSendByte(byte);
 			count <<= 8;
@@ -83,6 +86,10 @@ void usartExecute(void) {
 				while ( !(UCSR1A & (1<<TXC1)) );       // wait for send complete
 				__asm volatile(
 					"nop\nnop\nnop\nnop\n"              // give things a chance to settle
+					"nop\nnop\nnop\nnop\n"
+					"nop\nnop\nnop\nnop\n"
+					"nop\nnop\nnop\nnop\n"
+					"nop\nnop\nnop\nnop\n"
 					"nop\nnop\nnop\nnop\n"
 					"nop\nnop\nnop\nnop\n"
 					"nop\nnop\nnop\nnop\n"
@@ -134,6 +141,8 @@ void usartEnable(void) {
 	USART_OUT |= bmTX;  // TX high
 	USART_OUT &= ~bmXCK; // CK low
 	USART_DDR |= (bmTX | bmXCK);  // TX & XCK are outputs
+	USART_DDR &= ~bmRX;           // RX is input
+	USART_OUT |= bmRX;            // RX pulled up
 	UBRR1H = 0x00;
 	UBRR1L = 0x00; // 8M sync
 	UCSR1A = (1<<U2X1);
@@ -149,5 +158,5 @@ void usartDisable(void) {
 }
 
 bool usartIsReady(void) {
-	return (USART_OUT & bmRX) == 0x00;  // ready when RX is low
+	return (USART_PIN & bmRX) == 0x00;  // ready when RX is low
 }
