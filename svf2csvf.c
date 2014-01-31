@@ -877,7 +877,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	BufferStatus bStatus;
 	FLStatus fStatus;
 	const uint8 *buffer = NULL, *p, *end, *line;
-	uint32 fileLength;
+	size_t fileLength;
 	bool gotSemicolon;
 	struct ParseContext cxt = {{0,},};
 

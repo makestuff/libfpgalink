@@ -753,7 +753,7 @@ debug gdb-config
 $(LUFA_PATH)/LUFA/makefile LUFA-$(LUFA_VERSION): $(TOP)/3rd/LUFA-$(LUFA_VERSION)
 	mkdir -p LUFA-$(LUFA_VERSION)
 	cp -r $(TOP)/3rd/LUFA-$(LUFA_VERSION)/LUFA LUFA-$(LUFA_VERSION)
-	sed -i 's/^LUFA_VERSION_NUM\s\+:=.*$$/LUFA_VERSION_NUM := $(LUFA_VERSION)/g' LUFA-130303/LUFA/makefile
+	sed -i 's/^LUFA_VERSION_NUM\s\+:=.*$$/LUFA_VERSION_NUM := $(LUFA_VERSION)/g' LUFA-$(LUFA_VERSION)/LUFA/makefile
 
 $(TOP)/3rd/LUFA-$(LUFA_VERSION):
 	wget -O lufa.zip --no-check-certificate http://www.fourwalledcubicle.com/files/LUFA/LUFA-$(LUFA_VERSION).zip

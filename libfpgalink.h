@@ -42,12 +42,13 @@ extern "C" {
 	 * @{
 	 */
 	/**
-	 * Report struct populated by \c flReadChannelAsyncAwait().
+	 * Report struct populated by \c flReadChannelAsyncAwait(). Async reads are done in chunks of up
+	 * to and including 64KiB, which is why the lengths are \c uint32 and not \c size_t.
 	 */
 	struct ReadReport {
 		const uint8 *data;     ///< The result of the asynchronous read.
-		uint32 requestLength;  ///< The number of bytes requested.
-		uint32 actualLength;   ///< The number of bytes actualy read.
+		uint32 requestLength;  ///< The number of bytes requested, <= 64KiB.
+		uint32 actualLength;   ///< The number of bytes actualy read, <= 64KiB.
 	};
 
 	/**
@@ -58,6 +59,7 @@ extern "C" {
 		FL_ALLOC_ERR,            ///< There was a memory allocation error.
 		FL_USB_ERR,              ///< There was some USB-related problem.
 		FL_PROTOCOL_ERR,         ///< The device is probably not a valid FPGALink device.
+		FL_EARLY_TERM,           ///< The device did an unexpected early read termination.
 		FL_FX2_ERR,              ///< There was some problem talking to the FX2 chip.
 		FL_FILE_ERR,             ///< There was a file-related problem.
 		FL_UNSUPPORTED_CMD_ERR,  ///< The XSVF file contains an unsupported command.
@@ -367,7 +369,7 @@ extern "C" {
 	/**
 	 * @brief Synchronously read the specified channel into the supplied buffer.
 	 *
-	 * Read \c count bytes from the FPGA channel \c chan to the \c data array. Before calling
+	 * Read \c length bytes from the FPGA channel \c chan to the \c data array. Before calling
 	 * \c flReadChannel(), you should verify that the FPGALink device actually supports
 	 * CommFPGA using \c flIsCommCapable().
 	 *
@@ -375,8 +377,8 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param chan The FPGA channel to read.
-	 * @param count The number of bytes to read.
-	 * @param buf The address of a buffer to store the bytes read from the FPGA.
+	 * @param length The number of bytes to read.
+	 * @param buffer The address of a buffer to store the bytes read from the FPGA.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -389,14 +391,14 @@ extern "C" {
 	 *     - \c FL_BAD_STATE if there are async reads in progress.
 	 */
 	DLLEXPORT(FLStatus) flReadChannel(
-		struct FLContext *handle, uint8 chan, uint32 count, uint8 *buf,
+		struct FLContext *handle, uint8 chan, size_t length, uint8 *buffer,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Synchronously write the supplied data to the specified channel.
 	 *
-	 * Write \c count bytes from the \c data array to FPGA channel \c chan. Before calling
+	 * Write \c length bytes from the \c data array to FPGA channel \c chan. Before calling
 	 * \c flWriteChannel(), you should verify that the FPGALink device actually supports
 	 * CommFPGA using \c flIsCommCapable().
 	 *
@@ -406,7 +408,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param chan The FPGA channel to write.
-	 * @param count The number of bytes to write.
+	 * @param length The number of bytes to write.
 	 * @param data The address of the array of bytes to be written to the FPGA.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
@@ -420,7 +422,7 @@ extern "C" {
 	 *     - \c FL_BAD_STATE if there are async reads in progress.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannel(
-		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
+		struct FLContext *handle, uint8 chan, size_t length, const uint8 *data,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -454,7 +456,7 @@ extern "C" {
 	/**
 	 * @brief Asynchronously write the supplied data to the specified channel.
 	 *
-	 * Write \c count bytes from the \c data array to FPGA channel \c chan. Before calling
+	 * Write \c length bytes from the \c data array to FPGA channel \c chan. Before calling
 	 * \c flWriteChannelAsync(), you should verify that the FPGALink device actually supports
 	 * CommFPGA using \c flIsCommCapable().
 	 *
@@ -466,7 +468,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param chan The FPGA channel to write.
-	 * @param count The number of bytes to write.
+	 * @param length The number of bytes to write.
 	 * @param data The address of the array of bytes to be written to the FPGA.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
@@ -480,7 +482,7 @@ extern "C" {
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannelAsync(
-		struct FLContext *handle, uint8 chan, uint32 count, const uint8 *data,
+		struct FLContext *handle, uint8 chan, size_t length, const uint8 *data,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -534,7 +536,7 @@ extern "C" {
 	/**
 	 * @brief Submit an asynchronous read on the specified channel.
 	 *
-	 * Submit an asynchronous read of \c count bytes from the FPGA channel \c chan. You can request
+	 * Submit an asynchronous read of \c length bytes from the FPGA channel \c chan. You can request
 	 * at most 64KiB of data asynchronously. Before calling \c flReadChannelAsyncSubmit(), you should
 	 * verify that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
 	 *
@@ -553,7 +555,8 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param chan The FPGA channel to read.
-	 * @param count The number of bytes to read. Must be <= 64KiB.
+	 * @param length The number of bytes to read, <= 64KiB (hence \c uint32 rather than \c size_t).
+	 * @param buffer A buffer to receive the data, or \c NULL if you want to borrow one.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -565,7 +568,7 @@ extern "C" {
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 */
 	DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
-		struct FLContext *handle, uint8 chan, uint32 count, const char **error
+		struct FLContext *handle, uint8 chan, uint32 length, uint8 *buffer, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -578,8 +581,9 @@ extern "C" {
 	 * the number of bytes read, etc. This is an "out" parameter: the current state of the struct
 	 * is not considered. It remains unchanged on failure.
 	 *
-	 * The data returned is stored in an internal buffer. It is guaranteed to remain valid until your
-	 * next call to any of the CommFPGA functions.
+	 * Unless you provided your own buffer when you called \c flReadChannelAsyncSubmit(), the data
+	 * returned is stored in an internal buffer. It is guaranteed to remain valid until your next
+	 * call to any of the CommFPGA functions.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param readReport A pointer to a <code>struct ReadReport</code> which will be populated with
@@ -724,8 +728,8 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param progConfig The port configuration described in \c flProgram().
-	 * @param blobData A pointer to the start of the programming data.
-	 * @param blobLength The number of bytes of programming data.
+	 * @param length The number of bytes of programming data.
+	 * @param buffer A pointer to the start of the programming data.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -747,7 +751,7 @@ extern "C" {
 	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
 	 */
 	DLLEXPORT(FLStatus) flProgramBlob(
-		struct FLContext *handle, const char *progConfig, const uint8 *blobData, uint32 blobLength,
+		struct FLContext *handle, const char *progConfig, uint32 length, const uint8 *buffer,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -931,12 +935,12 @@ extern "C" {
 	/**
 	 * @brief Send a number of whole bytes over SPI, either LSB-first or MSB-first.
 	 *
-	 * Shift \c len bytes from \c buf into the microcontroller's SPI bus (if any), either MSB-first
+	 * Shift \c length bytes from \c buf into the microcontroller's SPI bus (if any), either MSB-first
 	 * or LSB-first. You must have previously called \c progOpen().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param buf A pointer to the source data.
-	 * @param len The number of bytes to send.
+	 * @param length The number of bytes to send.
+	 * @param buffer A pointer to the source data.
 	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
@@ -950,18 +954,19 @@ extern "C" {
 	 *     - \c FL_USB_ERR if USB communications failed whilst sending the data.
 	 */
 	DLLEXPORT(FLStatus) spiSend(
-		struct FLContext *handle, const uint8 *buf, uint32 len, BitOrder bitOrder, const char **error
+		struct FLContext *handle, uint32 length, const uint8 *buffer, BitOrder bitOrder,
+		const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Receive a number of whole bytes over SPI, either LSB-first or MSB-first.
 	 *
-	 * Shift \c len bytes from the microcontroller's SPI bus (if any) into \c buf, either MSB-first
-	 * or LSB-first. You must have previously called \c progOpen().
+	 * Shift \c length bytes from the microcontroller's SPI bus (if any) into \c buffer, either
+	 * MSB-first or LSB-first. You must have previously called \c progOpen().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param buf A pointer to a buffer to receive the data.
-	 * @param len The number of bytes to receive.
+	 * @param buffer A pointer to a buffer to receive the data.
+	 * @param length The number of bytes to receive.
 	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
@@ -974,18 +979,18 @@ extern "C" {
 	 *     - \c FL_USB_ERR if USB communications failed whilst receiving the data.
 	 */
 	DLLEXPORT(FLStatus) spiRecv(
-		struct FLContext *handle, uint8 *buf, uint32 len, BitOrder bitOrder, const char **error
+		struct FLContext *handle, uint32 length, uint8 *buffer, BitOrder bitOrder, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Swap the bits in a byte.
+	 * @brief Swap the bits in a byte array.
 	 *
 	 * Swap the bits in a byte, so that 0x01 -> 0x80, 0x02 -> 0x40 etc.
 	 *
-	 * @param byte The byte to be bit-swapped.
-	 * @returns The byte, bit-swapped.
+	 * @param length The number of bytes to be bit-swapped.
+	 * @param buffer A pointer to an array of \c uint8 to be bit-swapped.
 	 */
-	DLLEXPORT(void) spiBitSwap(uint8 *buffer, uint32 length);
+	DLLEXPORT(void) spiBitSwap(uint32 length, uint8 *buffer);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
@@ -1147,11 +1152,11 @@ extern "C" {
 	 * must be freed later by a call to \c flFreeFile().
 	 *
 	 * @param name The name of the file to load.
-	 * @param length A pointer to a \c uint32 which will be populated on exit with the file length.
+	 * @param length A pointer to a \c size_t which will be populated on exit with the file length.
 	 * @returns A pointer to the allocated buffer, or NULL if the file could not be loaded.
 	 */
 	DLLEXPORT(uint8*) flLoadFile(
-		const char *name, uint32 *length
+		const char *name, size_t *length
 	);
 
 	/**

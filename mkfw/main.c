@@ -88,7 +88,7 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 	dumpBytes(buf->data, buf->length);
 	printf("};\n");
 	printf("const struct FirmwareInfo %sFirmware = {\n", name);
-	printf("\tdata, %d, 0x%04X\n", buf->length, vp);
+	printf("\tdata, "PFSZD", 0x%04X\n", buf->length, vp);
 	printf("};\n");
 cleanup:
 	return retVal;

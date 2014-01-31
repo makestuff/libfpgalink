@@ -216,7 +216,7 @@ static FLStatus portMap(
 {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
-	const uint16 index = (uint16)(port << 8 | patchOp);
+	const uint16 index = (uint16)((port << 8) | patchOp);
 	const uint16 value = (uint16)bit;
 	uStatus = usbControlWrite(
 		handle->device,
@@ -736,7 +736,7 @@ cleanup:
 // Programs a device using in-memory configuration information
 //
 DLLEXPORT(FLStatus) flProgramBlob(
-	struct FLContext *handle, const char *portConfig, const uint8 *blobData, uint32 blobLength,
+	struct FLContext *handle, const char *portConfig, uint32 blobLength, const uint8 *blobData,
 	const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
@@ -821,7 +821,7 @@ DLLEXPORT(FLStatus) flProgram(
 		bStatus = bufAppendFromBinaryFile(&fileBuf, progFile, error);
 		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flProgram()");
 	}
-	fStatus = flProgramBlob(handle, portConfig, fileBuf.data, fileBuf.length, error);
+	fStatus = flProgramBlob(handle, portConfig, fileBuf.length, fileBuf.data, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "flProgram()");
 cleanup:
 	bufDestroy(&fileBuf);

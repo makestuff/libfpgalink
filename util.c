@@ -44,7 +44,7 @@ DLLEXPORT(void) flSleep(uint32 ms) {
  * length to the location pointed to by 'length'. Naturally, responsibility for the allocated
  * buffer passes to the caller, and must be freed by a call to flFreeFile().
  */
-DLLEXPORT(uint8*) flLoadFile(const char *name, uint32 *length) {
+DLLEXPORT(uint8*) flLoadFile(const char *name, size_t *length) {
 	FILE *file;
 	uint8 *buffer;
 	size_t fileLen;
@@ -67,7 +67,7 @@ DLLEXPORT(uint8*) flLoadFile(const char *name, uint32 *length) {
 	}
 	returnCode = fread(buffer, 1, fileLen, file);
 	if ( returnCode == fileLen && length != NULL ) {
-		*length = (uint32)fileLen;
+		*length = fileLen;
 	}
 	buffer[fileLen] = '\0';
 	fclose(file);

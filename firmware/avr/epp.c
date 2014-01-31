@@ -111,21 +111,13 @@ void eppExecute(void) {
 	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
 	if ( usbOutPacketReady() ) {
 		uint8 byte;
-		uint32 count;
+		uint16 count;
 		do {
 			// Read/write flag & channel
 			byte = usbRecvByte(); eppSendAddrByte(byte);
 			
 			// Count high byte
 			count = usbRecvByte();
-			
-			// Count high mid byte
-			count <<= 8;
-			count |= usbRecvByte();
-			
-			// Count low mid byte
-			count <<= 8;
-			count |= usbRecvByte();
 			
 			// Count low byte
 			count <<= 8;

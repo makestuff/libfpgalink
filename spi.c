@@ -40,7 +40,7 @@ static const uint8 swapTable[] = {
 	0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
 };
 
-DLLEXPORT(void) spiBitSwap(uint8 *buffer, uint32 length) {
+DLLEXPORT(void) spiBitSwap(uint32 length, uint8 *buffer) {
 	while ( length-- ) {
 		*buffer = swapTable[*buffer];
 		buffer++;
@@ -48,12 +48,12 @@ DLLEXPORT(void) spiBitSwap(uint8 *buffer, uint32 length) {
 }
 
 DLLEXPORT(FLStatus) spiSend(
-	struct FLContext *handle, const uint8 *buf, uint32 len, BitOrder bitOrder, const char **error)
+	struct FLContext *handle, uint32 length, const uint8 *buffer, BitOrder bitOrder, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
 	uint8 *swapBuffer = NULL;
-	const uint8 *data = buf;
+	const uint8 *data = buffer;
 	union {
 		uint32 u32;
 		uint8 bytes[4];
@@ -61,9 +61,9 @@ DLLEXPORT(FLStatus) spiSend(
 
 	// Maybe make a bit-swapped copy of the data before sending it
 	if ( bitOrder == SPI_MSBFIRST ) {
-		uint32 count = len;
-		const uint8 *srcPtr = buf;
-		uint8 *dstPtr = swapBuffer = (uint8*)malloc(len);
+		uint32 count = length;
+		const uint8 *srcPtr = buffer;
+		uint8 *dstPtr = swapBuffer = (uint8*)malloc(length);
 		CHECK_STATUS(!swapBuffer, FL_ALLOC_ERR, cleanup, "spiSend()");
 		while ( count-- ) {
 			*dstPtr++ = swapTable[*srcPtr++];
@@ -72,7 +72,7 @@ DLLEXPORT(FLStatus) spiSend(
 	}
 
 	// Request the SPI send operation
-	countUnion.u32 = littleEndian32(len);
+	countUnion.u32 = littleEndian32(length);
 	uStatus = usbControlWrite(
 		handle->device, CMD_PROG_CLOCK_DATA, 0x0000, PROG_SPI_SEND,
 		countUnion.bytes, 4, 1000, NULL);
@@ -83,7 +83,7 @@ DLLEXPORT(FLStatus) spiSend(
 		handle->device,
 		handle->progOutEP,  // write to OUT endpoint
 		data,               // write from send buffer                                                                     
-		len,                // write this many bytes                                                                      
+		length,                // write this many bytes                                                                      
 		U32MAX,             // timeout in milliseconds                                                                    
 		error
 	);
@@ -94,7 +94,7 @@ cleanup:
 }
 
 DLLEXPORT(FLStatus) spiRecv(
-	struct FLContext *handle, uint8 *buf, uint32 len, BitOrder bitOrder, const char **error)
+	struct FLContext *handle, uint32 length, uint8 *buf, BitOrder bitOrder, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
@@ -104,7 +104,7 @@ DLLEXPORT(FLStatus) spiRecv(
 	} countUnion;
 
 	// Request the SPI receive operation
-	countUnion.u32 = littleEndian32(len);
+	countUnion.u32 = littleEndian32(length);
 	uStatus = usbControlWrite(
 		handle->device, CMD_PROG_CLOCK_DATA, 0x0000, PROG_SPI_RECV,
 		countUnion.bytes, 4, 1000, NULL);
@@ -115,7 +115,7 @@ DLLEXPORT(FLStatus) spiRecv(
 		handle->device,
 		handle->progInEP,  // read from IN endpoint
 		buf,               // read into receive buffer                                                                     
-		len,               // read this many bytes                                                                      
+		length,               // read this many bytes                                                                      
 		U32MAX,            // timeout in milliseconds                                                                    
 		error
 	);
@@ -123,7 +123,7 @@ DLLEXPORT(FLStatus) spiRecv(
 
 	// Maybe bitswap the data
 	if ( bitOrder == SPI_MSBFIRST ) {
-		while ( len-- ) {
+		while ( length-- ) {
 			*buf = swapTable[*buf];
 			buf++;
 		}

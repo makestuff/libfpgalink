@@ -46,8 +46,7 @@ void usartExecute(void) {
 	usbSelectEndpoint(OUT_ENDPOINT_ADDR);
 	if ( usbOutPacketReady() ) {
 		uint8 byte, chan;
-		uint32 count;
-		//uint16 count;
+		uint16 count;
 		do {
 			// Read/write flag & channel
 			chan = usbRecvByte(); usartSendByte(chan);
@@ -56,22 +55,11 @@ void usartExecute(void) {
 			byte = usbRecvByte(); usartSendByte(byte);
 			count = byte;
 			
-			// Count high mid byte
-			byte = usbRecvByte(); usartSendByte(byte);
-			count <<= 8;
-			count |= byte;
-			
-			// Count low mid byte
-			byte = usbRecvByte(); usartSendByte(byte);
-			count <<= 8;
-			count |= byte;
-			//count = byte;
-
 			// Count low byte
 			byte = usbRecvByte(); usartSendByte(byte);
 			count <<= 8;
 			count |= byte;
-
+			
 			// Check to see if it's a read or a write
 			if ( chan & 0x80 ) {
 				// The host is reading a channel
