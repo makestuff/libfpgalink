@@ -24,6 +24,8 @@ PRE_BUILD        += $(EXTRA_CC_SRCS)
 POST_BUILD       := tools
 #EXTRA_CLEAN      := gen_fw
 EXTRA_CLEAN_DIRS := mkfw firmware/fx2 xsvf2csvf dump
+AS8051           := sdas8051
+#AS8051           := asx8051
 
 -include $(ROOT)/common/top.mk
 
@@ -54,8 +56,8 @@ gen_fw/ramFirmware.hex:
 gen_fw/eepromNoBootFirmware.hex:
 	@echo Building EEPROM firmware...
 	mkdir -p gen_fw
-	make -C firmware/fx2 clean
-	make -C firmware/fx2 FLAGS="-DEEPROM"
+	make -C firmware/fx2 AS8051=$(AS8051) clean
+	make -C firmware/fx2 AS8051=$(AS8051) FLAGS="-DEEPROM"
 	cp firmware/fx2/firmware.hex gen_fw/eepromNoBootFirmware.hex
 	make -C firmware/fx2 clean
 
@@ -63,7 +65,7 @@ hdl:
 	./hdlbuild.sh $(X2C)
 
 $(ROOT)/3rd/fx2lib/lib/fx2.lib: $(ROOT)/3rd/fx2lib
-	make AS8051=asx8051 -C $<
+	make AS8051=$(AS8051) -C $<
 
 tests: FORCE
 	make -C tests-unit rel
