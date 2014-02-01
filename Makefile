@@ -45,7 +45,7 @@ gen_fw/ramFirmware.c: gen_fw/ramFirmware.hex $(MKFW) gen_fw
 gen_fw/eepromNoBootFirmware.c: gen_fw/eepromNoBootFirmware.hex $(MKFW) gen_fw
 	$(MKFW) $< eepromNoBoot iic > $@
 
-gen_fw/ramFirmware.hex:
+gen_fw/ramFirmware.hex: $(ROOT)/3rd/fx2lib/lib/fx2.lib
 	@echo Building RAM firmware...
 	mkdir -p gen_fw
 	make -C firmware/fx2 clean
@@ -53,7 +53,7 @@ gen_fw/ramFirmware.hex:
 	cp firmware/fx2/firmware.hex gen_fw/ramFirmware.hex
 	make -C firmware/fx2 clean
 
-gen_fw/eepromNoBootFirmware.hex:
+gen_fw/eepromNoBootFirmware.hex: $(ROOT)/3rd/fx2lib/lib/fx2.lib
 	@echo Building EEPROM firmware...
 	mkdir -p gen_fw
 	make -C firmware/fx2 AS8051=$(AS8051) clean
