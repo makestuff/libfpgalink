@@ -588,7 +588,7 @@ DLLEXPORT(uint8) progGetPort(struct FLContext *handle, LogicalPort port) {
 		return handle->ssPort;
 	case LP_SCK:
 		return handle->sckPort;
-	case LP_RESET:
+	case LP_CHOOSE:
 	case LP_D8:
 	default:
 		return 0xFF;
@@ -605,7 +605,7 @@ DLLEXPORT(uint8) progGetBit(struct FLContext *handle, LogicalPort port) {
 		return handle->ssBit;
 	case LP_SCK:
 		return handle->sckBit;
-	case LP_RESET:
+	case LP_CHOOSE:
 	case LP_D8:
 	default:
 		return 0xFF;

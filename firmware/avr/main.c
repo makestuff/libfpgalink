@@ -142,7 +142,7 @@ int main(void) {
 	const char progOp6[] PROGMEM = "PROG_SPI_SEND";
 	const char progOp7[] PROGMEM = "PROG_SPI_RECV";
 	static const char *const progOpName[] PROGMEM = { progOp0, progOp1, progOp2, progOp3, progOp4, progOp5, progOp6, progOp7 };
-	const char lp0[] PROGMEM = "LP_RESET";
+	const char lp0[] PROGMEM = "LP_CHOOSE";
 	const char lp1[] PROGMEM = "LP_MISO";
 	const char lp2[] PROGMEM = "LP_MOSI";
 	const char lp3[] PROGMEM = "LP_SS";

@@ -82,10 +82,22 @@ extern "C" {
 	} FLStatus;
 
 	/**
+	 * Enum used by \c progGetPort() and \c progGetBit() to identify the programming pins.
+	 */
+	typedef enum {
+		LP_CHOOSE, ///< These aren't the droids you're looking for. Move along.
+		LP_MISO,   ///< The master-in, slave-out pin (TDO).
+		LP_MOSI,   ///< The master-out, slave-in pin (TDI).
+		LP_SS,     ///< The slave-select pin (TMS).
+		LP_SCK,    ///< The serial clock pin (TCK).
+		LP_D8      ///< The parallel data port.
+	} LogicalPort;
+
+	/**
 	 * Enum used by \c flSingleBitPortAccess() to configure the pin direction and drive.
 	 */
 	typedef enum {
-		PIN_UNUSED, ///< These aren't the droids you're looking for. Move along.
+		PIN_UNUSED, ///< These are also not the droids you're looking for. Keep moving along.
 		PIN_HIGH,   ///< Configure the pin as an output and drive it high.
 		PIN_LOW,    ///< Configure the pin as an output and drive it low.
 		PIN_INPUT   ///< Configure the pin as an input.
@@ -98,18 +110,6 @@ extern "C" {
 		SPI_MSBFIRST,  ///< Clock each byte most-significant bit first.
 		SPI_LSBFIRST   ///< Clock each byte least-significant bit first.
 	} BitOrder;
-
-	/**
-	 * Enum used by \c progGetPort() and \c progGetBit() to identify the programming pins.
-	 */
-	typedef enum {
-		LP_RESET, ///< These are also not the droids you're looking for. Keep moving along.
-		LP_MISO,  ///< The master-in, slave-out pin (TDO).
-		LP_MOSI,  ///< The master-out, slave-in pin (TDI).
-		LP_SS,    ///< The slave-select pin (TMS).
-		LP_SCK,   ///< The serial clock pin (TCK).
-		LP_D8     ///< The parallel data port.
-	} LogicalPort;
 	//@}
 
 	// Forward declarations
@@ -648,6 +648,14 @@ extern "C" {
 	 * - TMS: PA3
 	 * - TCK: PA1
 	 *
+	 * EP2C5 Mini Board using Altera Passive-Serial: <code>progConfig="AS:B5B6B1B2"</code> (note that
+	 * the board normally connects MSEL[1:0] to ground, hard-coding it in Active-Serial mode. For
+	 * Passive-Serial to work you need to lift pin 85 and pull it up to VCC):
+	 * - nCONFIG: PD5
+	 * - CONF_DONE: PD6
+	 * - DCLK: PD1
+	 * - DATA0: PD2
+	 *
 	 * Aessent aes220 using Xilinx Slave-Serial: <code>progConfig="XS:D0D5D1D6A7[D3?,B1+,B5+,B3+]"</code>:
 	 * - PROG_B: PD0
 	 * - INIT_B: PD5
@@ -918,6 +926,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param port The \c LogicalPort to query for.
+	 * @returns The physical port mapped to the given \c LogicalPort.
 	 */
 	DLLEXPORT(uint8) progGetPort(struct FLContext *handle, LogicalPort port);
 
@@ -929,6 +938,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param port The \c LogicalPort to query for.
+	 * @returns The physical bit mapped to the given \c LogicalPort.
 	 */
 	DLLEXPORT(uint8) progGetBit(struct FLContext *handle, LogicalPort port);
 
@@ -1219,6 +1229,23 @@ extern "C" {
 		struct FLContext *handle, const char *portConfig, uint32 *readState, const char **error
 	) WARN_UNUSED_RESULT;
 
+	/**
+	 * @brief Put the AVR in DFU bootloader mode.
+	 *
+	 * This is an AVR-specific utility function to make firmware upgrades easier on boards on which
+	 * the /HWB and /RESET pins are not easily accesible. The "gordon" utility has an option to
+	 * invoke this.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the port access command completed successfully.
+	 *     - \c FL_USB_ERR if the device is not running suitable FPGALink/AVR firmware.
+	 */
 	DLLEXPORT(FLStatus) flBootloader(
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;

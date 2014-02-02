@@ -33,62 +33,69 @@ static PortMapping m_funcIndex = NONE;
 static uint32 m_numBits = 0UL;
 static ProgOp m_progOp = PROG_NOP;
 static uint8 m_flagByte = 0x00;
+static uint8 m_selectBM = 0x00;
+static uint8 m_selectMask = 0x00;
 
 #define PAR_DDR DDR(PAR_PORT)
 #define PAR_IO PORT(PAR_PORT)
 
-static bool choose(PortMapping m) {
-	if ( m_funcIndex == m ) {
-		return true;
-	}
-	if ( m_funcIndex == NONE ) {
-		m_funcIndex = m;
-		return true;
-	}
-	return false;
-}
-
 bool progPortMap(LogicalPort logicalPort, uint8 physicalPort, uint8 physicalBit) {
 	switch ( logicalPort ) {
-	case LP_RESET:
-		m_funcIndex = NONE;
-		return true;
+	case LP_CHOOSE:
+		if ( (m_selectBM & m_selectMask) == m_selectMask ) {
+			m_funcIndex = HW;
+		} else if ( ((m_selectBM >> 4) & m_selectMask) == m_selectMask ) {
+			m_funcIndex = BB;
+		} else {
+			m_selectBM = 0x00;
+			m_selectMask = 0x00;
+			return false;  // these choices cannot be accomodated by either HW or BB SPI
+		}
+		m_selectBM = 0x00;
+		m_selectMask = 0x00;
+		break;
 	case LP_MISO:
+		m_selectMask |= (1<<0);
 		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_MISO_BIT ) {
-			return choose(HW); // choose hardware SPI
-		} else if ( physicalPort == BB_MISO_PORT && physicalBit == BB_MISO_BIT ) {
-			return choose(BB); // choose bit-bang SPI
-		} else {
-			return false; // invalid choice
+			m_selectBM |= (1<<0);  // this MISO choice is compatible with HW SPI
 		}
+		if ( physicalPort == BB_MISO_PORT && physicalBit == BB_MISO_BIT ) {
+			m_selectBM |= (1<<4);  // this MISO choice is compatible with BB SPI
+		}
+		break;
 	case LP_MOSI:
+		m_selectMask |= (1<<1);
 		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_MOSI_BIT ) {
-			return choose(HW); // choose hardware SPI
-		} else if ( physicalPort == BB_MOSI_PORT && physicalBit == BB_MOSI_BIT ) {
-			return choose(BB); // choose bit-bang SPI
-		} else {
-			return false; // invalid choice
+			m_selectBM |= (1<<1);  // this MOSI choice is compatible with HW SPI
 		}
+		if ( physicalPort == BB_MOSI_PORT && physicalBit == BB_MOSI_BIT ) {
+			m_selectBM |= (1<<5);  // this MOSI choice is compatible with BB SPI
+		}
+		break;
 	case LP_SS:
+		m_selectMask |= (1<<2);
 		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_SS_BIT ) {
-			return choose(HW); // choose hardware SPI
-		} else if ( physicalPort == BB_SS_PORT && physicalBit == BB_SS_BIT ) {
-			return choose(BB); // choose bit-bang SPI
-		} else {
-			return false; // invalid choice
+			m_selectBM |= (1<<2);  // this SS choice is compatible with HW SPI
 		}
+		if ( physicalPort == BB_SS_PORT && physicalBit == BB_SS_BIT ) {
+			m_selectBM |= (1<<6);  // this SS choice is compatible with BB SPI
+		}
+		break;
 	case LP_SCK:
+		m_selectMask |= (1<<3);
 		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_SCK_BIT ) {
-			return choose(HW); // choose hardware SPI
-		} else if ( physicalPort == BB_SCK_PORT && physicalBit == BB_SCK_BIT ) {
-			return choose(BB); // choose physicalBit-bang SPI
-		} else {
-			return false; // invalid choice
+			m_selectBM |= (1<<3);  // this SCK choice is compatible with HW SPI
 		}
+		if ( physicalPort == BB_SCK_PORT && physicalBit == BB_SCK_BIT ) {
+			m_selectBM |= (1<<7);  // this SCK choice is compatible with BB SPI
+		}
+		break;
 	case LP_D8:
-		return true;
+		break;
+	default:
+		return false;
 	}
-	return false;
+	return true;
 }
 
 // Enable the parallel port

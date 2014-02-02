@@ -362,8 +362,6 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		"xProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
 
 	// Map the CCLK bit & the SelectMAP data bus
-	fStatus = portMap(handle, LP_RESET, 0x00, 0x00, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	fStatus = portMap(handle, LP_SCK, cclkPort, cclkBit, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	if ( progOp == PROG_PARALLEL ) {
@@ -373,6 +371,8 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 		fStatus = portMap(handle, LP_MOSI, dataPort, dataBit[0], error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 	}
+	fStatus = portMap(handle, LP_CHOOSE, 0x00, 0x00, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 
 	// Assert PROG & wait for INIT & DONE to go low
 	fStatus = flSingleBitPortAccess(handle, initPort, initBit, PIN_INPUT, NULL, error); // INIT is input
@@ -455,6 +455,111 @@ cleanup:
 	return retVal;
 }
 
+// This function performs a "passive" serial programming operation on Altera FPGAs.
+//
+// Called by:
+//   flProgramBlob() -> xProgram()
+//
+static FLStatus aProgram(struct FLContext *handle, const char *portConfig, const uint8 *data, uint32 len, const char **error) {
+	FLStatus retVal = FL_SUCCESS;
+	FLStatus fStatus;
+	uint8 ncfgPort, ncfgBit;
+	uint8 donePort, doneBit;
+	uint8 dclkPort, dclkBit;
+	uint8 dataPort, dataBit;
+	uint8 port, bit;
+	uint8 doneStatus;
+	const char *ptr = portConfig + 2;
+	PinConfig pinMap[26][32] = {{0,},};
+	PinConfig thisPin;
+	uint8 lookupTable[256];
+	const uint8 bitOrder[8] = {0,1,2,3,4,5,6,7};
+	char ch;
+	EXPECT_CHAR(':', "aProgram");
+
+	GET_PAIR(ncfgPort, ncfgBit, "aProgram");
+	SET_BIT(ncfgPort, ncfgBit, PIN_LOW, "aProgram");
+
+	fStatus = flSingleBitPortAccess(handle, ncfgPort, ncfgBit, PIN_LOW, NULL, error); // nCONFIG is low
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+
+	GET_PAIR(donePort, doneBit, "aProgram");
+	SET_BIT(donePort, doneBit, PIN_INPUT, "aProgram");
+
+	GET_PAIR(dclkPort, dclkBit, "aProgram");
+	SET_BIT(dclkPort, dclkBit, PIN_LOW, "aProgram");
+
+	GET_PAIR(dataPort, dataBit, "aProgram");
+	SET_BIT(dataPort, dataBit, PIN_LOW, "aProgram");
+
+	GET_CHAR("aProgram");
+	if ( ch == '[' ) {
+		ptr++;
+		fStatus = populateMap(portConfig, ptr, &ptr, pinMap, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+		EXPECT_CHAR(']', "aProgram");
+	}
+	ch = *ptr;
+	CHECK_STATUS(
+		ch != '\0' && ch != ':', FL_CONF_FORMAT, cleanup,
+		"aProgram(): Expecting ':' or end-of-string:\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
+
+	// Make a lookup table to swap the bits
+	makeLookup(bitOrder, lookupTable);
+
+	// Map DCLK & DATA0
+	fStatus = portMap(handle, LP_SCK, dclkPort, dclkBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+	fStatus = portMap(handle, LP_MOSI, dataPort, dataBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+	fStatus = portMap(handle, LP_CHOOSE, 0x00, 0x00, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+
+	// Switch to conduit mode zero (=JTAG, etc)
+	fStatus = flSelectConduit(handle, 0x00, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+
+	// Apply requested configuration to each specified pin
+	pinMap[ncfgPort][ncfgBit] = PIN_UNUSED;
+	for ( port = 0; port < 26; port++ ) {
+		for ( bit = 0; bit < 32; bit++ ) {
+			thisPin = pinMap[port][bit];
+			if ( thisPin != PIN_UNUSED ) {
+				fStatus = flSingleBitPortAccess(handle, port, bit, thisPin, NULL, error);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+			}
+		}
+	}
+
+	// Deassert nCONFIG
+	fStatus = flSingleBitPortAccess(handle, ncfgPort, ncfgBit, PIN_INPUT, NULL, error); // nCONFIG pulled up
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+
+	// Write the programming file into the FPGA
+	fStatus = dataWrite(handle, PROG_SPI_SEND, data, len, lookupTable, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+
+	// Verify that CONF_DONE went high
+	fStatus = flSingleBitPortAccess(handle, donePort, doneBit, PIN_INPUT, &doneStatus, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+	CHECK_STATUS(
+		!doneStatus, FL_PROG_ERR, cleanup,
+		"aProgram(): CONF_DONE remained low (CRC error during config)");
+
+	// Make all specified pins inputs; leave CONF_DONE as input and leave nCONFIG driven high
+	for ( port = 0; port < 26; port++ ) {
+		for ( bit = 0; bit < 32; bit++ ) {
+			thisPin = pinMap[port][bit];
+			if ( thisPin != PIN_UNUSED ) {
+				fStatus = flSingleBitPortAccess(handle, port, bit, PIN_INPUT, NULL, error);
+				CHECK_STATUS(fStatus, fStatus, cleanup, "aProgram()");
+			}
+		}
+	}
+cleanup:
+	return retVal;
+}
+
 static FLStatus progOpenInternal(struct FLContext *handle, const char *portConfig, const char *ptr, const char **error) {
 	FLStatus retVal = FL_SUCCESS;
 	FLStatus fStatus;
@@ -468,8 +573,6 @@ static FLStatus progOpenInternal(struct FLContext *handle, const char *portConfi
 	// Get all four JTAG bits and tell the micro which ones to use
 	GET_PAIR(misoPort, misoBit, "progOpen");        // MISO/TDO
 	SET_BIT(misoPort, misoBit, PIN_INPUT, "progOpen");
-	fStatus = portMap(handle, LP_RESET, 0x00, 0x00, error);
-	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 	fStatus = portMap(handle, LP_MISO, misoPort, misoBit, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 
@@ -486,6 +589,9 @@ static FLStatus progOpenInternal(struct FLContext *handle, const char *portConfi
 	GET_PAIR(sckPort, sckBit, "progOpen");        // SCK/TCK
 	SET_BIT(sckPort, sckBit, PIN_LOW, "progOpen");
 	fStatus = portMap(handle, LP_SCK, sckPort, sckBit, error);
+	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
+
+	fStatus = portMap(handle, LP_CHOOSE, 0x00, 0x00, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "progOpen()");
 
 	// Set MISO/TDO as an input and the other three as outputs
@@ -756,6 +862,19 @@ DLLEXPORT(FLStatus) flProgramBlob(
 			CHECK_STATUS(
 				true, FL_CONF_FORMAT, cleanup,
 				"flProgram(): '%c' is not a valid Xilinx algorithm code", algoType);
+		}
+	} else if ( algoVendor == 'A' ) {
+		// This is an Altera algorithm
+		const char algoType = portConfig[1];
+		if ( algoType == 'S' ) {
+			// This is Altera Passive Serial
+			return aProgram(handle, portConfig, blobData, blobLength, error);
+		} else if ( algoType == '\0' ) {
+			CHECK_STATUS(true, FL_CONF_FORMAT, cleanup, "flProgram(): Missing Altera algorithm code");
+		} else {
+			CHECK_STATUS(
+				true, FL_CONF_FORMAT, cleanup,
+				"flProgram(): '%c' is not a valid Altera algorithm code", algoType);
 		}
 	} else if ( algoVendor == 'J' ) {
 		// This is a JTAG algorithm

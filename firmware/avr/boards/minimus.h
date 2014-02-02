@@ -31,13 +31,13 @@
 	#define BB_SS_BIT    4
 	#define BB_SCK_BIT   7
 #else
-	// Bit-bang SPI definitions (all unused - we use hardware SPI instead)
+	// Bit-bang SPI definitions (same as hardware SPI but MISO/MOSI swapped)
 	#define BB_MISO_PORT HW_SPI_PORT
 	#define BB_MOSI_PORT HW_SPI_PORT
 	#define BB_SS_PORT   HW_SPI_PORT
 	#define BB_SCK_PORT  HW_SPI_PORT
-	#define BB_MISO_BIT  HW_MISO_BIT
-	#define BB_MOSI_BIT  HW_MOSI_BIT
+	#define BB_MISO_BIT  HW_MOSI_BIT
+	#define BB_MOSI_BIT  HW_MISO_BIT
 	#define BB_SS_BIT    HW_SS_BIT
 	#define BB_SCK_BIT   HW_SCK_BIT
 #endif
