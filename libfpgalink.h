@@ -367,7 +367,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Synchronously read the specified channel into the supplied buffer.
+	 * @brief Synchronously read one or more bytes from the specified channel.
 	 *
 	 * Read \c length bytes from the FPGA channel \c chan to the \c data array. Before calling
 	 * \c flReadChannel(), you should verify that the FPGALink device actually supports
@@ -396,7 +396,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Synchronously write the supplied data to the specified channel.
+	 * @brief Synchronously write one or more bytes to the specified channel.
 	 *
 	 * Write \c length bytes from the \c data array to FPGA channel \c chan. Before calling
 	 * \c flWriteChannel(), you should verify that the FPGALink device actually supports
@@ -454,7 +454,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Asynchronously write the supplied data to the specified channel.
+	 * @brief Asynchronously write one or more bytes to the specified channel.
 	 *
 	 * Write \c length bytes from the \c data array to FPGA channel \c chan. Before calling
 	 * \c flWriteChannelAsync(), you should verify that the FPGALink device actually supports
@@ -487,7 +487,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Flush any outstanding writes.
+	 * @brief Flush out any pending asynchronous writes.
 	 *
 	 * Flush any writes that have been buffered up, or do nothing if no writes have been buffered.
 	 * This only triggers the send over USB; it does not guarantee the micro successfully received
@@ -509,7 +509,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Actually wait for confirmation that async writes were received by the micro.
+	 * @brief Wait for confirmation that pending asynchronous writes were received by the micro.
 	 *
 	 * The first thing this does is to call \c flFlushAsyncWrites() to flush out any outstanding
 	 * write commands. It will then block until the OS confirms that all the asynchronous write
@@ -534,7 +534,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Submit an asynchronous read on the specified channel.
+	 * @brief Submit an asynchronous read of one or more bytes from the specified channel.
 	 *
 	 * Submit an asynchronous read of \c length bytes from the FPGA channel \c chan. You can request
 	 * at most 64KiB of data asynchronously. Before calling \c flReadChannelAsyncSubmit(), you should
@@ -572,7 +572,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Await the result of a previous async read.
+	 * @brief Await the data from a previously-submitted asynchronous read.
 	 *
 	 * Block until the outcome of a previous call to \c flReadChannelAsyncSubmit() is known. If the
 	 * read was successful, you are given the resulting data. If not, an error code/message.

@@ -14,6 +14,15 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+## @namespace fpgalink2
+#
+# The <b>FPGALink</b> library makes it easier to talk to an FPGA over USB (via a suitable micro).
+#
+# It performs three classes of function:
+# - Load device firmware and EEPROM (specific to Cypress FX2LP).
+# - Play an SVF, XSVF or CSVF file into a JTAG chain for FPGA programming.
+# - Read and write (over USB) up to 128 byte-wide data channels in the target FPGA.
 #
 import array
 import time
@@ -21,7 +30,7 @@ import sys
 import argparse
 from ctypes import *
 
-# Define types
+## @cond FALSE
 class FLContext(Structure):
     pass
 class FLException(Exception):
@@ -137,8 +146,15 @@ fpgalink.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8,
 fpgalink.flSingleBitPortAccess.restype = FLStatus
 fpgalink.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(ErrorString)]
 fpgalink.flMultiBitPortAccess.restype = FLStatus
+## @endcond
 
-# Initialise the library
+##
+# @name Miscellaneous Functions
+# @{
+
+##
+# @brief Initialise the library with the given log level.
+#
 def flInitialise(debugLevel):
     error = ErrorString()
     status = fpgalink.flInitialise(debugLevel, byref(error))
@@ -146,8 +162,15 @@ def flInitialise(debugLevel):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
+# @}
 
-# Open a connection to the FPGALink device
+##
+# @name Connection Lifecycle
+# @{
+
+##
+# @brief Open a connection to the FPGALink device at the specified VID & PID.
+#
 def flOpen(vp):
     handle = FLHandle()
     error = ErrorString()
@@ -158,11 +181,21 @@ def flOpen(vp):
         raise FLException(s)
     return handle
 
-# Close the FPGALink connection
+##
+# @brief Close the connection to the FPGALink device.
+#
 def flClose(handle):
     fpgalink.flClose(handle)
 
-# Await renumeration - return true if found before timeout
+# @}
+
+##
+# @name Device Capabilities and Status
+# @{
+
+##
+# @brief Await renumeration - return true if found before timeout.
+#
 def flAwaitDevice(vp, timeout):
     error = ErrorString()
     isAvailable = uint8()
@@ -180,29 +213,44 @@ def flAwaitDevice(vp, timeout):
         if ( timeout == 0 ):
             return False
 
-# Query NeroJTAG capability
+##
+# @brief Check to see if the device supports NeroProg.
+#
 def flIsNeroCapable(handle):
     if ( fpgalink.flIsNeroCapable(handle) ):
         return True
     else:
         return False
 
-# Query CommFPGA capability
+##
+# @brief Check to see if the device supports CommFPGA.
+#
 def flIsCommCapable(handle, conduit):
     if ( fpgalink.flIsCommCapable(handle, conduit) ):
         return True
     else:
         return False
 
-# Query firmware ID
+##
+# @brief Get the firmware ID.
+#
 def flGetFirmwareID(handle):
     return fpgalink.flGetFirmwareID(handle)
 
-# Query firmware Version
+##
+# @brief Get the firmware version.
+#
 def flGetFirmwareVersion(handle):
     return fpgalink.flGetFirmwareVersion(handle)
+# @}
 
-# Set the FIFO mode
+##
+# @name CommFPGA Operations
+# @{
+
+##
+# @brief Select a different conduit.
+#
 def flSelectConduit(handle, conduit):
     error = ErrorString()
     status = fpgalink.flSelectConduit(handle, conduit, byref(error))
@@ -211,7 +259,9 @@ def flSelectConduit(handle, conduit):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Return true if the FPGA is actually running
+##
+# @brief Check to see if the FPGA is running.
+#
 def flIsFPGARunning(handle):
     error = ErrorString()
     isRunning = uint8()
@@ -225,7 +275,9 @@ def flIsFPGARunning(handle):
     else:
         return False
 
-# Read one or more values from the specified channel
+##
+# @brief Synchronously read one or more bytes from the specified channel.
+#
 def flReadChannel(handle, chan, count = 1):
     error = ErrorString()
     if ( count == 1 ):
@@ -246,6 +298,9 @@ def flReadChannel(handle, chan, count = 1):
         raise FLException(s)
     return returnValue
 
+##
+# @brief Synchronously write one or more bytes to the specified channel.
+#
 # Write one or more bytes to the specified channel, synchronously
 def flWriteChannel(handle, chan, values):
     error = ErrorString()
@@ -273,7 +328,9 @@ def flWriteChannel(handle, chan, values):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Set the asynchronous write chunk size
+##
+# @brief Set the chunk size to be used for future async writes.
+#
 def flSetAsyncWriteChunkSize(handle, chunkSize):
     error = ErrorString()
     status = fpgalink.flSetAsyncWriteChunkSize(handle, chunkSize, byref(error))
@@ -282,7 +339,9 @@ def flSetAsyncWriteChunkSize(handle, chunkSize):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Write one or more bytes to the specified channel, asynchronously
+##
+# @brief Asynchronously write one or more bytes to the specified channel.
+#
 def flWriteChannelAsync(handle, chan, values):
     error = ErrorString()
     if ( isinstance(values, bytearray) ):
@@ -309,7 +368,9 @@ def flWriteChannelAsync(handle, chan, values):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Flush out any pending async writes
+##
+# @brief Flush out any pending asynchronous writes.
+#
 def flFlushAsyncWrites(handle):
     error = ErrorString()
     status = fpgalink.flFlushAsyncWrites(handle, byref(error))
@@ -318,7 +379,9 @@ def flFlushAsyncWrites(handle):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Wait for confirmation that all pending async writes have been received by the micro
+##
+# @brief Wait for confirmation that pending asynchronous writes were received by the micro.
+#
 def flAwaitAsyncWrites(handle):
     error = ErrorString()
     status = fpgalink.flAwaitAsyncWrites(handle, byref(error))
@@ -327,7 +390,9 @@ def flAwaitAsyncWrites(handle):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Submit an asynchronous read of one or more values from the specified channel
+##
+# @brief Submit an asynchronous read of one or more bytes from the specified channel.
+#
 def flReadChannelAsyncSubmit(handle, chan, count = 1):
     error = ErrorString()
     status = fpgalink.flReadChannelAsyncSubmit(handle, chan, count, None, byref(error))
@@ -336,9 +401,11 @@ def flReadChannelAsyncSubmit(handle, chan, count = 1):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Wait for the data to be returned from a previously-submitted async read. The ReadReport struct
-# gives access to the raw memory owned by the FPGALink DLL. You can construct a string from it with
-# something like ctypes.string_at(readReport.data, readReport.actualLength)
+##
+# @brief Await the data from a previously-submitted asynchronous read.
+#
+# The ReadReport struct gives access to the raw memory owned by the FPGALink DLL. You can construct
+# a string from it with something like ctypes.string_at(readReport.data, readReport.actualLength).
 #
 def flReadChannelAsyncAwait(handle):
     readReport = ReadReport(None, 0, 0)
@@ -349,8 +416,15 @@ def flReadChannelAsyncAwait(handle):
         fpgalink.flFreeError(error)
         raise FLException(s)
     return readReport
+# @}
 
-# Program a device using the given config string and either a file-name or a bytearray
+##
+# @name NeroProg Operations
+# @{
+
+##
+# @brief Program a device using the given config string and either a file-name or a bytearray.
+#
 def flProgram(handle, progConfig, progFile = None):
     error = ErrorString()
     if ( isinstance(progFile, bytearray) ):
@@ -367,7 +441,9 @@ def flProgram(handle, progConfig, progFile = None):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Scan the JTAG chain
+##
+# @brief Scan the JTAG chain and return an array of IDCODEs.
+#
 def jtagScanChain(handle, portConfig):
     error = ErrorString()
     ChainType = (uint32 * 16)  # Guess there are fewer than 16 devices
@@ -384,7 +460,9 @@ def jtagScanChain(handle, portConfig):
         result.append(id)
     return result
 
-# Open a JTAG port
+##
+# @brief Open an SPI/JTAG connection.
+#
 def progOpen(handle, portConfig):
     error = ErrorString()
     status = fpgalink.progOpen(handle, portConfig.encode('ascii'), byref(error))
@@ -393,7 +471,9 @@ def progOpen(handle, portConfig):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Close a JTAG port
+##
+# @brief Close an SPI/JTAG connection.
+#
 def progClose(handle):
     error = ErrorString()
     status = fpgalink.progClose(handle, byref(error))
@@ -402,7 +482,9 @@ def progClose(handle):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Transition the TAP state machine
+##
+# @brief Clock \c transitionCount bits from \c bitPattern into TMS, starting with the LSB.
+#
 def jtagClockFSM(handle, bitPattern, transitionCount):
     error = ErrorString()
     status = fpgalink.jtagClockFSM(handle, bitPattern, transitionCount, byref(error))
@@ -411,7 +493,9 @@ def jtagClockFSM(handle, bitPattern, transitionCount):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Transition the TAP state machine
+##
+# @brief Toggle TCK \c numClocks times.
+#
 def jtagClocks(handle, numClocks):
     error = ErrorString()
     status = fpgalink.jtagClocks(handle, numClocks, byref(error))
@@ -419,8 +503,34 @@ def jtagClocks(handle, numClocks):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
+# @}
 
-# Load standard firmware into the FX2LP chip
+##
+# @name Firmware Operations
+# @{
+
+##
+# @brief Load standard \b FPGALink firmware into the FX2's RAM.
+#
+# Load the FX2 chip at the "current" VID/PID with a precompiled firmware such that it will
+# renumerate as the "new" VID/PID. The firmware is loaded into RAM, so the change is not
+# permanent. Typically after calling \c flLoadStandardFirmware() applications should wait for
+# the renumeration to complete by calling \c flIsDeviceAvailable() repeatedly until the "new"
+# VID/PID becomes active.
+#
+# In addition to the "new" VID/PID, you can also customise the port pins used for JTAG
+# operations. For this you must specify an FX2 port (C or D) and the bits within that port to
+# be used for TDO, TDI, TMS and TCK respectively. For example, the port specification "D0234"
+# means PD0=TDO, PD2=TDI, PD3=TMS and PD4=TCK, and is appropriate for Digilent boards (Nexys2,
+# Nexys3, Atlys etc).
+#
+# @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
+# @param newVidPid The Vendor/Product (i.e VVVV:PPPP) that you \b want the FX2 device to be.
+# @throw FLException
+#     - If one of the VID/PIDs was invalid or the current VID/PID was not found.
+#     - If there was a problem talking to the FX2.
+#     - If there was a memory allocation failure.
+#
 def flLoadStandardFirmware(curVidPid, newVidPid):
     error = ErrorString()
     status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), byref(error))
@@ -429,7 +539,9 @@ def flLoadStandardFirmware(curVidPid, newVidPid):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Flash standard firmware into the FX2LP's EEPROM
+##
+# @brief Flash standard FPGALink firmware into the FX2's EEPROM.
+#
 def flFlashStandardFirmware(handle, newVidPid):
     error = ErrorString()
     status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), byref(error))
@@ -438,7 +550,9 @@ def flFlashStandardFirmware(handle, newVidPid):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
-# Load standard firmware into the FX2LP chip
+##
+# @brief Load custom firmware (<code>.hex</code>) into the FX2's RAM.
+#
 def flLoadCustomFirmware(curVidPid, fwFile):
     error = ErrorString()
     status = fpgalink.flLoadCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
@@ -446,8 +560,15 @@ def flLoadCustomFirmware(curVidPid, fwFile):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
+# @}
 
-# Access the I/O ports on the micro
+##
+# @name Utility Functions
+# @{
+
+##
+# @brief Configure a single port bit on the microcontroller.
+#
 def flSingleBitPortAccess(handle, portNumber, bitNumber, drive, high):
     error = ErrorString()
     bitRead = uint8()
@@ -458,7 +579,9 @@ def flSingleBitPortAccess(handle, portNumber, bitNumber, drive, high):
         raise FLException(s)
     return bitRead.value
 
-# Access the I/O ports on the micro
+##
+# @brief Configure multiple port bits on the microcontroller.
+#
 def flMultiBitPortAccess(handle, portConfig):
     error = ErrorString()
     readState = uint32()
@@ -468,7 +591,9 @@ def flMultiBitPortAccess(handle, portConfig):
         fpgalink.flFreeError(error)
         raise FLException(s)
     return readState.value
+# @}
 
+## @cond FALSE
 flInitialise(0)
 
 # Main function if we're not loaded as a module
@@ -561,3 +686,4 @@ if __name__ == "__main__":
         print ex
     finally:
         flClose(handle)
+## @endcond
