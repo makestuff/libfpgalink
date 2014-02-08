@@ -940,7 +940,7 @@ DLLEXPORT(FLStatus) flProgram(
 		bStatus = bufAppendFromBinaryFile(&fileBuf, progFile, error);
 		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flProgram()");
 	}
-	fStatus = flProgramBlob(handle, portConfig, fileBuf.length, fileBuf.data, error);
+	fStatus = flProgramBlob(handle, portConfig, (uint32)fileBuf.length, fileBuf.data, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "flProgram()");
 cleanup:
 	bufDestroy(&fileBuf);

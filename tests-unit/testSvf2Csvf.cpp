@@ -550,7 +550,7 @@ void parseString(ParseContext *cxt, const char *str, struct Buffer *csvfBuf) {
 
 void renderBuffer(char *&p, const Buffer *buf) {
 	const char *src = (const char *)buf->data;
-	uint32 length = buf->length;
+	uint32 length = (uint32)buf->length;
 	*p++ = '{';
 	while ( length-- ) {
 		sprintf(p, "%02X", *src & 0xFF);

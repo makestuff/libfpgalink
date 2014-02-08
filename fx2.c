@@ -51,7 +51,7 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 		&ramFirmware, newVid, newPid, newDid,
 		&ramBuf, error);
 	CHECK_STATUS(flStatus, flStatus, cleanup, "flLoadStandardFirmware()");
-	fxStatus = fx2WriteRAM(device, ramBuf.data, ramBuf.length, error);
+	fxStatus = fx2WriteRAM(device, ramBuf.data, (uint32)ramBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flLoadStandardFirmware()");
 cleanup:
 	bufDestroy(&ramBuf);
@@ -84,7 +84,7 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 		&i2cBuf, error);
 	CHECK_STATUS(flStatus, flStatus, cleanup, "flFlashStandardFirmware()");
 
-	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, i2cBuf.length, error);
+	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, (uint32)i2cBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flFlashStandardFirmware()");
 cleanup:
 	bufDestroy(&i2cBuf);
@@ -111,7 +111,7 @@ DLLEXPORT(FLStatus) flLoadCustomFirmware(
 	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flLoadCustomFirmware()");
 	bStatus = bufReadFromIntelHexFile(&fwBuf, NULL, fwFile, error);
 	CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flLoadCustomFirmware()");
-	fxStatus = fx2WriteRAM(device, fwBuf.data, fwBuf.length, error);
+	fxStatus = fx2WriteRAM(device, fwBuf.data, (uint32)fwBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flLoadCustomFirmware()");
 cleanup:
 	bufDestroy(&fwBuf);
@@ -155,7 +155,7 @@ DLLEXPORT(FLStatus) flFlashCustomFirmware(
 		bStatus = bufAppendFromBinaryFile(&iicBuf, fwFile, error);
 		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flFlashCustomFirmware()");
 	}
-	fxStatus = fx2WriteEEPROM(handle->device, iicBuf.data, iicBuf.length, error);
+	fxStatus = fx2WriteEEPROM(handle->device, iicBuf.data, (uint32)iicBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flFlashCustomFirmware()");
 cleanup:
 	bufDestroy(&iicBuf);

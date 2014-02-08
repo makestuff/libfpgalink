@@ -126,7 +126,7 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 				curXSize = newXSize;
 				sendXSize(outBuf, curXSize, error);
 			}
-			initLength = outBuf->length;
+			initLength = (uint32)outBuf->length;
 			numBytes = bitsToBytes(curXSize);
 			bStatus = bufAppendByte(outBuf, XTDOMASK, error);
 			CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "xsvfSwapBytes()");
@@ -238,7 +238,7 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 			// Roll XSDRB, XSDRC*, XSDRE into one XSDR
 			curXSize = newXSize;
 			sendXSize(outBuf, curXSize, error);
-			totOffset = outBuf->length - 4; // each subsequent XSDRC & XSDRE updates this XSDRSIZE
+			totOffset = (uint32)outBuf->length - 4; // each subsequent XSDRC & XSDRE updates this XSDRSIZE
 			bStatus = bufAppendByte(outBuf, XSDR, error);
 			CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "xsvfSwapBytes()");
 			fStatus = swapBytes(xc, bitsToBytes(newXSize), outBuf, error);

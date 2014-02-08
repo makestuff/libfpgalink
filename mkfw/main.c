@@ -85,7 +85,7 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 	printf("/*\n * THIS FILE IS MACHINE-GENERATED! DO NOT EDIT IT!\n */\n");
 	printf("#include \"../firmware.h\"\n\n");
 	printf("static const uint8 data[] = {\n");
-	dumpBytes(buf->data, buf->length);
+	dumpBytes(buf->data, (uint32)buf->length);
 	printf("};\n");
 	printf("const struct FirmwareInfo %sFirmware = {\n", name);
 	printf("\tdata, "PFSZD", 0x%04X\n", buf->length, vp);

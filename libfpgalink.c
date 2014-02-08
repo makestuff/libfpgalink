@@ -285,7 +285,7 @@ DLLEXPORT(FLStatus) flFlushAsyncWrites(struct FLContext *handle, const char **er
 			"flFlushAsyncWrites(): This device does not support CommFPGA");
 		uStatus = usbBulkWriteAsyncSubmit(
 			handle->device, handle->commOutEP,
-			(size_t)(handle->writePtr - handle->writeBuf),
+			(uint32)(handle->writePtr - handle->writeBuf),
 			U32MAX, NULL);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flFlushAsyncWrites()");
 		handle->writePtr = handle->writeBuf = NULL;

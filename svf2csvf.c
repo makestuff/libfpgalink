@@ -190,7 +190,7 @@ FLStatus headTail(
 		}
 
 		// How much data do we need to copy from the tail?
-		bytesFromTail = tailBuf->length;
+		bytesFromTail = (uint32)tailBuf->length;
 		src = tailBuf->data;
 
 		// Init new buffer
@@ -343,7 +343,7 @@ cleanup:
  */
 static bool isAllZero(struct Buffer *buf) {
 	const uint8 *p = buf->data;
-	uint32 length = buf->length;
+	uint32 length = (uint32)buf->length;
 	while ( length-- ) {
 		if ( *p++ ) {
 			return false;
@@ -594,7 +594,7 @@ FLStatus parseLine(
 					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XTDOMASK, error);
 					CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "parseLine()");
-					fStatus = appendSwapped(csvfBuf, cxt->curMaskBuf.data, cxt->curMaskBuf.length, error);
+					fStatus = appendSwapped(csvfBuf, cxt->curMaskBuf.data, (uint32)cxt->curMaskBuf.length, error);
 					CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 					cxt->newMaskWritten = true;
 				}
@@ -613,7 +613,7 @@ FLStatus parseLine(
 					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XSDR, error);
 					CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "parseLine()");
-					fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
+					fStatus = appendSwapped(csvfBuf, tmpBody1.data, (uint32)tmpBody1.length, error);
 					CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				} else {
 					bStatus = bufDeepCopy(&tmpHead, &cxt->dataHead.tdo, error);
@@ -627,12 +627,13 @@ FLStatus parseLine(
 						cxt->dataBody.numBits, cxt->dataHead.numBits, cxt->dataTail.numBits,
 						error);
 					if ( maxBufSize && tmpBody2.length > *maxBufSize ) {
-						*maxBufSize = tmpBody2.length;
+						*maxBufSize = (uint32)tmpBody2.length;
 					}
 					cxt->numCommands++;
 					bStatus = bufAppendByte(csvfBuf, XSDRTDO, error);
 					CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "parseLine()");
-					fStatus = appendSwappedAndInterleaved(csvfBuf, tmpBody1.data, tmpBody2.data, tmpBody2.length, error);
+					fStatus = appendSwappedAndInterleaved(
+						csvfBuf, tmpBody1.data, tmpBody2.data, (uint32)tmpBody2.length, error);
 					CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				}
 				break;
@@ -665,7 +666,7 @@ FLStatus parseLine(
 				CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "parseLine()");
 				bStatus = bufAppendByte(csvfBuf, (uint8)(cxt->insnBody.numBits + cxt->insnHead.numBits + cxt->insnTail.numBits), error);
 				CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "parseLine()");
-				fStatus = appendSwapped(csvfBuf, tmpBody1.data, tmpBody1.length, error);
+				fStatus = appendSwapped(csvfBuf, tmpBody1.data, (uint32)tmpBody1.length, error);
 				CHECK_STATUS(fStatus, fStatus, cleanup, "parseLine()");
 				break;
 			}
