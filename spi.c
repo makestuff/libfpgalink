@@ -78,16 +78,34 @@ DLLEXPORT(FLStatus) spiSend(
 		countUnion.bytes, 4, 1000, NULL);
 	CHECK_STATUS(uStatus, FL_PROTOCOL_ERR, cleanup, "spiSend(): device doesn't support SPI send");
 
-	// Actually send the data
-	uStatus = usbBulkWrite(
-		handle->device,
-		handle->progOutEP,  // write to OUT endpoint
-		data,               // write from send buffer
-		length,             // write this many bytes
-		U32MAX,             // timeout in milliseconds
-		error
-	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "spiSend()");
+	// You have to report it as 512 bytes, but make sure you never try to do a
+	// packet larger than 64.
+	// http://permalink.gmane.org/gmane.comp.lib.libusbx.devel/1312
+	//
+	while ( length >= 64 ) {
+		uStatus = usbBulkWrite(
+			handle->device,
+			handle->progOutEP,  // write to OUT endpoint
+			data,               // write from send buffer
+			64,                 // write this many bytes
+			U32MAX,             // timeout in milliseconds
+			error
+		);
+		data += 64;
+		length -= 64;
+	}
+	if ( length ) {
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "spiSend()");
+		uStatus = usbBulkWrite(
+			handle->device,
+			handle->progOutEP,  // write to OUT endpoint
+			data,               // write from send buffer
+			length,             // write this many bytes
+			U32MAX,             // timeout in milliseconds
+			error
+		);
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "spiSend()");
+	}
 cleanup:
 	free(swapBuffer);
 	return retVal;
