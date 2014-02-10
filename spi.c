@@ -82,9 +82,9 @@ DLLEXPORT(FLStatus) spiSend(
 	uStatus = usbBulkWrite(
 		handle->device,
 		handle->progOutEP,  // write to OUT endpoint
-		data,               // write from send buffer                                                                     
-		length,                // write this many bytes                                                                      
-		U32MAX,             // timeout in milliseconds                                                                    
+		data,               // write from send buffer
+		length,             // write this many bytes
+		U32MAX,             // timeout in milliseconds
 		error
 	);
 	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "spiSend()");
@@ -102,6 +102,8 @@ DLLEXPORT(FLStatus) spiRecv(
 		uint32 u32;
 		uint8 bytes[4];
 	} countUnion;
+	uint32 count = length;
+	uint8 *ptr = buf;
 
 	// Request the SPI receive operation
 	countUnion.u32 = littleEndian32(length);
@@ -110,16 +112,34 @@ DLLEXPORT(FLStatus) spiRecv(
 		countUnion.bytes, 4, 1000, NULL);
 	CHECK_STATUS(uStatus, FL_PROTOCOL_ERR, cleanup, "spiRecv(): device doesn't support SPI receive");
 
-	// Actually receive the data
-	uStatus = usbBulkRead(
-		handle->device,
-		handle->progInEP,  // read from IN endpoint
-		buf,               // read into receive buffer                                                                     
-		length,               // read this many bytes                                                                      
-		U32MAX,            // timeout in milliseconds                                                                    
-		error
-	);
-	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "spiSend()");
+	// You have to report it as 512 bytes, but make sure you never try to do a
+	// packet larger than 64.
+	// http://permalink.gmane.org/gmane.comp.lib.libusbx.devel/1312
+	//
+	while ( count >= 64 ) {
+		uStatus = usbBulkRead(
+			handle->device,
+			handle->progInEP,  // read from IN endpoint
+			ptr,               // read into receive buffer
+			64,                // read this many bytes
+			U32MAX,            // timeout in milliseconds
+			error
+		);
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "spiRecv()");
+		ptr += 64;
+		count -= 64;
+	}
+	if ( count ) {
+		uStatus = usbBulkRead(
+			handle->device,
+			handle->progInEP,  // read from IN endpoint
+			ptr,               // read into receive buffer
+			count,             // read this many bytes
+			U32MAX,            // timeout in milliseconds
+			error
+		);
+		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "spiRecv()");
+	}
 
 	// Maybe bitswap the data
 	if ( bitOrder == SPI_MSBFIRST ) {
