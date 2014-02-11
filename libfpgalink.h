@@ -24,6 +24,7 @@
  * - Load device firmware and EEPROM (specific to Cypress FX2LP).
  * - Program an FPGA or CPLD using JTAG or one of the proprietary serial or parallel algorithms.
  * - Read and write (over USB) up to 128 byte-wide data channels in the target FPGA.
+ * - Manipulate microcontroller digital I/O & SPI port(s).
  */
 #ifndef FPGALINK_H
 #define FPGALINK_H
@@ -159,8 +160,7 @@ extern "C" {
 	/**
 	 * @brief Open a connection to the FPGALink device at the specified VID & PID.
 	 *
-	 * Connects to the device and verifies it is an FPGALink device, then queries its
-	 * capabilities and synchronises the USB bulk endpoints.
+	 * Connects to the device and verifies it's an FPGALink device, then queries its capabilities.
 	 *
 	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the FPGALink device. You may also specify
 	 *            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
@@ -254,14 +254,14 @@ extern "C" {
 	 * CommFPGA is a set of channel read/write protocols. The micro may implement several
 	 * different CommFPGA protocols, distinguished by the chosen conduit. A micro will typically
 	 * implement its first CommFPGA protocol on conduit 1, and additional protocols on conduit
-	 * 0x02, 0x03 etc. Conduit 0 is reserved for communication over JTAG using a virtual TAP
-	 * state machine implemented in the FPGA.
+	 * 2, 3 etc. Conduit 0 is reserved for communication over JTAG using a virtual TAP
+	 * state machine implemented in the FPGA, and is not implemented yet.
 	 *
 	 * This function returns 1 if the micro supports CommFPGA on the chosen conduit, else 0.
 	 *
-	 * Note that this function only knows the capabilities of the micro itself; it cannot determine
-	 * whether the FPGA contains suitable logic to implement the protocol, or even whether there is
-	 * an FPGA physically wired to the micro in the first place.
+	 * Note that this function can only know the capabilities of the micro itself; it cannot
+	 * determine whether the FPGA contains suitable logic to implement the protocol, or even
+	 * whether there is an FPGA physically wired to the micro in the first place.
 	 *
 	 * An affirmative response means you are free to call \c flReadChannel(),
 	 * \c flReadChannelAsyncSubmit(), \c flReadChannelAsyncAwait(), \c flWriteChannel(),
@@ -348,7 +348,7 @@ extern "C" {
 	 * may not have the capability to determine this, and will therefore just optimistically report
 	 * true. Before calling \c flIsFPGARunning(), you should verify that the FPGALink device
 	 * actually supports CommFPGA using \c flIsCommCapable(), and select the conduit you wish to
-	 * use.
+	 * use with \c flSelectConduit().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param isRunning A pointer to an 8-bit integer which will be set on exit to 1 if the FPGA

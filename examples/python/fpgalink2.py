@@ -19,10 +19,11 @@
 #
 # The <b>FPGALink</b> library makes it easier to talk to an FPGA over USB (via a suitable micro).
 #
-# It performs three classes of function:
+# It performs four classes of function:
 # - Load device firmware and EEPROM (specific to Cypress FX2LP).
-# - Play an SVF, XSVF or CSVF file into a JTAG chain for FPGA programming.
+# - Program an FPGA or CPLD using JTAG or one of the proprietary serial or parallel algorithms.
 # - Read and write (over USB) up to 128 byte-wide data channels in the target FPGA.
+# - Manipulate microcontroller digital I/O & SPI port(s).
 #
 import array
 import time
@@ -43,6 +44,21 @@ uint16 = c_ushort
 uint8 = c_ubyte
 size_t = c_size_t
 ErrorString = c_char_p
+
+def enum(**enums):
+    return type('Enum', (), enums)
+
+PinConfig = enum(
+    HIGH  = uint8(0x01),
+    LOW   = uint8(0x02),
+    INPUT = uint8(0x03)
+)
+LogicalPort = enum(
+    MISO = uint8(0x01),
+    MOSI = uint8(0x02),
+    SS   = uint8(0x03),
+    SCK  = uint8(0x04)
+)
 class ReadReport(Structure):
     _fields_ = [("data", POINTER(uint8)),
                 ("requestLength", uint32),
@@ -142,7 +158,7 @@ fpgalink.flLoadFile.argtypes = [c_char_p, POINTER(size_t)]
 fpgalink.flLoadFile.restype = POINTER(uint8)
 fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
 fpgalink.flFreeFile.restype = None
-fpgalink.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
+fpgalink.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
 fpgalink.flSingleBitPortAccess.restype = FLStatus
 fpgalink.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(ErrorString)]
 fpgalink.flMultiBitPortAccess.restype = FLStatus
@@ -155,6 +171,12 @@ fpgalink.flMultiBitPortAccess.restype = FLStatus
 ##
 # @brief Initialise the library with the given log level.
 #
+# This may fail if LibUSB cannot talk to the USB host controllers through its kernel driver
+# (e.g a Linux kernel with USB support disabled, or a machine lacking a USB host controller).
+#
+# @param debugLevel 0->none, 1, 2, 3->lots.
+# @throw FLException if there were problems initialising LibUSB.
+# 
 def flInitialise(debugLevel):
     error = ErrorString()
     status = fpgalink.flInitialise(debugLevel, byref(error))
@@ -171,6 +193,18 @@ def flInitialise(debugLevel):
 ##
 # @brief Open a connection to the FPGALink device at the specified VID & PID.
 #
+# Connects to the device and verifies it's an FPGALink device, then queries its capabilities.
+#
+# @param vp The Vendor/Product (i.e VVVV:PPPP) of the FPGALink device. You may also specify
+#            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
+#            selects the first device with matching VID:PID.
+# @returns An opaque reference to an internal structure representing the connection. This must be
+#            freed at some later time by a call to \c flClose(), or a resource-leak will ensue.
+# @throw FLException
+#     - If there was a memory allocation failure.
+#     - If the VID:PID is invalid or the device cannot be found or opened.
+#     - If the device is not an FPGALink device.
+#
 def flOpen(vp):
     handle = FLHandle()
     error = ErrorString()
@@ -184,6 +218,8 @@ def flOpen(vp):
 ##
 # @brief Close the connection to the FPGALink device.
 #
+# @param handle The handle returned by \c flOpen().
+#
 def flClose(handle):
     fpgalink.flClose(handle)
 
@@ -195,6 +231,19 @@ def flClose(handle):
 
 ##
 # @brief Await renumeration - return true if found before timeout.
+#
+# This function will wait for the specified VID:PID to be added to the system (either due to a
+# renumerating device, or due to a new physical connection). It will wait for a fixed period of
+# 1s and then start polling the USB bus looking for the specified device. If no such device is
+# detected within \c timeout deciseconds after the initial delay, it returns \c False, else it
+# returns \c True.
+#
+# @param vp The Vendor/Product (i.e VVVV:PPPP) of the FPGALink device. You may also specify
+#            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
+#            awaits the first device with matching VID:PID.
+# @param timeout The number of tenths-of-a-second to wait, after the initial 1s delay.
+# @throw FLException if the VID:PID is invalid or if no USB buses were found (did you remember to
+#            call \c flInitialise()?).
 #
 def flAwaitDevice(vp, timeout):
     error = ErrorString()
@@ -216,6 +265,14 @@ def flAwaitDevice(vp, timeout):
 ##
 # @brief Check to see if the device supports NeroProg.
 #
+# NeroProg is the collective name for all the various programming algorithms supported by
+# FPGALink, including but not limited to JTAG. An affirmative response means you are free to
+# call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c progClose(), \c jtagShift(),
+# \c jtagClockFSM() and \c jtagClocks().
+#
+# @param handle The handle returned by \c flOpen().
+# @returns \c True if the device supports NeroProg, else \c False.
+#
 def flIsNeroCapable(handle):
     if ( fpgalink.flIsNeroCapable(handle) ):
         return True
@@ -224,6 +281,27 @@ def flIsNeroCapable(handle):
 
 ##
 # @brief Check to see if the device supports CommFPGA.
+#
+# CommFPGA is a set of channel read/write protocols. The micro may implement several
+# different CommFPGA protocols, distinguished by the chosen conduit. A micro will typically
+# implement its first CommFPGA protocol on conduit 1, and additional protocols on conduits
+# 2, 3 etc. Conduit 0 is reserved for communication over JTAG using a virtual TAP
+# state machine implemented in the FPGA, and is not implemented yet.
+#
+# This function returns \c True if the micro supports CommFPGA on the chosen conduit, else
+# \c False.
+#
+# Note that this function can only know the capabilities of the micro itself; it cannot determine
+# whether the FPGA contains suitable logic to implement the protocol, or even whether there is
+# an FPGA physically wired to the micro in the first place.
+#
+# An affirmative response means you are free to call \c flReadChannel(),
+# \c flReadChannelAsyncSubmit(), \c flReadChannelAsyncAwait(), \c flWriteChannel(),
+# \c flWriteChannelAsync() and \c flIsFPGARunning().
+#
+# @param handle The handle returned by \c flOpen().
+# @param conduit The conduit you're interested in (this will typically be 1).
+# @returns \c True if the device supports CommFPGA, else \c False.
 #
 def flIsCommCapable(handle, conduit):
     if ( fpgalink.flIsCommCapable(handle, conduit) ):
@@ -234,11 +312,24 @@ def flIsCommCapable(handle, conduit):
 ##
 # @brief Get the firmware ID.
 #
+# Each firmware (or fork of an existing firmware) has its own 16-bit ID, which this function
+# retrieves.
+#
+# @param handle The handle returned by \c flOpen().
+# @returns A 16-bit unsigned integer giving the firmware ID.
+#
 def flGetFirmwareID(handle):
     return fpgalink.flGetFirmwareID(handle)
 
 ##
 # @brief Get the firmware version.
+#
+# Each firmware knows the GitHub tag from which is was built, or if it was built from a trunk,
+# it knows the date on which it was built. This function returns a 32-bit integer giving that
+# information. If printed as a hex number, it gives an eight-digit ISO date.
+#
+# @param handle The handle returned by \c flOpen().
+# @returns A 32-bit unsigned integer giving the firmware version.
 #
 def flGetFirmwareVersion(handle):
     return fpgalink.flGetFirmwareVersion(handle)
@@ -251,6 +342,21 @@ def flGetFirmwareVersion(handle):
 ##
 # @brief Select a different conduit.
 #
+# Select a different conduit for CommFPGA communication. Typically a micro will implement its
+# first CommFPGA protocol on conduit 1. It may or may not also implement others on conduit 2, 3,
+# 4 etc. It may also implement comms-over-JTAG using a virtual TAP FSM on the FPGA. You can use
+# \c flIsCommCapable() to determine whether the micro supports CommFPGA on a given conduit.
+#
+# If mixing NeroProg operations with CommFPGA operations, it *may* be necessary to switch
+# conduits. For example, if your PCB is wired to use some of the CommFPGA signals during
+# programming, you will have to switch back and forth. But if the pins used for CommFPGA are
+# independent of the pins used for NeroProg, you need only select the correct conduit on startup
+# and then leave it alone.
+#
+# @param handle The handle returned by \c flOpen().
+# @param conduit The conduit to select (current range 0-15).
+# @throw FLException if the device doesn't respond, or the conduit is out of range.
+#
 def flSelectConduit(handle, conduit):
     error = ErrorString()
     status = fpgalink.flSelectConduit(handle, conduit, byref(error))
@@ -261,6 +367,17 @@ def flSelectConduit(handle, conduit):
 
 ##
 # @brief Check to see if the FPGA is running.
+#
+# This may only be called if \c flIsCommCapable() returns \c True. It merely verifies that
+# the FPGA is asserting that it's ready to read commands on the chosen conduit. Some conduits
+# may not have the capability to determine this, and will therefore just optimistically report
+# \c True. Before calling \c flIsFPGARunning(), you should verify that the FPGALink device
+# actually supports CommFPGA using \c flIsCommCapable(), and select the conduit you wish to
+# use with \c flSelectConduit().
+#
+# @param handle The handle returned by \c flOpen().
+# @returns \c True if the FPGA is ready to accept commands, else \c False.
+# @throw FLException if the device does not support CommFPGA.
 #
 def flIsFPGARunning(handle):
     error = ErrorString()
@@ -278,19 +395,33 @@ def flIsFPGARunning(handle):
 ##
 # @brief Synchronously read one or more bytes from the specified channel.
 #
-def flReadChannel(handle, chan, count = 1):
+# Read \c length bytes from the FPGA channel \c chan. Before calling \c flReadChannel(), you
+# should verify that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
+#
+# Because this function is synchronous, it will block until the data has been returned.
+#
+# @param handle The handle returned by \c flOpen().
+# @param chan The FPGA channel to read.
+# @param length The number of bytes to read.
+# @returns Either a single integer (0-255) or a \c bytearray.
+# @throw FLException 
+#     - If a USB read or write error occurred.
+#     - If the device does not support CommFPGA.
+#     - If there are async reads in progress.
+#
+def flReadChannel(handle, chan, length = 1):
     error = ErrorString()
-    if ( count == 1 ):
+    if ( length == 1 ):
         # Read a single byte
         buf = uint8()
         status = fpgalink.flReadChannel(handle, chan, 1, byref(buf), byref(error))
         returnValue = buf.value
     else:
         # Read multiple bytes
-        byteArray = bytearray(count)
-        BufType = uint8*count
+        byteArray = bytearray(length)
+        BufType = uint8*length
         buf = BufType.from_buffer(byteArray)
-        status = fpgalink.flReadChannel(handle, chan, count, buf, byref(error))
+        status = fpgalink.flReadChannel(handle, chan, length, buf, byref(error))
         returnValue = byteArray
     if ( status != FL_SUCCESS ):
         s = str(error.value)
@@ -393,9 +524,9 @@ def flAwaitAsyncWrites(handle):
 ##
 # @brief Submit an asynchronous read of one or more bytes from the specified channel.
 #
-def flReadChannelAsyncSubmit(handle, chan, count = 1):
+def flReadChannelAsyncSubmit(handle, chan, length = 1):
     error = ErrorString()
-    status = fpgalink.flReadChannelAsyncSubmit(handle, chan, count, None, byref(error))
+    status = fpgalink.flReadChannelAsyncSubmit(handle, chan, length, None, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -569,10 +700,10 @@ def flLoadCustomFirmware(curVidPid, fwFile):
 ##
 # @brief Configure a single port bit on the microcontroller.
 #
-def flSingleBitPortAccess(handle, portNumber, bitNumber, drive, high):
+def flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig):
     error = ErrorString()
     bitRead = uint8()
-    status = fpgalink.flSingleBitPortAccess(handle, portNumber, bitNumber, drive, high, byref(bitRead), byref(error))
+    status = fpgalink.flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig, byref(bitRead), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
