@@ -587,7 +587,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param readReport A pointer to a <code>struct ReadReport</code> which will be populated with
-	 *            the result of successful read, or left unchanged in the event of an error.
+	 *            the result of a successful read, or left unchanged in the event of an error.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -632,9 +632,9 @@ extern "C" {
 	 * @brief Program a device using the specified file.
 	 *
 	 * This will program an FPGA or CPLD using the specified microcontroller ports and the specified
-	 * programming file. Several programming algorithms are supported (JTAG, Xilinx Slave-Serial and
-	 * Xilinx SelectMap). In each case, it's necessary to tell the micro which ports to use. Here are
-	 * some examples:
+	 * programming file. Several programming algorithms are supported (JTAG, Xilinx Slave-Serial, Xilinx
+	 * SelectMap and Altera Passive-Serial). In each case, it's necessary to tell the micro which ports
+	 * to use. Here are some examples:
 	 *
 	 * A Digilent board using JTAG: <code>progConfig="J:D0D2D3D4"</code>:
 	 * - TDO: PD0
@@ -853,7 +853,7 @@ extern "C" {
 	 * Shift \c numBits bits from \c inData into TDI, at the same time shifting the same number of
 	 * bits from TDO into \c outData. If \c isLast is nonzero, leave the TAP state-machine in
 	 * Shift-xR, otherwise Exit1-xR. If you want \c inData to be all zeros you can use \c ZEROS, or
-	 * if you want it to be all ones you can use \c ONES. This is more efficient than exlicitly
+	 * if you want it to be all ones you can use \c ONES. This is more efficient than explicitly
 	 * sending an array containing all zeros or all 0xFFs.
 	 *
 	 * @param handle The handle returned by \c flOpen().
@@ -922,7 +922,10 @@ extern "C" {
 	 * @brief Get the physical port number of the specified logical port.
 	 *
 	 * Get the physical port number assigned to the specified logical port by the preceding call to
-	 * \c progOpen().
+	 * \c progOpen(). This is just a convenience function to avoid re-parsing the port config, which
+	 * is typically supplied by the user as a string. For example, to send data to a SPI peripheral,
+	 * you'll probably want to assert \c SS. So you'll want to call \c progGetPort(handle, LP_SS) to
+	 * find out which physical port \c SS was assigned to.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param port The \c LogicalPort to query for.
@@ -934,7 +937,10 @@ extern "C" {
 	 * @brief Get the physical bit number of the specified logical port.
 	 *
 	 * Get the physical bit number assigned to the specified logical port by the preceding call to
-	 * \c progOpen().
+	 * \c progOpen(). This is just a convenience function to avoid re-parsing the port config, which
+	 * is typically supplied by the user as a string. For example, to send data to a SPI peripheral,
+	 * you'll probably want to assert \c SS. So you'll want to call \c progGetBit(handle, LP_SS) to
+	 * find out which physical port bit \c SS was assigned to.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param port The \c LogicalPort to query for.
@@ -1007,7 +1013,7 @@ extern "C" {
 	// FX2 firmware functions
 	// ---------------------------------------------------------------------------------------------
 	/**
-	 * @name FX2 Firmware Operations
+	 * @name Firmware Operations
 	 * @{
 	 */
 	/**
@@ -1020,7 +1026,8 @@ extern "C" {
 	 * VID:PID becomes active.
 	 *
 	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
-	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) that you \b want the FX2 device to be.
+	 * @param newVidPid The Vendor/Product/Device (i.e VVVV:PPPP:DDDD) that you \b want the FX2
+	 *            device to renumerate as.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -1070,7 +1077,7 @@ extern "C" {
 	 *
 	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
 	 * @param fwFile A <code>.hex</code> file containing new FX2 firmware to be loaded into the
-                  FX2's RAM.
+    *            FX2's RAM.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -1135,6 +1142,27 @@ extern "C" {
 	 */
 	DLLEXPORT(FLStatus) flSaveFirmware(
 		struct FLContext *handle, uint32 eepromSize, const char *saveFile, const char **error
+	) WARN_UNUSED_RESULT;
+
+	/**
+	 * @brief Put the AVR in DFU bootloader mode.
+	 *
+	 * This is an AVR-specific utility function to make firmware upgrades easier on boards on which
+	 * the /HWB and /RESET pins are not easily accesible. The "gordon" utility has an option to
+	 * invoke this.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the port access command completed successfully.
+	 *     - \c FL_USB_ERR if the device is not running suitable FPGALink/AVR firmware.
+	 */
+	DLLEXPORT(FLStatus) flBootloader(
+		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
 
@@ -1227,27 +1255,6 @@ extern "C" {
 	 */
 	DLLEXPORT(FLStatus) flMultiBitPortAccess(
 		struct FLContext *handle, const char *portConfig, uint32 *readState, const char **error
-	) WARN_UNUSED_RESULT;
-
-	/**
-	 * @brief Put the AVR in DFU bootloader mode.
-	 *
-	 * This is an AVR-specific utility function to make firmware upgrades easier on boards on which
-	 * the /HWB and /RESET pins are not easily accesible. The "gordon" utility has an option to
-	 * invoke this.
-	 *
-	 * @param handle The handle returned by \c flOpen().
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
-	 * @returns
-	 *     - \c FL_SUCCESS if the port access command completed successfully.
-	 *     - \c FL_USB_ERR if the device is not running suitable FPGALink/AVR firmware.
-	 */
-	DLLEXPORT(FLStatus) flBootloader(
-		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 	//@}
 
