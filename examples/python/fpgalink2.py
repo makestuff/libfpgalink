@@ -59,6 +59,10 @@ LogicalPort = enum(
     SS   = uint8(0x03),
     SCK  = uint8(0x04)
 )
+Shift = enum(
+    ZEROS = cast(0, c_char_p),
+    ONES = cast(-1, c_char_p)
+)
 class ReadReport(Structure):
     _fields_ = [("data", POINTER(uint8)),
                 ("requestLength", uint32),
@@ -134,12 +138,14 @@ fpgalink.progOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
 fpgalink.progOpen.restype = FLStatus
 fpgalink.progClose.argtypes = [FLHandle, POINTER(ErrorString)]
 fpgalink.progClose.restype = FLStatus
+fpgalink.jtagShift.argtypes = [FLHandle, uint32, c_char_p, POINTER(uint8), uint8, POINTER(ErrorString)]
+fpgalink.jtagShift.restype = FLStatus
 fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
 fpgalink.jtagClockFSM.restype = FLStatus
 fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
 fpgalink.jtagClocks.restype = FLStatus
 
-# FX2LP Firmware Operations
+# Firmware Operations
 fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
 fpgalink.flLoadStandardFirmware.restype = FLStatus
 fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
@@ -267,8 +273,8 @@ def flAwaitDevice(vp, timeout):
 #
 # NeroProg is the collective name for all the various programming algorithms supported by
 # FPGALink, including but not limited to JTAG. An affirmative response means you are free to
-# call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c progClose(), \c jtagShift(),
-# \c jtagClockFSM() and \c jtagClocks().
+# call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c progClose(),
+# \c jtagShiftInOut(), \c jtagClockFSM() and \c jtagClocks().
 #
 # @param handle The handle returned by \c flOpen().
 # @returns \c True if the device supports NeroProg, else \c False.
@@ -432,7 +438,22 @@ def flReadChannel(handle, chan, length = 1):
 ##
 # @brief Synchronously write one or more bytes to the specified channel.
 #
-# Write one or more bytes to the specified channel, synchronously
+# Write data to FPGA channel \c chan from \c values, which may be a single integer (0-255), a
+# \c bytearray or the name of a file to read the data from. Before calling \c flWriteChannel(),
+# you should verify that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
+#
+# Because this function is synchronous, it will block until the OS has confirmed that the data
+# has been correctly sent over USB and received by the micro. It cannot confirm that the data
+# has been received by the FPGA however: it may be waiting in the micro's output buffer.
+#
+# @param handle The handle returned by \c flOpen().
+# @param chan The FPGA channel to write.
+# @param values The data to be written synchronously to the FPGA.
+# @throw FLException
+#     - If a USB write error occurred.
+#     - If the device does not support CommFPGA.
+#     - If there are async reads in progress.
+#
 def flWriteChannel(handle, chan, values):
     error = ErrorString()
     if ( isinstance(values, bytearray) ):
@@ -462,6 +483,19 @@ def flWriteChannel(handle, chan, values):
 ##
 # @brief Set the chunk size to be used for future async writes.
 #
+# By default, the \c flWriteChannelAsync() function buffers up to 64KiB of data before sending
+# anything over USB. Chunking the data in this way is more efficient than sending lots of little
+# messages. However, the choice of chunk size affects the steady-state throughput in interesting
+# ways. If you need to, you can choose to make the chunks smaller than 64KiB.
+#
+# You should not call this when there is some send data buffered. You should either call this
+# before the first call to \c flWriteChannelAsync(), or call it immediately after a call to
+# \c flFlushAsyncWrites().
+#
+# @param handle The handle returned by \c flOpen().
+# @param chunkSize The new chunksize in bytes. Passing zero sets the chunkSize to 64KiB.
+# @throw FLException if there is some outstanding send data.
+#
 def flSetAsyncWriteChunkSize(handle, chunkSize):
     error = ErrorString()
     status = fpgalink.flSetAsyncWriteChunkSize(handle, chunkSize, byref(error))
@@ -472,6 +506,24 @@ def flSetAsyncWriteChunkSize(handle, chunkSize):
 
 ##
 # @brief Asynchronously write one or more bytes to the specified channel.
+#
+# Write data to FPGA channel \c chan from \c values, which may be a single integer (0-255), a
+# \c bytearray or the name of a file to read the data from. Before calling \c flWriteChannelAsync(),
+# you should verify that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
+#
+# This function is asynchronous. That means it will return immediately, usually before anything
+# has been actually sent over USB. If the operation fails, you will not be notified of the
+# failure until a future call to \c flAwaitAsyncWrites() or \c flReadChannelAsyncAwait(). The
+# data is copied internally, so there's no need to worry about preserving the data: it's safe to
+# call \c flWriteChannelAsync() on a stack-allocated array, for example.
+#
+# @param handle The handle returned by \c flOpen().
+# @param chan The FPGA channel to write.
+# @param values The data to be written asynchronously to the FPGA.
+# @throw FLException
+#     - If we ran out of memory.
+#     - If a USB write error occurred.
+#     - If the device does not support CommFPGA.
 #
 def flWriteChannelAsync(handle, chan, values):
     error = ErrorString()
@@ -502,6 +554,15 @@ def flWriteChannelAsync(handle, chan, values):
 ##
 # @brief Flush out any pending asynchronous writes.
 #
+# Flush any writes that have been buffered up, or do nothing if no writes have been buffered.
+# This only triggers the send over USB; it does not guarantee the micro successfully received
+# the data. See \c flAwaitAsyncWrites().
+#
+# @param handle The handle returned by \c flOpen().
+# @throw FLException
+#     - If a USB write error occurred.
+#     - If the device does not support CommFPGA.
+#
 def flFlushAsyncWrites(handle):
     error = ErrorString()
     status = fpgalink.flFlushAsyncWrites(handle, byref(error))
@@ -512,6 +573,18 @@ def flFlushAsyncWrites(handle):
 
 ##
 # @brief Wait for confirmation that pending asynchronous writes were received by the micro.
+#
+# The first thing this does is to call \c flFlushAsyncWrites() to flush out any outstanding
+# write commands. It will then block until the OS confirms that all the asynchronous write
+# commands sent by \c flWriteChannelAsync() were correctly sent over USB and recieved by the
+# micro. It cannot confirm that that the writes were received by the FPGA however: they may be
+# waiting in the micro's output buffer.
+#
+# @param handle The handle returned by \c flOpen().
+# @throw FLException
+#     - If one of the outstanding async operations failed.
+#     - If the device does not support CommFPGA.
+#     - If there are async reads in progress.
 #
 def flAwaitAsyncWrites(handle):
     error = ErrorString()
@@ -524,6 +597,30 @@ def flAwaitAsyncWrites(handle):
 ##
 # @brief Submit an asynchronous read of one or more bytes from the specified channel.
 #
+# Submit an asynchronous read of \c length bytes from the FPGA channel \c chan. You can request
+# at most 64KiB of data asynchronously. Before calling \c flReadChannelAsyncSubmit(), you should
+# verify that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
+#
+# This function is asynchronous. That means it will return immediately, usually before the read
+# request has been sent over USB. You will not find out the result of the read until you later
+# call \c flReadChannelAsyncAwait() - this will give you your data, or tell you what went wrong.
+#
+# You should always ensure that for each call to \c flReadChannelAsyncSubmit(), there is a
+# matching call to \c flReadChannelAsyncAwait(). You should not call any of
+# \c flSetAsyncWriteChunkSize(), \c flAwaitAsyncWrites(), \c flWriteChannel() or
+# \c flReadChannel() between a submit...await pair.
+#
+# USB host controllers typically need just one level of nesting of submit...await pairs to keep
+# them busy. That means sequences like submit, submit, await, submit, await, submit, ..., await,
+# await.
+#
+# @param handle The handle returned by \c flOpen().
+# @param chan The FPGA channel to read.
+# @param length The number of bytes to read, <= 64KiB (hence \c uint32 rather than \c size_t).
+# @throw FLException
+#     - If a USB read or write error occurred.
+#     - If the device does not support CommFPGA.
+#
 def flReadChannelAsyncSubmit(handle, chan, length = 1):
     error = ErrorString()
     status = fpgalink.flReadChannelAsyncSubmit(handle, chan, length, None, byref(error))
@@ -535,8 +632,17 @@ def flReadChannelAsyncSubmit(handle, chan, length = 1):
 ##
 # @brief Await the data from a previously-submitted asynchronous read.
 #
-# The ReadReport struct gives access to the raw memory owned by the FPGALink DLL. You can construct
-# a string from it with something like ctypes.string_at(readReport.data, readReport.actualLength).
+# Block until the outcome of a previous call to \c flReadChannelAsyncSubmit() is known. If the
+# read was successful, you are given the resulting data. If not, an error code/message.
+#
+# On successful outcome, a \c ReadReport object is returned with a pointer to the data, the
+# number of bytes read, etc. This gives access to the raw memory owned by the FPGALink DLL. It is
+# guaranteed to remain valid until your next call to any of the CommFPGA functions. You can copy
+# it into a string with something like ctypes.string_at(readReport.data, readReport.actualLength).
+#
+# @param handle The handle returned by \c flOpen().
+# @returns A \c ReadReport object which points to the data read, and the number of bytes.
+# @throw FLException if one of the outstanding async operations failed.
 #
 def flReadChannelAsyncAwait(handle):
     readReport = ReadReport(None, 0, 0)
@@ -555,6 +661,91 @@ def flReadChannelAsyncAwait(handle):
 
 ##
 # @brief Program a device using the given config string and either a file-name or a bytearray.
+#
+# This will program an FPGA or CPLD using the specified microcontroller ports and the specified
+# programming file or an in-memory \c bytearray containing the configuration information. Several
+# programming algorithms are supported (JTAG, Xilinx Slave-Serial, Xilinx SelectMap). In each case,
+# it's necessary to tell the micro which ports to use. Here are some examples:
+#
+# A Digilent board using JTAG: <code>progConfig="J:D0D2D3D4"</code>:
+# - TDO: PD0
+# - TDI: PD2
+# - TMS: PD3
+# - TCK: PD4
+#
+# MakeStuff LX9 using JTAG: <code>progConfig="J:A7A0A3A1"</code>:
+# - TDO: PA7
+# - TDI: PA0
+# - TMS: PA3
+# - TCK: PA1
+#
+# EP2C5 Mini Board using Altera Passive-Serial: <code>progConfig="AS:B5B6B1B2"</code> (note that
+# the board normally connects MSEL[1:0] to ground, hard-coding it in Active-Serial mode. For
+# Passive-Serial to work you need to lift pin 85 and pull it up to VCC):
+# - nCONFIG: PD5
+# - CONF_DONE: PD6
+# - DCLK: PD1
+# - DATA0: PD2
+#
+# Aessent aes220 using Xilinx Slave-Serial: <code>progConfig="XS:D0D5D1D6A7[D3?,B1+,B5+,B3+]"</code>:
+# - PROG_B: PD0
+# - INIT_B: PD5
+# - DONE: PD1
+# - CCLK: PD6
+# - DIN: PA7
+# - Tristate DOUT (PD3)
+# - Drive M[2:0]="111" (PB1, PB5, PB3) for Slave-Serial
+#
+# Aessent aes220 using Xilinx SelectMAP: <code>progConfig="XP:D0D5D1D6A01234567[B4-,D2-,D3?,B1+,B5+,B3-]"</code>:
+# - PROG_B: PD0
+# - INIT_B: PD5
+# - DONE: PD1
+# - CCLK: PD6
+# - D[7:0]: PA[7:0]
+# - Drive RDWR_B="0" (PB4)
+# - Drive CSI_B="0" (PD2)
+# - Tristate DOUT (PD3)
+# - Drive M[2:0]="110" (PB1, PB5, PB3) for SelectMAP
+#
+# Note that this approach of specifying and implementing many disparate programming algorithms
+# on the host side in terms of a much smaller set of building-block operations on the
+# microcontroller is optimized for microcontrollers which support efficient remapping of I/O
+# pins. For example the FX2 has a Von Neumann architecture where both code and data are stored
+# in a single RAM-based address space, so port remapping can easily be achieved with
+# self-modifying code. Conversely, the AVRs have Harvard architecture, where code and data are
+# in separate address spaces, with code in flash so it cannot be self-modified. And actually,
+# the AVR firmware is more likely to be tuned to a specific board layout than the more generic
+# FX2 firmware.
+#
+# So, the bottom line is, even if you're using a microcontroller whose port pins are hard-coded,
+# you still have to supply the port pins to use when you call functions expecting \c progConfig.
+#
+# You can either append the programming filename to the end of \c progConfig (e.g
+# \c "J:A7A0A3A1:fpga.xsvf") or you can supply the programming filename separately in
+# \c progFile.
+#
+# @param handle The handle returned by \c flOpen().
+# @param progConfig The port configuration described above.
+# @param progFile The name of the programming file, or NULL if it's already given in progConfig.
+# @throw FLException
+#     - If we ran out of memory during programming.
+#     - If a USB error occurred.
+#     - If the programming file is unreadable or an unexpected format.
+#     - If an XSVF file contains an unsupported command.
+#     - If an XSVF file contains an unsupported XENDDR/XENDIR.
+#     - If an XSVF command is too long.
+#     - If an SVF file is unparseable.
+#     - If \c progConfig is malformed.
+#     - If the micro was unable to map its ports to those given.
+#     - If the micro refused to accept programming data.
+#     - If the micro refused to provide programming data.
+#     - If the micro refused to begin a JTAG shift operation.
+#     - If the micro refused to navigate the TAP state-machine.
+#     - If the micro refused to send JTAG clocks.
+#     - If an SVF/XSVF compare operation failed.
+#     - If an SVF/XSVF unknown command was encountered.
+#     - If the FPGA failed to start after programming.
+#     - If the micro refused to configure one of its ports.
 #
 def flProgram(handle, progConfig, progFile = None):
     error = ErrorString()
@@ -575,6 +766,18 @@ def flProgram(handle, progConfig, progFile = None):
 ##
 # @brief Scan the JTAG chain and return an array of IDCODEs.
 #
+# @param handle The handle returned by \c flOpen().
+# @param portConfig The port bits to use for TDO, TDI, TMS & TCK, or NULL to use the default.
+# @returns An array of IDCODEs for each discovered device, in chain order.
+# @throw FLException
+#     - If \c portConfig is malformed.
+#     - If the micro was unable to map its ports to those given.
+#     - If the micro refused to accept programming data.
+#     - If the micro refused to provide programming data.
+#     - If the micro refused to begin a JTAG shift operation.
+#     - If the micro refused to navigate the TAP state-machine.
+#     - If the micro refused to configure one of its ports.
+#
 def jtagScanChain(handle, portConfig):
     error = ErrorString()
     ChainType = (uint32 * 16)  # Guess there are fewer than 16 devices
@@ -594,6 +797,17 @@ def jtagScanChain(handle, portConfig):
 ##
 # @brief Open an SPI/JTAG connection.
 #
+# Open a SPI/JTAG connection using the supplied \c portConfig. You must open a connection
+# before calling \c jtagShiftInOut(), \c jtagClockFSM(), \c jtagClocks(), \c spiSend() or
+# \c spiRecv(). And you must close the connection when you're finished, with \c progClose().
+#
+# @param handle The handle returned by \c flOpen().
+# @param portConfig The port bits to use for MISO(TDO), MOSI(TDI), SS(TMS) & SCK(TCK).
+# @throw FLException
+#     - If \c portConfig is malformed.
+#     - If the micro refused to map its ports to those given.
+#     - If the micro refused to configure one of its ports.
+#
 def progOpen(handle, portConfig):
     error = ErrorString()
     status = fpgalink.progOpen(handle, portConfig.encode('ascii'), byref(error))
@@ -605,6 +819,11 @@ def progOpen(handle, portConfig):
 ##
 # @brief Close an SPI/JTAG connection.
 #
+# Close an SPI/JTAG connection previously opened by \c progOpen(), and tri-state the four lines.
+#
+# @param handle The handle returned by \c flOpen().
+# @throw FLException if the micro refused to configure one of its ports.
+#
 def progClose(handle):
     error = ErrorString()
     status = fpgalink.progClose(handle, byref(error))
@@ -613,8 +832,96 @@ def progClose(handle):
         fpgalink.flFreeError(error)
         raise FLException(s)
 
+# Helper function: return the number of bytes needed to store x bits
+def _bitsToBytes(x):
+    return (x >> 3) if ( x & 7 == 0 ) else (x >> 3) + 1
+
+##
+# @brief Shift data into and out of the JTAG state-machine.
+#
+# Shift \c numBits bits from \c inData into TDI, at the same time shifting the same number of
+# bits from TDO into a \c bytearray, to be returned. If \c isLast is \c True, leave the TAP
+# state-machine in \c Shift-xR, otherwise \c Exit1-xR. If you want \c inData to be all zeros
+# you can use \c Shift.ZEROS, or if you want it to be all ones you can use \c Shift.ONES,
+# otherwise you can pass in explicit data in the form of a \c bytes instance or a
+# \c bytearray instance. Each byte is sent in order, LSB-first. The TDO data is returned as
+# a \c bytearray, in order, LSB-first.
+#
+# @param handle The handle returned by \c flOpen().
+# @param numBits The number of bits to clock into the JTAG state-machine.
+# @param inData The source data, or \c Shift.ZEROS or \c Shift.ONES.
+# @param isLast Either \c False to remain in \c Shift-xR, or \c True to exit to \c Exit1-xR.
+# @returns A \c bytearray containing the TDO data.
+# @throw FLException
+#     - If the micro refused to accept programming data.
+#     - If the micro refused to provide programming data.
+#     - If the micro refused to begin a JTAG shift operation.
+#
+def jtagShiftInOut(handle, numBits, inData, isLast = False):
+    numBytes = _bitsToBytes(numBits)
+    BufType = uint8*numBytes
+    if ( not isinstance(inData, c_char_p) ):
+        if ( numBytes != len(inData) ):
+            raise FLException("Expecting %d bytes inData" % numBytes)
+        if ( isinstance(inData, bytearray) ):
+            inData = BufType.from_buffer(inData)
+        inData = cast(inData, c_char_p)
+    outData = bytearray(numBytes)
+    outDataBuf = BufType.from_buffer(outData)
+    error = ErrorString()
+    status = fpgalink.jtagShift(
+        handle, numBits, inData, outDataBuf, 0x01 if isLast else 0x00, error)
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+    return outData
+
+##
+# @brief Shift data into the JTAG state-machine.
+#
+# Shift \c numBits bits from \c inData into TDI, throwing away the bits clocked out of TDO.
+# If \c isLast is \c True, leave the TAP state-machine in \c Shift-xR, otherwise \c Exit1-xR.
+# If you want \c inData to be all zeros you can use \c Shift.ZEROS, or if you want it to be
+# all ones you can use \c Shift.ONES, otherwise you can pass in explicit data in the form of
+# a \c bytes instance or a \c bytearray instance. Each byte is sent in order, LSB-first.
+#
+# @param handle The handle returned by \c flOpen().
+# @param numBits The number of bits to clock into the JTAG state-machine.
+# @param inData The source data, or \c Shift.ZEROS or \c Shift.ONES.
+# @param isLast Either \c False to remain in \c Shift-xR, or \c True to exit to \c Exit1-xR.
+# @returns A \c bytearray containing the TDO data.
+# @throw FLException
+#     - If the micro refused to accept programming data.
+#     - If the micro refused to provide programming data.
+#     - If the micro refused to begin a JTAG shift operation.
+#
+def jtagShiftInOnly(handle, numBits, inData, isLast = False):
+    numBytes = _bitsToBytes(numBits)
+    BufType = uint8*numBytes
+    if ( not isinstance(inData, c_char_p) ):
+        if ( numBytes != len(inData) ):
+            raise FLException("Expecting %d bytes inData" % numBytes)
+        if ( isinstance(inData, bytearray) ):
+            inData = BufType.from_buffer(inData)
+        inData = cast(inData, c_char_p)
+    error = ErrorString()
+    status = fpgalink.jtagShift(
+        handle, numBits, inData, None, 0x01 if isLast else 0x00, error)
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
 ##
 # @brief Clock \c transitionCount bits from \c bitPattern into TMS, starting with the LSB.
+#
+# Navigate the TAP state-machine by clocking an arbitrary sequence of bits into TMS.
+#
+# @param handle The handle returned by \c flOpen().
+# @param bitPattern The pattern of bits to clock into TMS, LSB first.
+# @param transitionCount The number of bits to clock.
+# @throw FLException if the micro refused to navigate the TAP state-machine.
 #
 def jtagClockFSM(handle, bitPattern, transitionCount):
     error = ErrorString()
@@ -626,6 +933,12 @@ def jtagClockFSM(handle, bitPattern, transitionCount):
 
 ##
 # @brief Toggle TCK \c numClocks times.
+#
+# Put \c numClocks clocks out on TCK.
+#
+# @param handle The handle returned by \c flOpen().
+# @param numClocks The number of clocks to put out on TCK.
+# @throw FLException if the micro refused to send JTAG clocks.
 #
 def jtagClocks(handle, numClocks):
     error = ErrorString()
@@ -649,14 +962,9 @@ def jtagClocks(handle, numClocks):
 # the renumeration to complete by calling \c flIsDeviceAvailable() repeatedly until the "new"
 # VID/PID becomes active.
 #
-# In addition to the "new" VID/PID, you can also customise the port pins used for JTAG
-# operations. For this you must specify an FX2 port (C or D) and the bits within that port to
-# be used for TDO, TDI, TMS and TCK respectively. For example, the port specification "D0234"
-# means PD0=TDO, PD2=TDI, PD3=TMS and PD4=TCK, and is appropriate for Digilent boards (Nexys2,
-# Nexys3, Atlys etc).
-#
 # @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
-# @param newVidPid The Vendor/Product (i.e VVVV:PPPP) that you \b want the FX2 device to be.
+# @param newVidPid The Vendor/Product/Device (i.e VVVV:PPPP:DDDD) that you \b want the FX2
+#            device to renumerate as.
 # @throw FLException
 #     - If one of the VID/PIDs was invalid or the current VID/PID was not found.
 #     - If there was a problem talking to the FX2.
@@ -673,6 +981,20 @@ def flLoadStandardFirmware(curVidPid, newVidPid):
 ##
 # @brief Flash standard FPGALink firmware into the FX2's EEPROM.
 #
+# @warning This function will make permanent changes to your hardware. Remember to make a
+# backup copy of the existing EEPROM firmware with \c flSaveFirmware() before calling it.
+#
+# Overwrite the FX2's EEPROM with a precompiled FPGALink firmware such that the board will
+# enumerate on power-on with the "new" Vendor/Product/Device IDs.
+#
+# @param handle The handle returned by \c flOpen().
+# @param newVidPid The Vendor/Product/Device (i.e VVVV:PPPP:DDDD) you want the FX2 to
+#            enumerate as on power-on.
+# @throw FLException
+#     - \c If there was a memory allocation failure.
+#     - \c If the VID:PID was invalid.
+#     - \c If there was a problem talking to the FX2.
+#
 def flFlashStandardFirmware(handle, newVidPid):
     error = ErrorString()
     status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), byref(error))
@@ -684,6 +1006,18 @@ def flFlashStandardFirmware(handle, newVidPid):
 ##
 # @brief Load custom firmware (<code>.hex</code>) into the FX2's RAM.
 #
+# Load the FX2 chip at the given VID:PID with a <code>.hex</code> firmware file. The firmware
+# is loaded into RAM, so the change is not permanent.
+#
+# @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
+# @param fwFile A <code>.hex</code> file containing new FX2 firmware to be loaded into the
+#            FX2's RAM.
+# @throw FLException
+#     - If there was a memory allocation failure.
+#     - If the VID:PID was invalid.
+#     - If there was a problem talking to the FX2.
+#     - If \c fwFile has a bad extension or could not be loaded.
+#
 def flLoadCustomFirmware(curVidPid, fwFile):
     error = ErrorString()
     status = fpgalink.flLoadCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
@@ -691,6 +1025,32 @@ def flLoadCustomFirmware(curVidPid, fwFile):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
+
+##
+# @brief Flash a custom firmware from a file into the FX2's EEPROM.
+#
+# @warning This function will make permanent changes to your hardware. Remember to make a
+# backup copy of the existing EEPROM firmware with \c flSaveFirmware() before calling it.
+#
+# Overwrite the FX2's EEPROM with a custom firmware from a <code>.hex</code> or
+# <code>.iic</code> file.
+#
+# @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
+# @param fwFile A <code>.hex</code> or <code>.iic</code> file containing new FX2 firmware to be
+#            loaded into the FX2's EEPROM.
+# @throw FLException
+#     - If there was a memory allocation failure.
+#     - If there was a problem talking to the FX2.
+#     - If the firmware file could not be loaded.
+#
+def flFlashCustomFirmware(curVidPid, fwFile):
+    error = ErrorString()
+    status = fpgalink.flFlashCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
 # @}
 
 ##
@@ -700,6 +1060,16 @@ def flLoadCustomFirmware(curVidPid, fwFile):
 ##
 # @brief Configure a single port bit on the microcontroller.
 #
+# With this function you can set a single microcontroller port bit to either \c PIN_INPUT,
+# \c PIN_HIGH or \c PIN_LOW, and read back the current state of the bit.
+#
+# @param handle The handle returned by \c flOpen().
+# @param portNumber Which port to configure (i.e 0=PortA, 1=PortB, 2=PortC, etc).
+# @param bitNumber The bit within the chosen port to use.
+# @param pinConfig Either \c PinConfig.INPUT, \c PinConfig.HIGH or \c PinConfig.LOW.
+# @returns True if the pin is currently high, else False.
+# @throw FLException if the micro failed to respond to the port access command.
+#
 def flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig):
     error = ErrorString()
     bitRead = uint8()
@@ -708,10 +1078,25 @@ def flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
-    return bitRead.value
+    return False if bitRead.value == 0 else True
 
 ##
 # @brief Configure multiple port bits on the microcontroller.
+#
+# With this function you can set multiple microcontroller port bits to either \c PinConfig.INPUT,
+# \c PinConfig.HIGH or \c PinConfig.LOW, and read back the current state of each bit. This is
+# achieved by sending a comma-separated list of port configurations, e.g "A12-,B2+,C7?". A "+"
+# or a "-" suffix sets the port as an output, driven high or low respectively, and a "?" suffix
+# sets the port as an input. The current state of up to 32 bits are returned in \c readState,
+# LSB first.
+#
+# @param handle The handle returned by \c flOpen().
+# @param portConfig A comma-separated sequence of port configurations.
+# @returns The ports, read back in order, LSB first.
+# @throw FLException
+#     - If the port access command completed successfully.
+#     - If \c portConfig is malformed.
+#     - If the micro failed to respond to the port access command.
 #
 def flMultiBitPortAccess(handle, portConfig):
     error = ErrorString()
