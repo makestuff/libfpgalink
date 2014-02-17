@@ -1114,7 +1114,7 @@ flInitialise(0)
 
 # Main function if we're not loaded as a module
 if __name__ == "__main__":
-    print "FPGALink Python Example Copyright (C) 2011-2014 Chris McClelland\n"
+    print("FPGALink Python Example Copyright (C) 2011-2014 Chris McClelland\n")
     parser = argparse.ArgumentParser(description='Load FX2LP firmware, load the FPGA, interact with the FPGA.')
     parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="vendor ID and product ID (e.g 04B4:8613)")
     parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="VID, PID and opt. dev ID (e.g 1D50:602B:0001)")
@@ -1127,28 +1127,28 @@ if __name__ == "__main__":
     handle = FLHandle()
     try:
         vp = argList.v[0]
-        print "Attempting to open connection to FPGALink device %s..." % vp
+        print("Attempting to open connection to FPGALink device %s..." % vp)
         try:
             handle = flOpen(vp)
-        except FLException, ex:
+        except FLException as ex:
             if ( argList.i ):
                 ivp = argList.i[0]
-                print "Loading firmware into %s..." % ivp
+                print("Loading firmware into %s..." % ivp)
                 flLoadStandardFirmware(ivp, vp);
 
-                print "Awaiting renumeration..."
+                print("Awaiting renumeration...")
                 if ( not flAwaitDevice(vp, 600) ):
                     raise FLException("FPGALink device did not renumerate properly as %s" % vp)
 
-                print "Attempting to open connection to FPGALink device %s again..." % vp
+                print("Attempting to open connection to FPGALink device %s again..." % vp)
                 handle = flOpen(vp)
             else:
                 raise FLException("Could not open FPGALink device at %s and no initial VID:PID was supplied" % vp)
         
         if ( argList.d ):
-            print "Configuring ports..."
+            print("Configuring ports...")
             rb = "{:0{}b}".format(flMultiBitPortAccess(handle, argList.d[0]), 32)
-            print "Readback:   28   24   20   16    12    8    4    0\n          %s %s %s %s  %s %s %s %s" % (rb[0:4], rb[4:8], rb[8:12], rb[12:16], rb[16:20], rb[20:24], rb[24:28], rb[28:32])
+            print("Readback:   28   24   20   16    12    8    4    0\n          %s %s %s %s  %s %s %s %s" % (rb[0:4], rb[4:8], rb[8:12], rb[12:16], rb[16:20], rb[20:24], rb[24:28], rb[28:32]))
             fpgalink.flSleep(100)
 
         conduit = 1
@@ -1163,17 +1163,17 @@ if __name__ == "__main__":
             if ( isNeroCapable ):
                 chain = jtagScanChain(handle, argList.q[0])
                 if ( len(chain) > 0 ):
-                    print "The FPGALink device at %s scanned its JTAG chain, yielding:" % vp
+                    print("The FPGALink device at %s scanned its JTAG chain, yielding:" % vp)
                     for i in chain:
-                        print "  0x%08X" % i
+                        print("  0x%08X" % i)
                 else:
-                    print "The FPGALink device at %s scanned its JTAG chain but did not find any attached devices" % vp
+                    print("The FPGALink device at %s scanned its JTAG chain but did not find any attached devices" % vp)
             else:
                 raise FLException("JTAG chain scan requested but FPGALink device at %s does not support NeroJTAG" % vp)
         
         if ( argList.p ):
             progConfig = argList.p[0]
-            print "Programming device with config %s..." % progConfig
+            print("Programming device with config %s..." % progConfig)
             if ( isNeroCapable ):
                 flProgram(handle, progConfig)
             else:
@@ -1183,23 +1183,23 @@ if __name__ == "__main__":
             raise FLException("Data file load requested but device at %s does not support CommFPGA" % vp)
 
         if ( isCommCapable ):
-            print "Zeroing R1 & R2..."
+            print("Zeroing R1 & R2...")
             flWriteChannel(handle, 0x01, 0x00)
             flWriteChannel(handle, 0x02, 0x00)
             if ( argList.f ):
                 dataFile = argList.f[0]
-                print "Writing %s to FPGALink device %s..." % (dataFile, vp)
+                print("Writing %s to FPGALink device %s..." % (dataFile, vp))
                 flWriteChannel(handle, 0x00, dataFile)
             
-            print "Reading channel 0..."
-            print "Got 0x%02X" % flReadChannel(handle, 0x00)
-            print "Reading channel 1..."
-            print "Got 0x%02X" % flReadChannel(handle, 0x01)
-            print "Reading channel 2..."
-            print "Got 0x%02X" % flReadChannel(handle, 0x02)
+            print("Reading channel 0...")
+            print("Got 0x%02X" % flReadChannel(handle, 0x00))
+            print("Reading channel 1...")
+            print("Got 0x%02X" % flReadChannel(handle, 0x01))
+            print("Reading channel 2...")
+            print("Got 0x%02X" % flReadChannel(handle, 0x02))
 
-    except FLException, ex:
-        print ex
+    except FLException as ex:
+        print(ex)
     finally:
         flClose(handle)
 ## @endcond
