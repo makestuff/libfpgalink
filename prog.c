@@ -952,7 +952,7 @@ static const uint16 indexValues[] = {0xFFFF, 0x0101, 0x0001, 0x0000};
 
 DLLEXPORT(FLStatus) flSingleBitPortAccess(
 	struct FLContext *handle, uint8 portNumber, uint8 bitNumber,
-	PinConfig pinConfig, uint8 *pinRead, const char **error)
+   uint8 pinConfig, uint8 *pinRead, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;

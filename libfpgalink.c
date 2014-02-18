@@ -578,8 +578,8 @@ cleanup:
 	return retVal;
 }
 
-DLLEXPORT(uint8) progGetPort(struct FLContext *handle, LogicalPort port) {
-	switch ( port ) {
+DLLEXPORT(uint8) progGetPort(struct FLContext *handle, uint8 logicalPort) {
+	switch ( logicalPort ) {
 	case LP_MISO:
 		return handle->misoPort;
 	case LP_MOSI:
@@ -595,8 +595,8 @@ DLLEXPORT(uint8) progGetPort(struct FLContext *handle, LogicalPort port) {
 	}
 }
 
-DLLEXPORT(uint8) progGetBit(struct FLContext *handle, LogicalPort port) {
-	switch ( port ) {
+DLLEXPORT(uint8) progGetBit(struct FLContext *handle, uint8 logicalPort) {
+	switch ( logicalPort ) {
 	case LP_MISO:
 		return handle->misoBit;
 	case LP_MOSI:

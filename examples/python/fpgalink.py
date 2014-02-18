@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (C) 2009-2012 Chris McClelland
+# Copyright (C) 2009-2014 Chris McClelland
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-## @namespace fpgalink2
+## @namespace fpgalink
 #
 # The <b>FPGALink</b> library makes it easier to talk to an FPGA over USB (via a suitable micro).
 #
@@ -28,7 +28,6 @@
 import array
 import time
 import sys
-import argparse
 from ctypes import *
 
 ## @cond FALSE
@@ -58,6 +57,10 @@ LogicalPort = enum(
     MOSI = uint8(0x02),
     SS   = uint8(0x03),
     SCK  = uint8(0x04)
+)
+BitOrder = enum(
+    MSBFIRST = uint8(0x00),
+    LSBFIRST = uint8(0x01)
 )
 Shift = enum(
     ZEROS = cast(0, c_char_p),
@@ -144,6 +147,14 @@ fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
 fpgalink.jtagClockFSM.restype = FLStatus
 fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
 fpgalink.jtagClocks.restype = FLStatus
+fpgalink.progGetPort.argtypes = [FLHandle, uint8]
+fpgalink.progGetPort.restype = uint8
+fpgalink.progGetBit.argtypes = [FLHandle, uint8]
+fpgalink.progGetBit.restype = uint8
+fpgalink.spiSend.argtypes = [FLHandle, uint32, c_char_p, uint8, POINTER(ErrorString)]
+fpgalink.spiSend.restype = FLStatus
+fpgalink.spiRecv.argtypes = [FLHandle, uint32, POINTER(uint8), uint8, POINTER(ErrorString)]
+fpgalink.spiRecv.restype = FLStatus
 
 # Firmware Operations
 fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
@@ -947,6 +958,79 @@ def jtagClocks(handle, numClocks):
         s = str(error.value)
         fpgalink.flFreeError(error)
         raise FLException(s)
+
+##
+# @brief Get the physical port and port-bit of the specified logical port.
+#
+# Get the physical port and bit numbers assigned to the specified logical port by the
+# preceding call to \c progOpen(). This is just a convenience function to avoid re-parsing
+# the port config, which is typically supplied by the user as a string. For example, to send
+# data to a SPI peripheral, you'll probably want to assert \c SS. So you'll want to call
+# \c progGetPort(handle, LogicalPort.SS) to find out which physical port and bit \c SS was
+# assigned to. If it was assigned to port D7, this function will return (3, 7).
+#
+# @param handle The handle returned by \c flOpen().
+# @param logicalPort The \c LogicalPort to query for.
+# @returns A tuple pair of (physicalPort, physicalBit) mapped to the given \c LogicalPort.
+#
+def progGetPort(handle, logicalPort):
+    return (
+        fpgalink.progGetPort(handle, logicalPort),
+        fpgalink.progGetBit(handle, logicalPort)
+    )
+
+##
+# @brief Send a number of whole bytes over SPI, either LSB-first or MSB-first.
+#
+# Shift \c buf into the microcontroller's SPI bus (if any), either MSB-first or LSB-first. You
+# must have previously called \c progOpen().
+#
+# @param handle The handle returned by \c flOpen().
+# @param buf The bytes to send (either \c bytes or \c bytearray).
+# @param bitOrder Either \c BitOrder.MSBFIRST or \c BitOrder.LSBFIRST.
+# @throw FLException
+#     - If there was a memory allocation failure.
+#     - If the device does not support SPI.
+#     - If USB communications failed whilst sending the data.
+#
+def spiSend(handle, buf, bitOrder):
+    numBytes = len(buf)
+    if ( isinstance(buf, bytearray) ):
+        buf = BufType.from_buffer(buf)
+        buf = cast(buf, c_char_p)
+    error = ErrorString()
+    status = fpgalink.spiSend(
+        handle, numBytes, buf, bitOrder, error)
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+
+##
+# @brief Receive a number of whole bytes over SPI, either LSB-first or MSB-first.
+#
+# Return (as a \c bytearray) \c numBytes bytes shifted out of the microcontroller's SPI bus,
+# either MSB-first or LSB-first. You must have previously called \c progOpen().
+#
+# @param handle The handle returned by \c flOpen().
+# @param numBytes The number of bytes to receive.
+# @param bitOrder Either \c BitOrder.MSBFIRST or \c BitOrder.LSBFIRST.
+# @throw FLException
+#     - If the device does not support SPI.
+#     - If USB communications failed whilst receiving the data.
+#
+def spiRecv(handle, numBytes, bitOrder):
+    BufType = uint8*numBytes
+    recvData = bytearray(numBytes)
+    recvDataBuf = BufType.from_buffer(recvData)
+    error = ErrorString()
+    status = fpgalink.spiRecv(
+        handle, numBytes, recvDataBuf, bitOrder, error)
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        fpgalink.flFreeError(error)
+        raise FLException(s)
+    return recvData
 # @}
 
 ##
@@ -1058,6 +1142,14 @@ def flFlashCustomFirmware(curVidPid, fwFile):
 # @{
 
 ##
+# @brief Sleep for the specified number of milliseconds.
+#
+# @param ms The number of milliseconds to sleep.
+#
+def flSleep(ms):
+    fpgalink.flSleep(ms)
+
+##
 # @brief Configure a single port bit on the microcontroller.
 #
 # With this function you can set a single microcontroller port bit to either \c PIN_INPUT,
@@ -1109,97 +1201,4 @@ def flMultiBitPortAccess(handle, portConfig):
     return readState.value
 # @}
 
-## @cond FALSE
 flInitialise(0)
-
-# Main function if we're not loaded as a module
-if __name__ == "__main__":
-    print("FPGALink Python Example Copyright (C) 2011-2014 Chris McClelland\n")
-    parser = argparse.ArgumentParser(description='Load FX2LP firmware, load the FPGA, interact with the FPGA.')
-    parser.add_argument('-i', action="store", nargs=1, metavar="<VID:PID>", help="vendor ID and product ID (e.g 04B4:8613)")
-    parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="VID, PID and opt. dev ID (e.g 1D50:602B:0001)")
-    parser.add_argument('-d', action="store", nargs=1, metavar="<port+>", help="read/write digital ports (e.g B13+,C1-,B2?)")
-    parser.add_argument('-q', action="store", nargs=1, metavar="<jtagPorts>", help="query the JTAG chain")
-    parser.add_argument('-p', action="store", nargs=1, metavar="<config>", help="program a device")
-    parser.add_argument('-c', action="store", nargs=1, metavar="<conduit>", help="which comm conduit to choose (default 0x01)")
-    parser.add_argument('-f', action="store", nargs=1, metavar="<dataFile>", help="binary data to write to channel 0")
-    argList = parser.parse_args()
-    handle = FLHandle()
-    try:
-        vp = argList.v[0]
-        print("Attempting to open connection to FPGALink device %s..." % vp)
-        try:
-            handle = flOpen(vp)
-        except FLException as ex:
-            if ( argList.i ):
-                ivp = argList.i[0]
-                print("Loading firmware into %s..." % ivp)
-                flLoadStandardFirmware(ivp, vp);
-
-                print("Awaiting renumeration...")
-                if ( not flAwaitDevice(vp, 600) ):
-                    raise FLException("FPGALink device did not renumerate properly as %s" % vp)
-
-                print("Attempting to open connection to FPGALink device %s again..." % vp)
-                handle = flOpen(vp)
-            else:
-                raise FLException("Could not open FPGALink device at %s and no initial VID:PID was supplied" % vp)
-        
-        if ( argList.d ):
-            print("Configuring ports...")
-            rb = "{:0{}b}".format(flMultiBitPortAccess(handle, argList.d[0]), 32)
-            print("Readback:   28   24   20   16    12    8    4    0\n          %s %s %s %s  %s %s %s %s" % (rb[0:4], rb[4:8], rb[8:12], rb[12:16], rb[16:20], rb[20:24], rb[24:28], rb[28:32]))
-            fpgalink.flSleep(100)
-
-        conduit = 1
-        if ( argList.c ):
-            conduit = int(argList.c[0])
-
-        isNeroCapable = flIsNeroCapable(handle)
-        isCommCapable = flIsCommCapable(handle, conduit)
-        flSelectConduit(handle, conduit)
-
-        if ( argList.q ):
-            if ( isNeroCapable ):
-                chain = jtagScanChain(handle, argList.q[0])
-                if ( len(chain) > 0 ):
-                    print("The FPGALink device at %s scanned its JTAG chain, yielding:" % vp)
-                    for i in chain:
-                        print("  0x%08X" % i)
-                else:
-                    print("The FPGALink device at %s scanned its JTAG chain but did not find any attached devices" % vp)
-            else:
-                raise FLException("JTAG chain scan requested but FPGALink device at %s does not support NeroJTAG" % vp)
-        
-        if ( argList.p ):
-            progConfig = argList.p[0]
-            print("Programming device with config %s..." % progConfig)
-            if ( isNeroCapable ):
-                flProgram(handle, progConfig)
-            else:
-                raise FLException("Device program requested but device at %s does not support NeroProg" % vp)
-        
-        if ( argList.f and not(isCommCapable) ):
-            raise FLException("Data file load requested but device at %s does not support CommFPGA" % vp)
-
-        if ( isCommCapable ):
-            print("Zeroing R1 & R2...")
-            flWriteChannel(handle, 0x01, 0x00)
-            flWriteChannel(handle, 0x02, 0x00)
-            if ( argList.f ):
-                dataFile = argList.f[0]
-                print("Writing %s to FPGALink device %s..." % (dataFile, vp))
-                flWriteChannel(handle, 0x00, dataFile)
-            
-            print("Reading channel 0...")
-            print("Got 0x%02X" % flReadChannel(handle, 0x00))
-            print("Reading channel 1...")
-            print("Got 0x%02X" % flReadChannel(handle, 0x01))
-            print("Reading channel 2...")
-            print("Got 0x%02X" % flReadChannel(handle, 0x02))
-
-    except FLException as ex:
-        print(ex)
-    finally:
-        flClose(handle)
-## @endcond

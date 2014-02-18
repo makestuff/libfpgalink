@@ -168,7 +168,7 @@ extern "C" {
 	 * @param handle A pointer to a <code>struct FLContext*</code> which will be set on exit to
 	 *            point at a newly-allocated context structure. Responsibility for this allocated
 	 *            memory (and its associated USB resources) passes to the caller and must be freed
-	 *            with \c flClose(). Will be set NULL if an error occurs.
+	 *            with \c flClose(). Will be set \c NULL if an error occurs.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -187,9 +187,9 @@ extern "C" {
 	/**
 	 * @brief Close the connection to the FPGALink device.
 	 *
-	 * If the handle is NULL, this function does nothing.
+	 * If the handle is \c NULL, this function does nothing.
 	 *
-	 * @param handle The handle returned by \c flOpen(), or NULL.
+	 * @param handle The handle returned by \c flOpen(), or \c NULL.
 	 */
 	DLLEXPORT(void) flClose(
 		struct FLContext *handle
@@ -695,7 +695,7 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param progConfig The port configuration described above.
-	 * @param progFile The name of the programming file, or NULL if it's already given in progConfig.
+	 * @param progFile The name of the programming file, or \c NULL if it's already given in progConfig.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -770,7 +770,7 @@ extern "C" {
 	 * \c deviceArray is not \c NULL, populate it with at most \c arraySize IDCODEs, in chain order.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param portConfig The port bits to use for TDO, TDI, TMS & TCK, or NULL to use the default.
+	 * @param portConfig The port bits to use for TDO, TDI, TMS & TCK (e.g "D0D2D3D4").
 	 * @param numDevices A pointer to a \c uint32 which will be set on exit to the number of devices
 	 *            in the JTAG chain.
 	 * @param deviceArray A pointer to an array of \c uint32, which will be populated on exit with a
@@ -859,7 +859,7 @@ extern "C" {
 	 * @param handle The handle returned by \c flOpen().
 	 * @param numBits The number of bits to clock into the JTAG state-machine.
 	 * @param inData A pointer to the source data, or \c ZEROS or \c ONES.
-	 * @param outData A pointer to a buffer to receive output data, or NULL if you don't care.
+	 * @param outData A pointer to a buffer to receive output data, or \c NULL if you don't care.
 	 * @param isLast Either 0 to remain in Shift-xR, or 1 to exit to Exit1-xR.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
@@ -928,10 +928,10 @@ extern "C" {
 	 * find out which physical port \c SS was assigned to.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param port The \c LogicalPort to query for.
-	 * @returns The physical port mapped to the given \c LogicalPort.
+	 * @param logicalPort The @ref LogicalPort to query for.
+	 * @returns The physical port mapped to the given @ref LogicalPort.
 	 */
-	DLLEXPORT(uint8) progGetPort(struct FLContext *handle, LogicalPort port);
+	DLLEXPORT(uint8) progGetPort(struct FLContext *handle, uint8 logicalPort);
 
 	/**
 	 * @brief Get the physical bit number of the specified logical port.
@@ -943,21 +943,21 @@ extern "C" {
 	 * find out which physical port bit \c SS was assigned to.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param port The \c LogicalPort to query for.
-	 * @returns The physical bit mapped to the given \c LogicalPort.
+	 * @param logicalPort The @ref LogicalPort to query for.
+	 * @returns The physical bit mapped to the given @ref LogicalPort.
 	 */
-	DLLEXPORT(uint8) progGetBit(struct FLContext *handle, LogicalPort port);
+	DLLEXPORT(uint8) progGetBit(struct FLContext *handle, uint8 logicalPort);
 
 	/**
 	 * @brief Send a number of whole bytes over SPI, either LSB-first or MSB-first.
 	 *
-	 * Shift \c length bytes from \c buf into the microcontroller's SPI bus (if any), either MSB-first
+	 * Shift \c numBytes bytes from \c buf into the microcontroller's SPI bus (if any), either MSB-first
 	 * or LSB-first. You must have previously called \c progOpen().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param length The number of bytes to send.
+	 * @param numBytes The number of bytes to send.
 	 * @param buffer A pointer to the source data.
-	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
+	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST (see @ref BitOrder).
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -970,20 +970,20 @@ extern "C" {
 	 *     - \c FL_USB_ERR if USB communications failed whilst sending the data.
 	 */
 	DLLEXPORT(FLStatus) spiSend(
-		struct FLContext *handle, uint32 length, const uint8 *buffer, BitOrder bitOrder,
+		struct FLContext *handle, uint32 numBytes, const uint8 *buffer, uint8 bitOrder,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Receive a number of whole bytes over SPI, either LSB-first or MSB-first.
 	 *
-	 * Shift \c length bytes from the microcontroller's SPI bus (if any) into \c buffer, either
+	 * Shift \c numBytes bytes from the microcontroller's SPI bus (if any) into \c buffer, either
 	 * MSB-first or LSB-first. You must have previously called \c progOpen().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param buffer A pointer to a buffer to receive the data.
-	 * @param length The number of bytes to receive.
-	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
+	 * @param numBytes The number of bytes to receive.
+	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST (see @ref BitOrder).
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -995,7 +995,7 @@ extern "C" {
 	 *     - \c FL_USB_ERR if USB communications failed whilst receiving the data.
 	 */
 	DLLEXPORT(FLStatus) spiRecv(
-		struct FLContext *handle, uint32 length, uint8 *buffer, BitOrder bitOrder, const char **error
+		struct FLContext *handle, uint32 numBytes, uint8 *buffer, uint8 bitOrder, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -1010,7 +1010,7 @@ extern "C" {
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
-	// FX2 firmware functions
+	// Firmware functions
 	// ---------------------------------------------------------------------------------------------
 	/**
 	 * @name Firmware Operations
@@ -1175,6 +1175,7 @@ extern "C" {
 	 */
 	/**
 	 * @brief Sleep for the specified number of milliseconds.
+	 *
 	 * @param ms The number of milliseconds to sleep.
 	 */
 	DLLEXPORT(void) flSleep(
@@ -1191,7 +1192,7 @@ extern "C" {
 	 *
 	 * @param name The name of the file to load.
 	 * @param length A pointer to a \c size_t which will be populated on exit with the file length.
-	 * @returns A pointer to the allocated buffer, or NULL if the file could not be loaded.
+	 * @returns A pointer to the allocated buffer, or \c NULL if the file could not be loaded.
 	 */
 	DLLEXPORT(uint8*) flLoadFile(
 		const char *name, size_t *length
@@ -1208,13 +1209,13 @@ extern "C" {
 	/**
 	 * @brief Configure a single port bit on the microcontroller.
 	 *
-	 * With this function you can set a single microcontroller port bit to either \c PIN_INPUT,
-	 * \c PIN_HIGH or \c PIN_LOW, and read back the current state of the bit.
+	 * With this function you can set a single microcontroller port bit to one of the enums in
+	 * @ref PinConfig, and read back the current state of the bit.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param portNumber Which port to configure (i.e 0=PortA, 1=PortB, 2=PortC, etc).
 	 * @param bitNumber The bit within the chosen port to use.
-	 * @param pinConfig Either PIN_INPUT, PIN_HIGH or PIN_LOW.
+	 * @param pinConfig Either \c PIN_INPUT, \c PIN_HIGH or \c PIN_LOW.
 	 * @param pinRead Pointer to a <code>uint8</code> to be set on exit to 0 or 1 depending on
 	 *            the current state of the pin. May be \c NULL if you're not interested.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
@@ -1228,7 +1229,7 @@ extern "C" {
 	 */
 	DLLEXPORT(FLStatus) flSingleBitPortAccess(
 		struct FLContext *handle, uint8 portNumber, uint8 bitNumber,
-		PinConfig pinConfig, uint8 *pinRead, const char **error
+		uint8 pinConfig, uint8 *pinRead, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**

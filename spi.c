@@ -48,7 +48,7 @@ DLLEXPORT(void) spiBitSwap(uint32 length, uint8 *buffer) {
 }
 
 DLLEXPORT(FLStatus) spiSend(
-	struct FLContext *handle, uint32 length, const uint8 *buffer, BitOrder bitOrder, const char **error)
+	struct FLContext *handle, uint32 length, const uint8 *buffer, uint8 bitOrder, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
@@ -112,7 +112,7 @@ cleanup:
 }
 
 DLLEXPORT(FLStatus) spiRecv(
-	struct FLContext *handle, uint32 length, uint8 *buf, BitOrder bitOrder, const char **error)
+	struct FLContext *handle, uint32 length, uint8 *buf, uint8 bitOrder, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
