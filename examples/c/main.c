@@ -56,7 +56,7 @@ int main(int argc, const char *argv[]) {
 	uint8 buf[256];
 	uint8 flag;
 	bool isNeroCapable, isCommCapable;
-	uint32 fileLen;
+	size_t fileLen;
 	uint8 *buffer = NULL;
 	uint32 numDevices, scanChain[16], i;
 	const char *vp = NULL, *ivp = NULL, *queryPort = NULL, *portConfig = NULL, *progConfig = NULL, *dataFile = NULL;
@@ -246,9 +246,9 @@ int main(int argc, const char *argv[]) {
 				printf("got 0x%02X\n", buf[0]);
 
 				// Submit a couple of async reads...
-				status = flReadChannelAsyncSubmit(handle, 0x01, 65536, &error);
+				status = flReadChannelAsyncSubmit(handle, 0x01, 65536, NULL, &error);
 				CHECK_STATUS(status, 29, cleanup);
-				status = flReadChannelAsyncSubmit(handle, 0x02, 65536, &error);
+				status = flReadChannelAsyncSubmit(handle, 0x02, 65536, NULL, &error);
 				CHECK_STATUS(status, 30, cleanup);
 				
 				// ...and then await their completion
