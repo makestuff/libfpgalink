@@ -19,25 +19,25 @@
 # example demonstrates the usage of the bit-level I/O and SPI functions. The
 # board has MISO=PB3, MOSI=PB2, SS=PB0, SCK=PB1, CRESET=PB6 & POWER=C2.
 #
-from fpgalink import *
+import fpgalink
 import binascii
 
 # Connect, reset the board and open an SPI interface:
-handle = flOpen("1d50:602b:0001")
-flMultiBitPortAccess(handle, "B6-,C2-")  # RESET low & cut the power
-flSleep(10)
-flSingleBitPortAccess(handle, 2, 2, PinConfig.HIGH)  # power on in RESET
-progOpen(handle, "B3B2B0B1")  # open SPI
-(port, bit) = progGetPort(handle, LogicalPort.SS)
-flSingleBitPortAccess(handle, port, bit, PinConfig.HIGH)
+handle = fpgalink.flOpen("1d50:602b:0001")
+fpgalink.flMultiBitPortAccess(handle, "B6-,C2-")  # RESET low & cut the power
+fpgalink.flSleep(10)
+fpgalink.flSingleBitPortAccess(handle, 2, 2, fpgalink.PIN_HIGH)  # power on in RESET
+fpgalink.progOpen(handle, "B3B2B0B1")  # open SPI
+(port, bit) = fpgalink.progGetPort(handle, fpgalink.LP_SS)
+fpgalink.flSingleBitPortAccess(handle, port, bit, fpgalink.PIN_HIGH)
 
 # Send JEDEC device-id command, retrieve three bytes back
-flSingleBitPortAccess(handle, port, bit, PinConfig.LOW)
-spiSend(handle, 1, b"\x9F", BitOrder.MSBFIRST)
-print("JEDEC ID: %s" % binascii.hexlify(spiRecv(handle, 3, BitOrder.MSBFIRST)))
-flSingleBitPortAccess(handle, port, bit, PinConfig.HIGH)
+fpgalink.flSingleBitPortAccess(handle, port, bit, fpgalink.PIN_LOW)
+fpgalink.spiSend(handle, b"\x9F", fpgalink.SPI_MSBFIRST)
+print("JEDEC ID: %s" % binascii.hexlify(fpgalink.spiRecv(handle, 3, fpgalink.SPI_MSBFIRST)))
+fpgalink.flSingleBitPortAccess(handle, port, bit, fpgalink.PIN_HIGH)
 
 # Close SPI interface, release reset and close connection
-progClose(handle)
-flMultiBitPortAccess(handle, "B6?")  # release RESET
-flClose(handle)
+fpgalink.progClose(handle)
+fpgalink.flMultiBitPortAccess(handle, "B6?")  # release RESET
+fpgalink.flClose(handle)

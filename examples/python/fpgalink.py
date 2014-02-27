@@ -44,28 +44,25 @@ uint8 = c_ubyte
 size_t = c_size_t
 ErrorString = c_char_p
 
-def enum(**enums):
-    return type('Enum', (), enums)
+# PinConfig:
+PIN_HIGH  = uint8(0x01)
+PIN_LOW   = uint8(0x02)
+PIN_INPUT = uint8(0x03)
 
-PinConfig = enum(
-    HIGH  = uint8(0x01),
-    LOW   = uint8(0x02),
-    INPUT = uint8(0x03)
-)
-LogicalPort = enum(
-    MISO = uint8(0x01),
-    MOSI = uint8(0x02),
-    SS   = uint8(0x03),
-    SCK  = uint8(0x04)
-)
-BitOrder = enum(
-    MSBFIRST = uint8(0x00),
-    LSBFIRST = uint8(0x01)
-)
-Shift = enum(
-    ZEROS = cast(0, c_char_p),
-    ONES = cast(-1, c_char_p)
-)
+# LogicalPort
+LP_MISO = uint8(0x01)
+LP_MOSI = uint8(0x02)
+LP_SS   = uint8(0x03)
+LP_SCK  = uint8(0x04)
+
+# BitOrder
+SPI_MSBFIRST = uint8(0x00)
+SPI_LSBFIRST = uint8(0x01)
+
+# Shift all zeros or all ones
+SHIFT_ZEROS = cast(0, c_char_p)
+SHIFT_ONES = cast(-1, c_char_p)
+
 class ReadReport(Structure):
     _fields_ = [("data", POINTER(uint8)),
                 ("requestLength", uint32),
@@ -141,8 +138,10 @@ fpgalink.progOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
 fpgalink.progOpen.restype = FLStatus
 fpgalink.progClose.argtypes = [FLHandle, POINTER(ErrorString)]
 fpgalink.progClose.restype = FLStatus
-fpgalink.jtagShift.argtypes = [FLHandle, uint32, c_char_p, POINTER(uint8), uint8, POINTER(ErrorString)]
-fpgalink.jtagShift.restype = FLStatus
+fpgalink.jtagShiftInOnly.argtypes = [FLHandle, uint32, c_char_p, uint8, POINTER(ErrorString)]
+fpgalink.jtagShiftInOnly.restype = FLStatus
+fpgalink.jtagShiftInOut.argtypes = [FLHandle, uint32, c_char_p, POINTER(uint8), uint8, POINTER(ErrorString)]
+fpgalink.jtagShiftInOut.restype = FLStatus
 fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
 fpgalink.jtagClockFSM.restype = FLStatus
 fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
@@ -794,12 +793,12 @@ def jtagScanChain(handle, portConfig):
     ChainType = (uint32 * 16)  # Guess there are fewer than 16 devices
     chain = ChainType()
     length = uint32(0)
-    status = fpgalink.jtagScanChain(handle, portConfig, byref(length), chain, 16, byref(error))
+    status = fpgalink.jtagScanChain(handle, portConfig.encode('ascii'), byref(length), chain, 16, byref(error))
     if ( length.value > 16 ):
         # We know exactly how many devices there are, so try again
         ChainType = (uint32 * length.value)
         chain = ChainType()
-        status = fpgalink.jtagScanChain(handle, portConfig, None, chain, length.value, byref(error))
+        status = fpgalink.jtagScanChain(handle, portConfig.encode('ascii'), None, chain, length.value, byref(error))
     result = []
     for id in chain[:length.value]:
         result.append(id)
@@ -853,14 +852,14 @@ def _bitsToBytes(x):
 # Shift \c numBits bits from \c inData into TDI, at the same time shifting the same number of
 # bits from TDO into a \c bytearray, to be returned. If \c isLast is \c True, leave the TAP
 # state-machine in \c Shift-xR, otherwise \c Exit1-xR. If you want \c inData to be all zeros
-# you can use \c Shift.ZEROS, or if you want it to be all ones you can use \c Shift.ONES,
+# you can use \c SHIFT_ZEROS, or if you want it to be all ones you can use \c SHIFT_ONES,
 # otherwise you can pass in explicit data in the form of a \c bytes instance or a
 # \c bytearray instance. Each byte is sent in order, LSB-first. The TDO data is returned as
 # a \c bytearray, in order, LSB-first.
 #
 # @param handle The handle returned by \c flOpen().
 # @param numBits The number of bits to clock into the JTAG state-machine.
-# @param inData The source data, or \c Shift.ZEROS or \c Shift.ONES.
+# @param inData The source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
 # @param isLast Either \c False to remain in \c Shift-xR, or \c True to exit to \c Exit1-xR.
 # @returns A \c bytearray containing the TDO data.
 # @throw FLException
@@ -880,7 +879,7 @@ def jtagShiftInOut(handle, numBits, inData, isLast = False):
     outData = bytearray(numBytes)
     outDataBuf = BufType.from_buffer(outData)
     error = ErrorString()
-    status = fpgalink.jtagShift(
+    status = fpgalink.jtagShiftInOut(
         handle, numBits, inData, outDataBuf, 0x01 if isLast else 0x00, error)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
@@ -893,13 +892,13 @@ def jtagShiftInOut(handle, numBits, inData, isLast = False):
 #
 # Shift \c numBits bits from \c inData into TDI, throwing away the bits clocked out of TDO.
 # If \c isLast is \c True, leave the TAP state-machine in \c Shift-xR, otherwise \c Exit1-xR.
-# If you want \c inData to be all zeros you can use \c Shift.ZEROS, or if you want it to be
-# all ones you can use \c Shift.ONES, otherwise you can pass in explicit data in the form of
+# If you want \c inData to be all zeros you can use \c SHIFT_ZEROS, or if you want it to be
+# all ones you can use \c SHIFT_ONES, otherwise you can pass in explicit data in the form of
 # a \c bytes instance or a \c bytearray instance. Each byte is sent in order, LSB-first.
 #
 # @param handle The handle returned by \c flOpen().
 # @param numBits The number of bits to clock into the JTAG state-machine.
-# @param inData The source data, or \c Shift.ZEROS or \c Shift.ONES.
+# @param inData The source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
 # @param isLast Either \c False to remain in \c Shift-xR, or \c True to exit to \c Exit1-xR.
 # @returns A \c bytearray containing the TDO data.
 # @throw FLException
@@ -917,8 +916,8 @@ def jtagShiftInOnly(handle, numBits, inData, isLast = False):
             inData = BufType.from_buffer(inData)
         inData = cast(inData, c_char_p)
     error = ErrorString()
-    status = fpgalink.jtagShift(
-        handle, numBits, inData, None, 0x01 if isLast else 0x00, error)
+    status = fpgalink.jtagShiftInOnly(
+        handle, numBits, inData, 0x01 if isLast else 0x00, error)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
         fpgalink.flFreeError(error)
@@ -966,12 +965,12 @@ def jtagClocks(handle, numClocks):
 # preceding call to \c progOpen(). This is just a convenience function to avoid re-parsing
 # the port config, which is typically supplied by the user as a string. For example, to send
 # data to a SPI peripheral, you'll probably want to assert \c SS. So you'll want to call
-# \c progGetPort(handle, LogicalPort.SS) to find out which physical port and bit \c SS was
+# \c progGetPort(handle, LP_SS) to find out which physical port and bit \c SS was
 # assigned to. If it was assigned to port D7, this function will return (3, 7).
 #
 # @param handle The handle returned by \c flOpen().
-# @param logicalPort The \c LogicalPort to query for.
-# @returns A tuple pair of (physicalPort, physicalBit) mapped to the given \c LogicalPort.
+# @param logicalPort Either \c LP_MISO, \c LP_MOSI, \c LP_SS or \c LP_SCK.
+# @returns A tuple pair of (physicalPort, physicalBit) mapped to the given logical port.
 #
 def progGetPort(handle, logicalPort):
     return (
@@ -987,7 +986,7 @@ def progGetPort(handle, logicalPort):
 #
 # @param handle The handle returned by \c flOpen().
 # @param buf The bytes to send (either \c bytes or \c bytearray).
-# @param bitOrder Either \c BitOrder.MSBFIRST or \c BitOrder.LSBFIRST.
+# @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
 # @throw FLException
 #     - If there was a memory allocation failure.
 #     - If the device does not support SPI.
@@ -1014,7 +1013,7 @@ def spiSend(handle, buf, bitOrder):
 #
 # @param handle The handle returned by \c flOpen().
 # @param numBytes The number of bytes to receive.
-# @param bitOrder Either \c BitOrder.MSBFIRST or \c BitOrder.LSBFIRST.
+# @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST.
 # @throw FLException
 #     - If the device does not support SPI.
 #     - If USB communications failed whilst receiving the data.
@@ -1158,7 +1157,7 @@ def flSleep(ms):
 # @param handle The handle returned by \c flOpen().
 # @param portNumber Which port to configure (i.e 0=PortA, 1=PortB, 2=PortC, etc).
 # @param bitNumber The bit within the chosen port to use.
-# @param pinConfig Either \c PinConfig.INPUT, \c PinConfig.HIGH or \c PinConfig.LOW.
+# @param pinConfig Either \c PIN_INPUT, \c PIN_HIGH or \c PIN_LOW.
 # @returns True if the pin is currently high, else False.
 # @throw FLException if the micro failed to respond to the port access command.
 #
@@ -1175,8 +1174,8 @@ def flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig):
 ##
 # @brief Configure multiple port bits on the microcontroller.
 #
-# With this function you can set multiple microcontroller port bits to either \c PinConfig.INPUT,
-# \c PinConfig.HIGH or \c PinConfig.LOW, and read back the current state of each bit. This is
+# With this function you can set multiple microcontroller port bits to either \c PIN_INPUT,
+# \c PIN_HIGH or \c PIN_LOW, and read back the current state of each bit. This is
 # achieved by sending a comma-separated list of port configurations, e.g "A12-,B2+,C7?". A "+"
 # or a "-" suffix sets the port as an output, driven high or low respectively, and a "?" suffix
 # sets the port as an input. The current state of up to 32 bits are returned in \c readState,
