@@ -238,7 +238,7 @@ extern "C" {
 	 *
 	 * NeroProg is the collective name for all the various programming algorithms supported by
 	 * FPGALink, including but not limited to JTAG. An affirmative response means you are free to
-	 * call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c progClose(), \c jtagShift(),
+	 * call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c progClose(), \c jtagShiftInOut(),
 	 * \c jtagClockFSM() and \c jtagClocks().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
@@ -802,7 +802,7 @@ extern "C" {
 	 * @brief Open an SPI/JTAG connection.
 	 *
 	 * Open a SPI/JTAG connection using the supplied \c portConfig. You must open a connection
-	 * before calling \c jtagShift(), \c jtagClockFSM(), \c jtagClocks(), \c spiSend() or
+	 * before calling \c jtagShiftInOut(), \c jtagClockFSM(), \c jtagClocks(), \c spiSend() or
 	 * \c spiRecv(). And you must close the connection when you're finished, with \c progClose().
 	 *
 	 * @param handle The handle returned by \c flOpen().
@@ -841,26 +841,53 @@ extern "C" {
 		struct FLContext *handle, const char **error
 	) WARN_UNUSED_RESULT;
 
-	// Special values for inData parameter of jtagShift() declared below
+	// Special values for inData parameter of jtagShiftInOut() declared below
 	// @cond NEVER
-	#define ZEROS (const uint8*)NULL
-	#define ONES (ZEROS - 1)
+	#define SHIFT_ZEROS (const uint8*)NULL
+	#define SHIFT_ONES (SHIFT_ZEROS - 1)
 	// @endcond
+
+	/**
+	 * @brief Shift data into the JTAG state-machine.
+	 *
+	 * Shift \c numBits bits from \c inData into TDI. If \c isLast is nonzero, leave the TAP
+	 * state-machine in \c Shift-xR, otherwise \c Exit1-xR. If you want \c inData to be all zeros
+	 * you can use \c SHIFT_ZEROS, or if you want it to be all ones you can use \c SHIFT_ONES. This
+	 * is more efficient than explicitly sending an array containing all zeros or all 0xFFs.
+	 *
+	 * @param handle The handle returned by \c flOpen().
+	 * @param numBits The number of bits to clock into the JTAG state-machine.
+	 * @param inData A pointer to the source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
+	 * @param isLast Either 0 to remain in \c Shift-xR, or 1 to exit to \c Exit1-xR.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
+	 *            error message if something goes wrong. Responsibility for this allocated memory
+	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
+	 *            \c NULL, no allocation is done and no message is returned, but the return code
+	 *            will still be valid.
+	 * @returns
+	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_PROG_SEND if the micro refused to accept programming data.
+	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
+	 */
+	DLLEXPORT(FLStatus) jtagShiftInOnly(
+		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 isLast,
+		const char **error
+	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Shift data into and out of the JTAG state-machine.
 	 *
 	 * Shift \c numBits bits from \c inData into TDI, at the same time shifting the same number of
 	 * bits from TDO into \c outData. If \c isLast is nonzero, leave the TAP state-machine in
-	 * Shift-xR, otherwise Exit1-xR. If you want \c inData to be all zeros you can use \c ZEROS, or
-	 * if you want it to be all ones you can use \c ONES. This is more efficient than explicitly
-	 * sending an array containing all zeros or all 0xFFs.
+	 * \c Shift-xR, otherwise \c Exit1-xR. If you want \c inData to be all zeros you can use
+	 * \c SHIFT_ZEROS, or if you want it to be all ones you can use \c SHIFT_ONES. This is more
+	 * efficient than explicitly sending an array containing all zeros or all 0xFFs.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param numBits The number of bits to clock into the JTAG state-machine.
-	 * @param inData A pointer to the source data, or \c ZEROS or \c ONES.
+	 * @param inData A pointer to the source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
 	 * @param outData A pointer to a buffer to receive output data, or \c NULL if you don't care.
-	 * @param isLast Either 0 to remain in Shift-xR, or 1 to exit to Exit1-xR.
+	 * @param isLast Either 0 to remain in \c Shift-xR, or 1 to exit to \c Exit1-xR.
 	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
@@ -872,7 +899,7 @@ extern "C" {
 	 *     - \c FL_PROG_RECV if the micro refused to provide programming data.
 	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
 	 */
-	DLLEXPORT(FLStatus) jtagShift(
+	DLLEXPORT(FLStatus) jtagShiftInOut(
 		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, uint8 isLast,
 		const char **error
 	) WARN_UNUSED_RESULT;

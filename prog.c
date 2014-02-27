@@ -34,7 +34,7 @@
 // count or a byte-count depending on the context.
 //
 // Called by:
-//   jtagShift() -> beginShift()
+//   jtagShiftInOut() -> beginShift()
 //   flProgram() -> xProgram() -> fileWrite() -> dataWrite() -> beginShift()
 //
 static FLStatus beginShift(
@@ -66,7 +66,7 @@ cleanup:
 // micro should actually do with the data.
 //
 // Called by:
-//   jtagShift() -> doSend()
+//   jtagShiftInOut() -> doSend()
 //   flProgram() -> xProgram() -> fileWrite() -> dataWrite() -> doSend()
 //
 static FLStatus doSend(
@@ -90,7 +90,7 @@ cleanup:
 // source of the data.
 //
 // Called by:
-//   jtagShift() -> doReceive()
+//   jtagShiftInOut() -> doReceive()
 //
 static FLStatus doReceive(
 	struct FLContext *handle, uint8 *receivePtr, uint16 chunkSize, const char **error)
@@ -681,10 +681,10 @@ cleanup:
 }
 
 // Shift data into and out of JTAG chain.
-//   In pointer may be ZEROS (shift in zeros) or ONES (shift in ones).
+//   In pointer may be SHIFT_ZEROS (shift in zeros) or SHIFT_ONES (shift in ones).
 //   Out pointer may be NULL (not interested in data shifted out of the chain).
 //
-DLLEXPORT(FLStatus) jtagShift(
+DLLEXPORT(FLStatus) jtagShiftInOut(
 	struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, uint8 isLast,
 	const char **error)
 {
@@ -694,54 +694,72 @@ DLLEXPORT(FLStatus) jtagShift(
 	uint8 mode = 0x00;
 	bool isSending = false;
 
-	if ( inData == ONES ) {
+	if ( inData == SHIFT_ONES ) {
 		mode |= bmSENDONES;
-	} else if ( inData != ZEROS ) {
+	} else if ( inData != SHIFT_ZEROS ) {
 		isSending = true;
 	}
 	if ( isLast ) {
 		mode |= bmISLAST;
 	}
 	if ( isSending ) {
-		if ( outData ) {
-			fStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
-			while ( numBytes ) {
-				chunkSize = (uint16)((numBytes >= 64) ? 64 : numBytes);
-				fStatus = doSend(handle, inData, chunkSize, error);
-				CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
-				inData += chunkSize;
-				fStatus = doReceive(handle, outData, chunkSize, error);
-				CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
-				outData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		} else {
-			fStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
-			while ( numBytes ) {
-				chunkSize = (uint16)((numBytes >= 64) ? 64 : numBytes);
-				fStatus = doSend(handle, inData, chunkSize, error);
-				CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
-				inData += chunkSize;
-				numBytes -= chunkSize;
-			}
+		fStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_ISRECEIVING, mode, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
+		while ( numBytes ) {
+			chunkSize = (uint16)((numBytes >= 64) ? 64 : numBytes);
+			fStatus = doSend(handle, inData, chunkSize, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
+			inData += chunkSize;
+			fStatus = doReceive(handle, outData, chunkSize, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
+			outData += chunkSize;
+			numBytes -= chunkSize;
 		}
 	} else {
-		if ( outData ) {
-			fStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
-			while ( numBytes ) {
-				chunkSize = (uint16)((numBytes >= 64) ? 64 : numBytes);
-				fStatus = doReceive(handle, outData, chunkSize, error);
-				CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
-				outData += chunkSize;
-				numBytes -= chunkSize;
-			}
-		} else {
-			fStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
-			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShift()");
+		fStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_ISRECEIVING, mode, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
+		while ( numBytes ) {
+			chunkSize = (uint16)((numBytes >= 64) ? 64 : numBytes);
+			fStatus = doReceive(handle, outData, chunkSize, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
+			outData += chunkSize;
+			numBytes -= chunkSize;
 		}
+	}
+cleanup:
+	return retVal;
+}
+
+DLLEXPORT(FLStatus) jtagShiftInOnly(
+	struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 isLast,
+	const char **error)
+{
+	FLStatus retVal = FL_SUCCESS, fStatus;
+	uint32 numBytes = bitsToBytes(numBits);
+	uint16 chunkSize;
+	uint8 mode = 0x00;
+	bool isSending = false;
+	if ( inData == SHIFT_ONES ) {
+		mode |= bmSENDONES;
+	} else if ( inData != SHIFT_ZEROS ) {
+		isSending = true;
+	}
+	if ( isLast ) {
+		mode |= bmISLAST;
+	}
+	if ( isSending ) {
+		fStatus = beginShift(handle, numBits, PROG_JTAG_ISSENDING_NOTRECEIVING, mode, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
+		while ( numBytes ) {
+			chunkSize = (uint16)((numBytes >= 64) ? 64 : numBytes);
+			fStatus = doSend(handle, inData, chunkSize, error);
+			CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
+			inData += chunkSize;
+			numBytes -= chunkSize;
+		}
+	} else {
+		fStatus = beginShift(handle, numBits, PROG_JTAG_NOTSENDING_NOTRECEIVING, mode, error);
+		CHECK_STATUS(fStatus, fStatus, cleanup, "jtagShiftInOut()");
 	}
 cleanup:
 	return retVal;
@@ -814,7 +832,7 @@ DLLEXPORT(FLStatus) jtagScanChain(
 	fStatus = jtagClockFSM(handle, 0x0000005F, 9, error);  // Reset TAP, goto Shift-DR
 	CHECK_STATUS(fStatus, fStatus, cleanup, "jtagScanChain()");
 	for ( ; ; ) {
-		fStatus = jtagShift(handle, 32, ZEROS, u.bytes, false, error);
+		fStatus = jtagShiftInOut(handle, 32, SHIFT_ZEROS, u.bytes, false, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "jtagScanChain()");
 		if ( u.idCode == 0x00000000 || u.idCode == U32MAX ) {
 			break;
