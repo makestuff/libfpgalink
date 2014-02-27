@@ -148,8 +148,11 @@ DLLEXPORT(FLStatus) flFlashCustomFirmware(
 		CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flFlashCustomFirmware()");
 		bStatus = bufReadFromIntelHexFile(&fwData, &fwMask, fwFile, error);
 		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flFlashCustomFirmware()");
+		i2cInitialise(&iicBuf, 0x0000, 0x0000, 0x0000, CONFIG_BYTE_400KHZ);
 		iStatus = i2cWritePromRecords(&iicBuf, &fwData, &fwMask, error);
 		CHECK_STATUS(iStatus, FL_FX2_ERR, cleanup, "flFlashCustomFirmware()");
+		iStatus = i2cFinalise(&iicBuf, error);
+		CHECK_STATUS(iStatus, FL_FX2_ERR, cleanup);
 	} else if ( isI2C ) {
 		// Load the .iic file into the iicBuf:
 		bStatus = bufAppendFromBinaryFile(&iicBuf, fwFile, error);
