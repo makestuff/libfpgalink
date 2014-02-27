@@ -20,17 +20,14 @@ enumerates as and choose an appropriate CSVF file.
     -h              print this help and exit
 
 In order to build the example code, you'll need to install the MakeStuff build
-infrastructure from http://bit.ly/makestuff. Then you'll be able to build and
-run the code like this (replace 20130321 with the actual FPGALink release):
+infrastructure from http://bit.ly/makestuff and build FPGALink from source
+(don't worry, it's straightforward). Then you'll be able to build and run the
+example code like this:
 
-  cd makestuff/libs
-  wget -qO- http://www.swaton.ukfsn.org/bin/fpgalink-20130321/fpgalink-bin.tar.gz | tar zxf -
-  mv libfpgalink-20130321 libfpgalink
-  cd libfpgalink/examples/c
   make
-  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-  lin.x64/rel/c -i 1443:0005 -v 1443:0005 -d D7+ -q D0D2D3D4 \
-    -p J:D0D2D3D4:../../hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2all-nexys2-1200.csvf \
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=16
+  lin.x64/rel/c -i 1443:0005 -v 1d50:602b:0002 -d D7+ -q D0D2D3D4 \
+    -p J:D0D2D3D4:../../../../hdlmake/apps/makestuff/swled/cksum/vhdl/fpga.xsvf \
     -f /var/tmp/foo.dat
 
 This connects to the device at 1443:0005 (hopefully a 1200K Digilent Nexys2),
