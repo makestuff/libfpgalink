@@ -1,0 +1,41 @@
+CALLING FPGALINK FROM PERL
+
+This uses SWIG to generate a Perl binding. The generated API is more or less
+identical to the hand-coded Python binding.
+
+
+BUILDING ON LINUX
+
+First you need SWIG: sudo apt-get install swig2.0
+
+Second, check the Makefile to ensure it has the correct location of your Perl
+installation.
+
+Finally, type "make" to build the binding.
+
+You can run the example code like this:
+
+PERL5LIB=lin.x64/rel LD_LIBRARY_PATH=lin.x64/rel ./various.pl
+
+
+BUILDING ON WINDOWS
+
+First you need ActivePerl 5.16 (assuming Windows x64 here):
+
+http://downloads.activestate.com/ActivePerl/releases/5.16.3.1603/ActivePerl-5.16.3.1603-MSWin32-x64-296746.msi
+
+More recent versions are no longer built with MSVC. You may be able to get the
+binding to work with more recent versions, but this build will definitely not
+"just work" with anything other than 5.16.
+
+Second, install SWIG:
+
+cd /
+wget http://prdownloads.sourceforge.net/swig/swigwin-2.0.12.zip
+unzip.exe swigwin-2.0.12.zip
+
+Finally, type "make" in this directory to build the binding.
+
+You can run the example code like this:
+
+PERL5LIB=win.x64/rel PATH=win.x64/rel:$PATH ./various.pl

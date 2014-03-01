@@ -1,7 +1,8 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 use fl;
 use strict;
+use warnings;
 
 my ($handle, $bytes, $found, $port, $bit, $VID_PID, $PROG_CONFIG);
 

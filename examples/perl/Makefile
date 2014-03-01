@@ -1,30 +1,42 @@
-CFLAGS := -m64 -g -fPIC -Dbool=char -I/usr/lib/perl/5.18.2/CORE -I. -DLINUX=2 -D_REENTRANT -D_LARGEFILE64_SOURCE -shared
+#
+# Copyright (C) 2009-2012 Chris McClelland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+ROOT    := $(realpath ../../../..)
+DEPS    := fpgalink
+TYPE    := dll
+SUBDIRS :=
+LOCALNAME := fl
+EXTRA_CC_SRCS := $(LOCALNAME)_wrap.c
+PRE_BUILD := $(EXTRA_CC_SRCS)
+EXTRA_CLEAN := $(EXTRA_CC_SRCS) $(LOCALNAME).pm
+ifeq ($(OS),Windows_NT)
+	EXTRA_INCS := -I/c/Perl64/lib/CORE
+	LINK_EXTRALIBS_REL := /c/Perl64/lib/CORE/perl516.lib
+	LINK_EXTRALIBS_DBG := $(LINK_EXTRALIBS_REL)
+	SWIG := /swigwin-2.0.12/swig.exe
+else
+	EXTRA_INCS := -I/usr/lib/perl/5.18.2/CORE
+	EXTRA_CFLAGS := -DLINUX=2 -D_REENTRANT -D_LARGEFILE64_SOURCE
+	CSTD := gnu99
+	ALIASING := -fno-strict-aliasing
+	SWIG := swig2.0
+endif
 
-MODULE := fl
+-include $(ROOT)/common/top.mk
 
-all: $(MODULE).so
-	LD_LIBRARY_PATH=../../lin.x64/rel ./try.pl
-
-debug: $(MODULE).so
-	printf "break $(MODULE)_wrap.c:2118\nrun\nwhere\nquit\n" | LD_LIBRARY_PATH=../../lin.x64/rel gdb -q --args perl ./try.pl
-
-$(MODULE).so: $(MODULE)_wrap.c
-	gcc $(CFLAGS) \
-		-I/home/chris/makestuff/common \
-		-I../.. \
-		$< -o $@ \
-		-L/home/chris/makestuff/libs/liberror/lin.x64/rel -lerror \
-		-L../../lin.x64/rel -lfpgalink
-	cat extra.pm >> $(MODULE).pm
-
-#		-I/home/chris/makestuff/libs/liberror \
-
-#DEBUG := -debug-tmsearch
-
-$(MODULE)_wrap.c: $(MODULE).i
-	swig2.0 -perl5 $(DEBUG) $<
-
-clean: FORCE
-	rm -f *.so fl.pm *_wrap.c
-
-FORCE:
+$(LOCALNAME)_wrap.c: $(LOCALNAME).i
+	$(SWIG) -perl5 $(DEBUG) $<
+	cat extra.pm >> $(LOCALNAME).pm
