@@ -1,4 +1,19 @@
 #!/usr/bin/env perl
+#
+# Copyright (C) 2014 Chris McClelland
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use fl;
 use strict;
@@ -8,7 +23,6 @@ my ($handle, $bytes, $found, $port, $bit, $VID_PID, $PROG_CONFIG);
 
 $VID_PID = "1d50:602b:0002";
 $PROG_CONFIG = "D0D2D3D4";
-
 eval {
 	fl::flInitialise(0);
 
@@ -87,7 +101,6 @@ eval {
 
 	printf("Single byte read: %02X\n", fl::flReadChannel($handle, 2));
 
-	#for ( ; ; ) {
 	fl::flReadChannelAsyncSubmit($handle, 2, 16);
 	fl::flReadChannelAsyncSubmit($handle, 2);
 	$bytes = fl::flReadChannelAsyncAwait($handle);
@@ -102,7 +115,6 @@ eval {
 		printf(" %02X", ord);
 	}
 	print "\n}\n";
-	#}
 };
 if ( $@ ) {
 	warn "WARNING: $@";

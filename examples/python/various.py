@@ -27,9 +27,9 @@ try:
         print("Loading firmware...")
         fl.flLoadStandardFirmware("04b4:8613", VID_PID)
 
-    print("Awaiting...")
-    found = fl.flAwaitDevice(VID_PID, 600)
-    print("Result: {}".format(found))
+        print("Awaiting...")
+        found = fl.flAwaitDevice(VID_PID, 600)
+        print("Result: {}".format(found))
 
     handle = fl.flOpen(VID_PID)
 
