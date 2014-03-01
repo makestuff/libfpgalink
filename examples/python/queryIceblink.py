@@ -19,25 +19,36 @@
 # example demonstrates the usage of the bit-level I/O and SPI functions. The
 # board has MISO=PB3, MOSI=PB2, SS=PB0, SCK=PB1, CRESET=PB6 & POWER=C2.
 #
-import fpgalink
-import binascii
+import fl
 
-# Connect, reset the board and open an SPI interface:
-handle = fpgalink.flOpen("1d50:602b:0001")
-fpgalink.flMultiBitPortAccess(handle, "B6-,C2-")  # RESET low & cut the power
-fpgalink.flSleep(10)
-fpgalink.flSingleBitPortAccess(handle, 2, 2, fpgalink.PIN_HIGH)  # power on in RESET
-fpgalink.progOpen(handle, "B3B2B0B1")  # open SPI
-(port, bit) = fpgalink.progGetPort(handle, fpgalink.LP_SS)
-fpgalink.flSingleBitPortAccess(handle, port, bit, fpgalink.PIN_HIGH)
+VID_PID = "1D50:602B:0001"
+PROG_CONFIG = "B3B2B0B1"
+handle = fl.FLHandle()
+try:
+    fl.flInitialise(0)
 
-# Send JEDEC device-id command, retrieve three bytes back
-fpgalink.flSingleBitPortAccess(handle, port, bit, fpgalink.PIN_LOW)
-fpgalink.spiSend(handle, b"\x9F", fpgalink.SPI_MSBFIRST)
-print("JEDEC ID: %s" % binascii.hexlify(fpgalink.spiRecv(handle, 3, fpgalink.SPI_MSBFIRST)))
-fpgalink.flSingleBitPortAccess(handle, port, bit, fpgalink.PIN_HIGH)
+    # Connect, reset the board, open SPI interface & get SS port:
+    handle = fl.flOpen(VID_PID)
+    fl.flMultiBitPortAccess(handle, "B6-,C2-")  # RESET low & cut the power
+    fl.flSleep(10)
+    fl.flSingleBitPortAccess(handle, 2, 2, fl.PIN_HIGH)  # power on in RESET
+    fl.progOpen(handle, PROG_CONFIG)
+    (port, bit) = fl.progGetPort(handle, fl.LP_SS)
+    fl.flSingleBitPortAccess(handle, port, bit, fl.PIN_HIGH)
+    
+    # Send JEDEC device-id command, retrieve three bytes back
+    fl.flSingleBitPortAccess(handle, port, bit, fl.PIN_LOW)
+    fl.spiSend(handle, b"\x9F", fl.SPI_MSBFIRST)
+    bs = fl.spiRecv(handle, 3, fl.SPI_MSBFIRST)
+    print("JEDEC ID: {}".format(
+        " ".join(["{:02X}".format(b) for b in bs])))
+    fl.flSingleBitPortAccess(handle, port, bit, fl.PIN_HIGH)
+    
+    # Close SPI interface, release reset and close connection
+    fl.progClose(handle)
+    fl.flMultiBitPortAccess(handle, "B6?")  # release RESET
 
-# Close SPI interface, release reset and close connection
-fpgalink.progClose(handle)
-fpgalink.flMultiBitPortAccess(handle, "B6?")  # release RESET
-fpgalink.flClose(handle)
+except fl.FLException as ex:
+    print(ex)
+finally:
+    fl.flClose(handle)

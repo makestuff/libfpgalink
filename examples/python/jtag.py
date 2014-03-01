@@ -17,35 +17,39 @@
 
 # Use the low-level JTAG functions to query the JTAG chain.
 #
-import fpgalink
-import binascii
+import fl
 import argparse
 
 print("FPGALink Python JTAG Example Copyright (C) 2014 Chris McClelland\n")
 parser = argparse.ArgumentParser(description='Load FX2LP firmware, load the FPGA, interact with the FPGA.')
 parser.add_argument('-v', action="store", nargs=1, required=True, metavar="<VID:PID>", help="VID, PID and opt. dev ID (e.g 1D50:602B:0001)")
 parser.add_argument('-q', action="store", nargs=1, required=True, metavar="<jtagPorts>", help="query the JTAG chain")
+
 argList = parser.parse_args()
 vp = argList.v[0]
 jtagPorts = argList.q[0]
-handle = fpgalink.FLHandle()
+handle = fl.FLHandle()
 try:
-    handle = fpgalink.flOpen(vp)
-    fpgalink.progOpen(handle, jtagPorts)
+    fl.flInitialise(0)
+
+    handle = fl.flOpen(vp)
+    fl.progOpen(handle, jtagPorts)
 
     # Try special-purpose enum:
-    fpgalink.jtagClockFSM(handle, 0x0000005F, 9)
-    result = fpgalink.jtagShiftInOut(handle, 64, fpgalink.SHIFT_ZEROS)
-    print('TDO data, given 64 zeros:\n  %s' % binascii.hexlify(result).decode("utf-8").upper())
+    fl.jtagClockFSM(handle, 0x0000005F, 9)
+    bs = fl.jtagShiftInOut(handle, 64, fl.SHIFT_ZEROS)
+    print("TDO data, given 64 zeros:\n  {}".format(
+        " ".join(["{:02X}".format(b) for b in bs])))
 
-    # Try bytes:
-    fpgalink.jtagClockFSM(handle, 0x0000005F, 9)
-    result = fpgalink.jtagShiftInOut(handle, 128, b"\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xCA\xFE\xBA\xBE\xDE\xAD\xBE\xEF")
-    print('TDO data, given 128 explicit bits:\n  %s' % binascii.hexlify(result).decode("utf-8").upper())
+    # Try explicit bytes:
+    fl.jtagClockFSM(handle, 0x0000005F, 9)
+    bs = fl.jtagShiftInOut(handle, 128, b"\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xCA\xFE\xBA\xBE\xDE\xAD\xBE\xEF")
+    print("TDO data, given 128 explicit bits:\n  {}".format(
+        " ".join(["{:02X}".format(b) for b in bs])))
 
-    fpgalink.progClose(handle)
+    fl.progClose(handle)
 
-except fpgalink.FLException as ex:
+except fl.FLException as ex:
     print(ex)
 finally:
-    fpgalink.flClose(handle)
+    fl.flClose(handle)

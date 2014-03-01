@@ -71,113 +71,109 @@ class ReadReport(Structure):
 # Get DLL
 if ( sys.platform.startswith("linux") ):
     cdll.LoadLibrary("libfpgalink.so")
-    fpgalink = CDLL("libfpgalink.so")
+    flc = CDLL("libfpgalink.so")
 elif ( sys.platform == "darwin" ):
     cdll.LoadLibrary("libfpgalink.dylib")
-    fpgalink = CDLL("libfpgalink.dylib")
+    flc = CDLL("libfpgalink.dylib")
 elif ( sys.platform == "win32" ):
     windll.LoadLibrary("libfpgalink.dll")
-    fpgalink = WinDLL("libfpgalink.dll")
+    flc = WinDLL("libfpgalink.dll")
 else:
     raise FLException("Unrecognised platform: " + sys.platform)
 
 # Miscellaneous Functions
-fpgalink.flInitialise.argtypes = [c_int, POINTER(ErrorString)]
-fpgalink.flInitialise.restype = FLStatus
-fpgalink.flFreeError.argtypes = [c_char_p]
-fpgalink.flFreeError.restype = None
+flc.flInitialise.argtypes = [c_int, POINTER(ErrorString)]
+flc.flInitialise.restype = FLStatus
+flc.flFreeError.argtypes = [c_char_p]
+flc.flFreeError.restype = None
 
 # Connection Lifecycle
-fpgalink.flOpen.argtypes = [c_char_p, POINTER(FLHandle), POINTER(ErrorString)]
-fpgalink.flOpen.restype = FLStatus
-fpgalink.flClose.argtypes = [FLHandle]
-fpgalink.flClose.restype = None
+flc.flOpen.argtypes = [c_char_p, POINTER(FLHandle), POINTER(ErrorString)]
+flc.flOpen.restype = FLStatus
+flc.flClose.argtypes = [FLHandle]
+flc.flClose.restype = None
 
 # Device Capabilities and Status
-fpgalink.flIsDeviceAvailable.argtypes = [c_char_p, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flIsDeviceAvailable.restype = FLStatus
-fpgalink.flIsNeroCapable.argtypes = [FLHandle]
-fpgalink.flIsNeroCapable.restype = uint8
-fpgalink.flIsCommCapable.argtypes = [FLHandle]
-fpgalink.flIsCommCapable.restype = uint16
-fpgalink.flGetFirmwareID.argtypes = [FLHandle]
-fpgalink.flGetFirmwareID.restype = uint16
-fpgalink.flGetFirmwareVersion.argtypes = [FLHandle]
-fpgalink.flGetFirmwareVersion.restype = uint32
+flc.flIsDeviceAvailable.argtypes = [c_char_p, POINTER(uint8), POINTER(ErrorString)]
+flc.flIsDeviceAvailable.restype = FLStatus
+flc.flIsNeroCapable.argtypes = [FLHandle]
+flc.flIsNeroCapable.restype = uint8
+flc.flIsCommCapable.argtypes = [FLHandle, uint8]
+flc.flIsCommCapable.restype = uint16
+flc.flGetFirmwareID.argtypes = [FLHandle]
+flc.flGetFirmwareID.restype = uint16
+flc.flGetFirmwareVersion.argtypes = [FLHandle]
+flc.flGetFirmwareVersion.restype = uint32
 
 # CommFPGA Operations
-fpgalink.flSelectConduit.argtypes = [FLHandle, uint8, POINTER(ErrorString)]
-fpgalink.flSelectConduit.restype = FLStatus
-fpgalink.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flIsFPGARunning.restype = FLStatus
-fpgalink.flReadChannel.argtypes = [FLHandle, uint8, size_t, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flReadChannel.restype = FLStatus
-fpgalink.flWriteChannel.argtypes = [FLHandle, uint8, size_t, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flWriteChannel.restype = FLStatus
-fpgalink.flSetAsyncWriteChunkSize.argtypes = [FLHandle, uint16, POINTER(ErrorString)]
-fpgalink.flSetAsyncWriteChunkSize.restype = FLStatus
-fpgalink.flWriteChannelAsync.argtypes = [FLHandle, uint8, size_t, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flWriteChannelAsync.restype = FLStatus
-fpgalink.flFlushAsyncWrites.argtypes = [FLHandle, POINTER(ErrorString)]
-fpgalink.flFlushAsyncWrites.restype = FLStatus
-fpgalink.flAwaitAsyncWrites.argtypes = [FLHandle, POINTER(ErrorString)]
-fpgalink.flAwaitAsyncWrites.restype = FLStatus
-fpgalink.flReadChannelAsyncSubmit.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flReadChannelAsyncSubmit.restype = FLStatus
-fpgalink.flReadChannelAsyncAwait.argtypes = [FLHandle, POINTER(ReadReport), POINTER(ErrorString)]
-fpgalink.flReadChannelAsyncAwait.restype = FLStatus
+flc.flSelectConduit.argtypes = [FLHandle, uint8, POINTER(ErrorString)]
+flc.flSelectConduit.restype = FLStatus
+flc.flIsFPGARunning.argtypes = [FLHandle, POINTER(uint8), POINTER(ErrorString)]
+flc.flIsFPGARunning.restype = FLStatus
+flc.flReadChannel.argtypes = [FLHandle, uint8, size_t, POINTER(uint8), POINTER(ErrorString)]
+flc.flReadChannel.restype = FLStatus
+flc.flWriteChannel.argtypes = [FLHandle, uint8, size_t, c_char_p, POINTER(ErrorString)]
+flc.flWriteChannel.restype = FLStatus
+flc.flSetAsyncWriteChunkSize.argtypes = [FLHandle, uint16, POINTER(ErrorString)]
+flc.flSetAsyncWriteChunkSize.restype = FLStatus
+flc.flWriteChannelAsync.argtypes = [FLHandle, uint8, size_t, c_char_p, POINTER(ErrorString)]
+flc.flWriteChannelAsync.restype = FLStatus
+flc.flFlushAsyncWrites.argtypes = [FLHandle, POINTER(ErrorString)]
+flc.flFlushAsyncWrites.restype = FLStatus
+flc.flAwaitAsyncWrites.argtypes = [FLHandle, POINTER(ErrorString)]
+flc.flAwaitAsyncWrites.restype = FLStatus
+flc.flReadChannelAsyncSubmit.argtypes = [FLHandle, uint8, uint32, POINTER(uint8), POINTER(ErrorString)]
+flc.flReadChannelAsyncSubmit.restype = FLStatus
+flc.flReadChannelAsyncAwait.argtypes = [FLHandle, POINTER(ReadReport), POINTER(ErrorString)]
+flc.flReadChannelAsyncAwait.restype = FLStatus
 
 # NeroProg Operations
-fpgalink.flProgram.argtypes = [FLHandle, c_char_p, c_char_p, POINTER(ErrorString)]
-fpgalink.flProgram.restype = FLStatus
-fpgalink.flProgramBlob.argtypes = [FLHandle, c_char_p, uint32, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flProgramBlob.restype = FLStatus
-fpgalink.jtagScanChain.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
-fpgalink.jtagScanChain.restype = FLStatus
-fpgalink.progOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
-fpgalink.progOpen.restype = FLStatus
-fpgalink.progClose.argtypes = [FLHandle, POINTER(ErrorString)]
-fpgalink.progClose.restype = FLStatus
-fpgalink.jtagShiftInOnly.argtypes = [FLHandle, uint32, c_char_p, uint8, POINTER(ErrorString)]
-fpgalink.jtagShiftInOnly.restype = FLStatus
-fpgalink.jtagShiftInOut.argtypes = [FLHandle, uint32, c_char_p, POINTER(uint8), uint8, POINTER(ErrorString)]
-fpgalink.jtagShiftInOut.restype = FLStatus
-fpgalink.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
-fpgalink.jtagClockFSM.restype = FLStatus
-fpgalink.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
-fpgalink.jtagClocks.restype = FLStatus
-fpgalink.progGetPort.argtypes = [FLHandle, uint8]
-fpgalink.progGetPort.restype = uint8
-fpgalink.progGetBit.argtypes = [FLHandle, uint8]
-fpgalink.progGetBit.restype = uint8
-fpgalink.spiSend.argtypes = [FLHandle, uint32, c_char_p, uint8, POINTER(ErrorString)]
-fpgalink.spiSend.restype = FLStatus
-fpgalink.spiRecv.argtypes = [FLHandle, uint32, POINTER(uint8), uint8, POINTER(ErrorString)]
-fpgalink.spiRecv.restype = FLStatus
+flc.flProgram.argtypes = [FLHandle, c_char_p, c_char_p, POINTER(ErrorString)]
+flc.flProgram.restype = FLStatus
+flc.flProgramBlob.argtypes = [FLHandle, c_char_p, uint32, c_char_p, POINTER(ErrorString)]
+flc.flProgramBlob.restype = FLStatus
+flc.jtagScanChain.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(uint32), uint32, POINTER(ErrorString)]
+flc.jtagScanChain.restype = FLStatus
+flc.progOpen.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+flc.progOpen.restype = FLStatus
+flc.progClose.argtypes = [FLHandle, POINTER(ErrorString)]
+flc.progClose.restype = FLStatus
+flc.jtagShiftInOnly.argtypes = [FLHandle, uint32, c_char_p, uint8, POINTER(ErrorString)]
+flc.jtagShiftInOnly.restype = FLStatus
+flc.jtagShiftInOut.argtypes = [FLHandle, uint32, c_char_p, POINTER(uint8), uint8, POINTER(ErrorString)]
+flc.jtagShiftInOut.restype = FLStatus
+flc.jtagClockFSM.argtypes = [FLHandle, uint32, uint8, POINTER(ErrorString)]
+flc.jtagClockFSM.restype = FLStatus
+flc.jtagClocks.argtypes = [FLHandle, uint32, POINTER(ErrorString)]
+flc.jtagClocks.restype = FLStatus
+flc.progGetPort.argtypes = [FLHandle, uint8]
+flc.progGetPort.restype = uint8
+flc.progGetBit.argtypes = [FLHandle, uint8]
+flc.progGetBit.restype = uint8
+flc.spiSend.argtypes = [FLHandle, uint32, c_char_p, uint8, POINTER(ErrorString)]
+flc.spiSend.restype = FLStatus
+flc.spiRecv.argtypes = [FLHandle, uint32, POINTER(uint8), uint8, POINTER(ErrorString)]
+flc.spiRecv.restype = FLStatus
 
 # Firmware Operations
-fpgalink.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
-fpgalink.flLoadStandardFirmware.restype = FLStatus
-fpgalink.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
-fpgalink.flFlashStandardFirmware.restype = FLStatus
-fpgalink.flSaveFirmware.argtypes = [FLHandle, uint32, c_char_p, POINTER(ErrorString)]
-fpgalink.flSaveFirmware.restype = FLStatus
-fpgalink.flLoadCustomFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
-fpgalink.flLoadCustomFirmware.restype = FLStatus
-fpgalink.flFlashCustomFirmware.argtypes = [FLHandle, c_char_p, uint32, POINTER(ErrorString)]
-fpgalink.flFlashCustomFirmware.restype = FLStatus
+flc.flLoadStandardFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
+flc.flLoadStandardFirmware.restype = FLStatus
+flc.flFlashStandardFirmware.argtypes = [FLHandle, c_char_p, POINTER(ErrorString)]
+flc.flFlashStandardFirmware.restype = FLStatus
+flc.flSaveFirmware.argtypes = [FLHandle, uint32, c_char_p, POINTER(ErrorString)]
+flc.flSaveFirmware.restype = FLStatus
+flc.flLoadCustomFirmware.argtypes = [c_char_p, c_char_p, POINTER(ErrorString)]
+flc.flLoadCustomFirmware.restype = FLStatus
+flc.flFlashCustomFirmware.argtypes = [FLHandle, c_char_p, uint32, POINTER(ErrorString)]
+flc.flFlashCustomFirmware.restype = FLStatus
 
 # Utility functions
-fpgalink.flSleep.argtypes = [uint32]
-fpgalink.flSleep.restype = None
-fpgalink.flLoadFile.argtypes = [c_char_p, POINTER(size_t)]
-fpgalink.flLoadFile.restype = POINTER(uint8)
-fpgalink.flFreeFile.argtypes = [POINTER(uint8)]
-fpgalink.flFreeFile.restype = None
-fpgalink.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
-fpgalink.flSingleBitPortAccess.restype = FLStatus
-fpgalink.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(ErrorString)]
-fpgalink.flMultiBitPortAccess.restype = FLStatus
+flc.flSleep.argtypes = [uint32]
+flc.flSleep.restype = None
+flc.flSingleBitPortAccess.argtypes = [FLHandle, uint8, uint8, uint8, POINTER(uint8), POINTER(ErrorString)]
+flc.flSingleBitPortAccess.restype = FLStatus
+flc.flMultiBitPortAccess.argtypes = [FLHandle, c_char_p, POINTER(uint32), POINTER(ErrorString)]
+flc.flMultiBitPortAccess.restype = FLStatus
 ## @endcond
 
 ##
@@ -195,10 +191,10 @@ fpgalink.flMultiBitPortAccess.restype = FLStatus
 # 
 def flInitialise(debugLevel):
     error = ErrorString()
-    status = fpgalink.flInitialise(debugLevel, byref(error))
+    status = flc.flInitialise(debugLevel, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 # @}
 
@@ -224,10 +220,10 @@ def flInitialise(debugLevel):
 def flOpen(vp):
     handle = FLHandle()
     error = ErrorString()
-    status = fpgalink.flOpen(vp.encode('ascii'), byref(handle), byref(error))
+    status = flc.flOpen(vp.encode('ascii'), byref(handle), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
     return handle
 
@@ -237,13 +233,26 @@ def flOpen(vp):
 # @param handle The handle returned by \c flOpen().
 #
 def flClose(handle):
-    fpgalink.flClose(handle)
+    flc.flClose(handle)
 
 # @}
 
 ##
 # @name Device Capabilities and Status
 # @{
+
+def flIsDeviceAvailable(vp):
+    error = ErrorString()
+    isAvailable = uint8()
+    status = flc.flIsDeviceAvailable(vp.encode('ascii'), byref(isAvailable), byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        flc.flFreeError(error)
+        raise FLException(s)
+    if ( isAvailable ):
+        return True
+    else:
+        return False
 
 ##
 # @brief Await renumeration - return true if found before timeout.
@@ -264,13 +273,13 @@ def flClose(handle):
 def flAwaitDevice(vp, timeout):
     error = ErrorString()
     isAvailable = uint8()
-    fpgalink.flSleep(1000);
+    flc.flSleep(1000);
     while ( True ):
-        fpgalink.flSleep(100);
-        status = fpgalink.flIsDeviceAvailable(vp.encode('ascii'), byref(isAvailable), byref(error))
+        flc.flSleep(100);
+        status = flc.flIsDeviceAvailable(vp.encode('ascii'), byref(isAvailable), byref(error))
         if ( status != FL_SUCCESS ):
             s = str(error.value)
-            fpgalink.flFreeError(error)
+            flc.flFreeError(error)
             raise FLException(s)
         timeout = timeout - 1
         if ( isAvailable ):
@@ -290,7 +299,7 @@ def flAwaitDevice(vp, timeout):
 # @returns \c True if the device supports NeroProg, else \c False.
 #
 def flIsNeroCapable(handle):
-    if ( fpgalink.flIsNeroCapable(handle) ):
+    if ( flc.flIsNeroCapable(handle) ):
         return True
     else:
         return False
@@ -320,7 +329,7 @@ def flIsNeroCapable(handle):
 # @returns \c True if the device supports CommFPGA, else \c False.
 #
 def flIsCommCapable(handle, conduit):
-    if ( fpgalink.flIsCommCapable(handle, conduit) ):
+    if ( flc.flIsCommCapable(handle, conduit) ):
         return True
     else:
         return False
@@ -335,7 +344,7 @@ def flIsCommCapable(handle, conduit):
 # @returns A 16-bit unsigned integer giving the firmware ID.
 #
 def flGetFirmwareID(handle):
-    return fpgalink.flGetFirmwareID(handle)
+    return flc.flGetFirmwareID(handle)
 
 ##
 # @brief Get the firmware version.
@@ -348,7 +357,7 @@ def flGetFirmwareID(handle):
 # @returns A 32-bit unsigned integer giving the firmware version.
 #
 def flGetFirmwareVersion(handle):
-    return fpgalink.flGetFirmwareVersion(handle)
+    return flc.flGetFirmwareVersion(handle)
 # @}
 
 ##
@@ -375,10 +384,10 @@ def flGetFirmwareVersion(handle):
 #
 def flSelectConduit(handle, conduit):
     error = ErrorString()
-    status = fpgalink.flSelectConduit(handle, conduit, byref(error))
+    status = flc.flSelectConduit(handle, conduit, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -398,10 +407,10 @@ def flSelectConduit(handle, conduit):
 def flIsFPGARunning(handle):
     error = ErrorString()
     isRunning = uint8()
-    status = fpgalink.flIsFPGARunning(handle, byref(isRunning), byref(error))
+    status = flc.flIsFPGARunning(handle, byref(isRunning), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
     if ( isRunning ):
         return True
@@ -430,18 +439,18 @@ def flReadChannel(handle, chan, length = 1):
     if ( length == 1 ):
         # Read a single byte
         buf = uint8()
-        status = fpgalink.flReadChannel(handle, chan, 1, byref(buf), byref(error))
+        status = flc.flReadChannel(handle, chan, 1, byref(buf), byref(error))
         returnValue = buf.value
     else:
         # Read multiple bytes
         byteArray = bytearray(length)
         BufType = uint8*length
         buf = BufType.from_buffer(byteArray)
-        status = fpgalink.flReadChannel(handle, chan, length, buf, byref(error))
+        status = flc.flReadChannel(handle, chan, length, buf, byref(error))
         returnValue = byteArray
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
     return returnValue
 
@@ -471,23 +480,21 @@ def flWriteChannel(handle, chan, values):
         numValues = len(values)
         BufType = uint8*numValues
         buf = BufType.from_buffer(values)
-        status = fpgalink.flWriteChannel(handle, chan, numValues, buf, byref(error))
+        status = flc.flWriteChannel(handle, chan, numValues, buf, byref(error))
+    elif ( isinstance(values, bytes) ):
+        # Write the contents of the byte array:
+        numValues = len(values)
+        status = flc.flWriteChannel(handle, chan, numValues, values, byref(error))
     elif ( isinstance(values, int) ):
         # Write a single integer
         if ( values > 0xFF ):
-            raise FLException("Supplied value won't fit in a byte!")
-        status = fpgalink.flWriteChannel(handle, chan, 1, (uint8*1)(values), byref(error))
+            raise FLException("flWriteChannel(): Supplied value won't fit in a byte!")
+        status = flc.flWriteChannel(handle, chan, 1, cast((uint8*1)(values), c_char_p), byref(error))
     else:
-        # Write the contents of a file
-        fileLen = size_t()
-        fileData = fpgalink.flLoadFile(values.encode('ascii'), byref(fileLen))
-        if ( fileData == None ):
-            raise FLException("Cannot load file!")
-        status = fpgalink.flWriteChannel(handle, chan, fileLen, fileData, byref(error))
-        fpgalink.flFreeFile(fileData)
+        raise FLException("flWriteChannel(): values must be numeric, bytes or bytearray")
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -508,10 +515,10 @@ def flWriteChannel(handle, chan, values):
 #
 def flSetAsyncWriteChunkSize(handle, chunkSize):
     error = ErrorString()
-    status = fpgalink.flSetAsyncWriteChunkSize(handle, chunkSize, byref(error))
+    status = flc.flSetAsyncWriteChunkSize(handle, chunkSize, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -542,23 +549,21 @@ def flWriteChannelAsync(handle, chan, values):
         numValues = len(values)
         BufType = uint8*numValues
         buf = BufType.from_buffer(values)
-        status = fpgalink.flWriteChannelAsync(handle, chan, numValues, buf, byref(error))
+        status = flc.flWriteChannelAsync(handle, chan, numValues, buf, byref(error))
+    elif ( isinstance(values, bytes) ):
+        # Write the contents of the byte array:
+        numValues = len(values)
+        status = flc.flWriteChannelAsync(handle, chan, numValues, values, byref(error))
     elif ( isinstance(values, int) ):
         # Write a single integer
         if ( values > 0xFF ):
-            raise FLException("Supplied value won't fit in a byte!")
-        status = fpgalink.flWriteChannelAsync(handle, chan, 1, (uint8*1)(values), byref(error))
+            raise FLException("flWriteChannelAsync(): Supplied value won't fit in a byte!")
+        status = flc.flWriteChannelAsync(handle, chan, 1, cast((uint8*1)(values), c_char_p), byref(error))
     else:
-        # Write the contents of a file
-        fileLen = uint32()
-        fileData = fpgalink.flLoadFile(values.encode('ascii'), byref(fileLen))
-        if ( fileData == None ):
-            raise FLException("Cannot load file!")
-        status = fpgalink.flWriteChannelAsync(handle, chan, fileLen, fileData, byref(error))
-        fpgalink.flFreeFile(fileData)
+        raise FLException("flWriteChannelAsync(): values must be numeric, bytes or bytearray")
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -575,10 +580,10 @@ def flWriteChannelAsync(handle, chan, values):
 #
 def flFlushAsyncWrites(handle):
     error = ErrorString()
-    status = fpgalink.flFlushAsyncWrites(handle, byref(error))
+    status = flc.flFlushAsyncWrites(handle, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -598,10 +603,10 @@ def flFlushAsyncWrites(handle):
 #
 def flAwaitAsyncWrites(handle):
     error = ErrorString()
-    status = fpgalink.flAwaitAsyncWrites(handle, byref(error))
+    status = flc.flAwaitAsyncWrites(handle, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -633,36 +638,31 @@ def flAwaitAsyncWrites(handle):
 #
 def flReadChannelAsyncSubmit(handle, chan, length = 1):
     error = ErrorString()
-    status = fpgalink.flReadChannelAsyncSubmit(handle, chan, length, None, byref(error))
+    status = flc.flReadChannelAsyncSubmit(handle, chan, length, None, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
 # @brief Await the data from a previously-submitted asynchronous read.
 #
 # Block until the outcome of a previous call to \c flReadChannelAsyncSubmit() is known. If the
-# read was successful, you are given the resulting data. If not, an error code/message.
-#
-# On successful outcome, a \c ReadReport object is returned with a pointer to the data, the
-# number of bytes read, etc. This gives access to the raw memory owned by the FPGALink DLL. It is
-# guaranteed to remain valid until your next call to any of the CommFPGA functions. You can copy
-# it into a string with something like ctypes.string_at(readReport.data, readReport.actualLength).
+# read was successful, you are given the resulting data. If not, this function throws FLException.
 #
 # @param handle The handle returned by \c flOpen().
-# @returns A \c ReadReport object which points to the data read, and the number of bytes.
-# @throw FLException if one of the outstanding async operations failed.
+# @returns A \c bytes object containing the data read.
+# @throw FLException if the matching async read failed.
 #
 def flReadChannelAsyncAwait(handle):
     readReport = ReadReport(None, 0, 0)
     error = ErrorString()
-    status = fpgalink.flReadChannelAsyncAwait(handle, byref(readReport), byref(error))
+    status = flc.flReadChannelAsyncAwait(handle, byref(readReport), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
-    return readReport
+    return string_at(readReport.data, readReport.actualLength)
 # @}
 
 ##
@@ -759,18 +759,28 @@ def flReadChannelAsyncAwait(handle):
 #
 def flProgram(handle, progConfig, progFile = None):
     error = ErrorString()
+    if ( progFile != None ):
+        progFile = progFile.encode('ascii')
+    status = flc.flProgram(handle, progConfig.encode('ascii'), progFile, byref(error))
+    if ( status != FL_SUCCESS ):
+        s = str(error.value)
+        flc.flFreeError(error)
+        raise FLException(s)
+
+def flProgramBlob(handle, progConfig, progFile):
+    error = ErrorString()
     if ( isinstance(progFile, bytearray) ):
         length = len(progFile)
         BufType = uint8*length
         buf = BufType.from_buffer(progFile)
-        status = fpgalink.flProgramBlob(handle, progConfig.encode('ascii'), length, buf, byref(error))
+        status = flc.flProgramBlob(handle, progConfig.encode('ascii'), length, buf, byref(error))
+    elif ( isinstance(progFile, bytes) ):
+        status = flc.flProgramBlob(handle, progConfig.encode('ascii'), length, progFile, byref(error))
     else:
-        if ( progFile != None ):
-            progFile = progFile.encode('ascii')
-        status = fpgalink.flProgram(handle, progConfig.encode('ascii'), progFile, byref(error))
+        raise FLException("flProgramBlob(): progFile must be bytearray or bytes")
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -793,12 +803,12 @@ def jtagScanChain(handle, portConfig):
     ChainType = (uint32 * 16)  # Guess there are fewer than 16 devices
     chain = ChainType()
     length = uint32(0)
-    status = fpgalink.jtagScanChain(handle, portConfig.encode('ascii'), byref(length), chain, 16, byref(error))
+    status = flc.jtagScanChain(handle, portConfig.encode('ascii'), byref(length), chain, 16, byref(error))
     if ( length.value > 16 ):
         # We know exactly how many devices there are, so try again
         ChainType = (uint32 * length.value)
         chain = ChainType()
-        status = fpgalink.jtagScanChain(handle, portConfig.encode('ascii'), None, chain, length.value, byref(error))
+        status = flc.jtagScanChain(handle, portConfig.encode('ascii'), None, chain, length.value, byref(error))
     result = []
     for id in chain[:length.value]:
         result.append(id)
@@ -820,10 +830,10 @@ def jtagScanChain(handle, portConfig):
 #
 def progOpen(handle, portConfig):
     error = ErrorString()
-    status = fpgalink.progOpen(handle, portConfig.encode('ascii'), byref(error))
+    status = flc.progOpen(handle, portConfig.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -836,10 +846,10 @@ def progOpen(handle, portConfig):
 #
 def progClose(handle):
     error = ErrorString()
-    status = fpgalink.progClose(handle, byref(error))
+    status = flc.progClose(handle, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 # Helper function: return the number of bytes needed to store x bits
@@ -872,18 +882,18 @@ def jtagShiftInOut(handle, numBits, inData, isLast = False):
     BufType = uint8*numBytes
     if ( not isinstance(inData, c_char_p) ):
         if ( numBytes != len(inData) ):
-            raise FLException("Expecting %d bytes inData" % numBytes)
+            raise FLException("jtagShiftInOut(): Expecting {} bytes inData".format(numBytes))
         if ( isinstance(inData, bytearray) ):
             inData = BufType.from_buffer(inData)
         inData = cast(inData, c_char_p)
     outData = bytearray(numBytes)
     outDataBuf = BufType.from_buffer(outData)
     error = ErrorString()
-    status = fpgalink.jtagShiftInOut(
+    status = flc.jtagShiftInOut(
         handle, numBits, inData, outDataBuf, 0x01 if isLast else 0x00, error)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
     return outData
 
@@ -911,16 +921,16 @@ def jtagShiftInOnly(handle, numBits, inData, isLast = False):
     BufType = uint8*numBytes
     if ( not isinstance(inData, c_char_p) ):
         if ( numBytes != len(inData) ):
-            raise FLException("Expecting %d bytes inData" % numBytes)
+            raise FLException("jtagShiftInOnly(): Expecting {} bytes inData".format(numBytes))
         if ( isinstance(inData, bytearray) ):
             inData = BufType.from_buffer(inData)
         inData = cast(inData, c_char_p)
     error = ErrorString()
-    status = fpgalink.jtagShiftInOnly(
+    status = flc.jtagShiftInOnly(
         handle, numBits, inData, 0x01 if isLast else 0x00, error)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -935,10 +945,10 @@ def jtagShiftInOnly(handle, numBits, inData, isLast = False):
 #
 def jtagClockFSM(handle, bitPattern, transitionCount):
     error = ErrorString()
-    status = fpgalink.jtagClockFSM(handle, bitPattern, transitionCount, byref(error))
+    status = flc.jtagClockFSM(handle, bitPattern, transitionCount, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -952,10 +962,10 @@ def jtagClockFSM(handle, bitPattern, transitionCount):
 #
 def jtagClocks(handle, numClocks):
     error = ErrorString()
-    status = fpgalink.jtagClocks(handle, numClocks, byref(error))
+    status = flc.jtagClocks(handle, numClocks, byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -974,8 +984,8 @@ def jtagClocks(handle, numClocks):
 #
 def progGetPort(handle, logicalPort):
     return (
-        fpgalink.progGetPort(handle, logicalPort),
-        fpgalink.progGetBit(handle, logicalPort)
+        flc.progGetPort(handle, logicalPort),
+        flc.progGetBit(handle, logicalPort)
     )
 
 ##
@@ -998,11 +1008,11 @@ def spiSend(handle, buf, bitOrder):
         buf = BufType.from_buffer(buf)
         buf = cast(buf, c_char_p)
     error = ErrorString()
-    status = fpgalink.spiSend(
+    status = flc.spiSend(
         handle, numBytes, buf, bitOrder, error)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -1023,11 +1033,11 @@ def spiRecv(handle, numBytes, bitOrder):
     recvData = bytearray(numBytes)
     recvDataBuf = BufType.from_buffer(recvData)
     error = ErrorString()
-    status = fpgalink.spiRecv(
+    status = flc.spiRecv(
         handle, numBytes, recvDataBuf, bitOrder, error)
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
     return recvData
 # @}
@@ -1055,10 +1065,10 @@ def spiRecv(handle, numBytes, bitOrder):
 #
 def flLoadStandardFirmware(curVidPid, newVidPid):
     error = ErrorString()
-    status = fpgalink.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), byref(error))
+    status = flc.flLoadStandardFirmware(curVidPid.encode('ascii'), newVidPid.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -1080,10 +1090,10 @@ def flLoadStandardFirmware(curVidPid, newVidPid):
 #
 def flFlashStandardFirmware(handle, newVidPid):
     error = ErrorString()
-    status = fpgalink.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), byref(error))
+    status = flc.flFlashStandardFirmware(handle, newVidPid.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -1103,10 +1113,10 @@ def flFlashStandardFirmware(handle, newVidPid):
 #
 def flLoadCustomFirmware(curVidPid, fwFile):
     error = ErrorString()
-    status = fpgalink.flLoadCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
+    status = flc.flLoadCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 ##
@@ -1128,10 +1138,10 @@ def flLoadCustomFirmware(curVidPid, fwFile):
 #
 def flFlashCustomFirmware(curVidPid, fwFile):
     error = ErrorString()
-    status = fpgalink.flFlashCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
+    status = flc.flFlashCustomFirmware(curVidPid.encode('ascii'), fwFile.encode('ascii'), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
 
 # @}
@@ -1146,7 +1156,7 @@ def flFlashCustomFirmware(curVidPid, fwFile):
 # @param ms The number of milliseconds to sleep.
 #
 def flSleep(ms):
-    fpgalink.flSleep(ms)
+    flc.flSleep(ms)
 
 ##
 # @brief Configure a single port bit on the microcontroller.
@@ -1164,10 +1174,10 @@ def flSleep(ms):
 def flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig):
     error = ErrorString()
     bitRead = uint8()
-    status = fpgalink.flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig, byref(bitRead), byref(error))
+    status = flc.flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig, byref(bitRead), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
     return False if bitRead.value == 0 else True
 
@@ -1192,12 +1202,10 @@ def flSingleBitPortAccess(handle, portNumber, bitNumber, pinConfig):
 def flMultiBitPortAccess(handle, portConfig):
     error = ErrorString()
     readState = uint32()
-    status = fpgalink.flMultiBitPortAccess(handle, portConfig.encode('ascii'), byref(readState), byref(error))
+    status = flc.flMultiBitPortAccess(handle, portConfig.encode('ascii'), byref(readState), byref(error))
     if ( status != FL_SUCCESS ):
         s = str(error.value)
-        fpgalink.flFreeError(error)
+        flc.flFreeError(error)
         raise FLException(s)
     return readState.value
 # @}
-
-flInitialise(0)
