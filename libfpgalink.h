@@ -24,7 +24,7 @@
  * - Load device firmware and EEPROM (specific to Cypress FX2LP).
  * - Program an FPGA or CPLD using JTAG or one of the proprietary serial or parallel algorithms.
  * - Read and write (over USB) up to 128 byte-wide data channels in the target FPGA.
- * - Manipulate microcontroller digital I/O & SPI port(s).
+ * - Manipulate microcontroller digital I/O and SPI port(s).
  */
 #ifndef FPGALINK_H
 #define FPGALINK_H
@@ -42,16 +42,6 @@ extern "C" {
 	 * @name Types
 	 * @{
 	 */
-	/**
-	 * Report struct populated by \c flReadChannelAsyncAwait(). Async reads are done in chunks of up
-	 * to and including 64KiB, which is why the lengths are \c uint32 and not \c size_t.
-	 */
-	struct ReadReport {
-		const uint8 *data;     ///< The result of the asynchronous read.
-		uint32 requestLength;  ///< The number of bytes requested, <= 64KiB.
-		uint32 actualLength;   ///< The number of bytes actualy read, <= 64KiB.
-	};
-
 	/**
 	 * Return codes from the functions.
 	 */
@@ -131,11 +121,11 @@ extern "C" {
 	 * (e.g a Linux kernel with USB support disabled, or a machine lacking a USB host controller).
 	 *
 	 * @param debugLevel 0->none, 1, 2, 3->lots.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c usbFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if there were problems initialising LibUSB.
@@ -158,7 +148,7 @@ extern "C" {
 	 * @{
 	 */
 	/**
-	 * @brief Open a connection to the FPGALink device at the specified VID & PID.
+	 * @brief Open a connection to the FPGALink device at the specified VID and PID.
 	 *
 	 * Connects to the device and verifies it's an FPGALink device, then queries its capabilities.
 	 *
@@ -169,11 +159,11 @@ extern "C" {
 	 *            point at a newly-allocated context structure. Responsibility for this allocated
 	 *            memory (and its associated USB resources) passes to the caller and must be freed
 	 *            with \c flClose(). Will be set \c NULL if an error occurs.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (\c *handle is valid).
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
@@ -185,7 +175,7 @@ extern "C" {
 	) WARN_UNUSED_RESULT;
 
 	/**
-	 * @brief Close the connection to the FPGALink device.
+	 * @brief Close an existing connection to an FPGALink device.
 	 *
 	 * If the handle is \c NULL, this function does nothing.
 	 *
@@ -197,7 +187,7 @@ extern "C" {
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
-	// Get device capabilities & status
+	// Get device capabilities and status
 	// ---------------------------------------------------------------------------------------------
 	/**
 	 * @name Device Capabilities and Status
@@ -209,21 +199,21 @@ extern "C" {
 	 * The LibUSB devices in the system are searched for a device with the given VID:PID.
 	 *
 	 * There is a short period of time following a call to \c flLoadStandardFirmware() or
-	 * \c flLoadCustomFirmware() during which this function will still return true for the
-	 * "current" VID:PID, so when you load new firmware, it's important to either wait a while before
-	 * calling this function, or alternatively just ensure that the "new" VID:PID is different from
-	 * the "current" VID:PID to avoid such false positives.
+	 * \c flLoadCustomFirmware() during which this function will still return with
+	 * <code>*isAvailable == 1</code> for the "current" VID:PID, so when you load new firmware, it's
+	 * important to either wait a while before calling this function, or alternatively just ensure
+	 * that the "new" VID:PID is different from the "current" VID:PID to avoid such false positives.
 	 *
 	 * @param vp The Vendor/Product (i.e VVVV:PPPP) of the FPGALink device. You may also specify
 	 *            an optional device ID (e.g 1D50:602B:0004). If no device ID is supplied, it
 	 *            selects the first device with matching VID:PID.
 	 * @param isAvailable A pointer to an 8-bit integer which will be set on exit to 1 if available
 	 *            else 0.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (\c *isAvailable is valid).
 	 *     - \c FL_USB_ERR if the VID:PID is invalid or if no USB buses were found (did you
@@ -238,8 +228,9 @@ extern "C" {
 	 *
 	 * NeroProg is the collective name for all the various programming algorithms supported by
 	 * FPGALink, including but not limited to JTAG. An affirmative response means you are free to
-	 * call \c flProgram(), \c jtagScanChain(), \c progOpen(), \c progClose(), \c jtagShiftInOut(),
-	 * \c jtagClockFSM() and \c jtagClocks().
+	 * call \c flProgram(), \c flProgramBlob(), \c jtagScanChain(), \c progOpen(), \c progClose(),
+	 * \c jtagShiftInOnly(), \c jtagShiftInOut(), \c jtagClockFSM(), \c jtagClocks(),
+	 * \c progGetPort(), \c progGetBit(), \c spiSend(), \c spiRecv() and \c spiBitSwap().
 	 *
 	 * This function merely returns a flag determined by \c flOpen(), so it cannot fail.
 	 *
@@ -263,9 +254,10 @@ extern "C" {
 	 * determine whether the FPGA contains suitable logic to implement the protocol, or even
 	 * whether there is an FPGA physically wired to the micro in the first place.
 	 *
-	 * An affirmative response means you are free to call \c flReadChannel(),
-	 * \c flReadChannelAsyncSubmit(), \c flReadChannelAsyncAwait(), \c flWriteChannel(),
-	 * \c flWriteChannelAsync() and \c flIsFPGARunning().
+	 * An affirmative response means you are free to call \c flIsFPGARunning(),
+	 * \c flReadChannel(), \c flWriteChannel(), \c flSetAsyncWriteChunkSize(),
+	 * \c flWriteChannelAsync(), \c flFlushAsyncWrites() \c flAwaitAsyncWrites(),
+	 * \c flReadChannelAsyncSubmit(), and \c flReadChannelAsyncAwait().
 	 *
 	 * This function merely returns information determined by \c flOpen(), so it cannot fail.
 	 *
@@ -315,23 +307,23 @@ extern "C" {
 	 * @brief Select a different conduit.
 	 *
 	 * Select a different conduit for CommFPGA communication. Typically a micro will implement its
-	 * first CommFPGA protocol on conduit 1. It may or may not also implement others on conduit 2, 3,
-	 * 4 etc. It may also implement comms-over-JTAG using a virtual TAP FSM on the FPGA. You can use
-	 * \c flIsCommCapable() to determine whether the micro supports CommFPGA on a given conduit.
+	 * first CommFPGA protocol on conduit 1. It may or may not also implement others on conduit 2,
+	 * 3, 4 etc. It may also implement comms-over-JTAG using a virtual TAP FSM on the FPGA. You can
+	 * use \c flIsCommCapable() to determine whether the micro supports CommFPGA on a given conduit.
 	 *
-	 * If mixing NeroProg operations with CommFPGA operations, it *may* be necessary to switch
+	 * If mixing NeroProg operations with CommFPGA operations, it \b may be necessary to switch
 	 * conduits. For example, if your PCB is wired to use some of the CommFPGA signals during
 	 * programming, you will have to switch back and forth. But if the pins used for CommFPGA are
-	 * independent of the pins used for NeroProg, you need only select the correct conduit on startup
-	 * and then leave it alone.
+	 * independent of the pins used for NeroProg, you need only select the correct conduit on
+	 * startup and then leave it alone.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param conduit The conduit to select (current range 0-15).
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if the device doesn't respond, or the conduit is out of range.
@@ -346,18 +338,18 @@ extern "C" {
 	 * This may only be called if \c flIsCommCapable() returns true. It merely verifies that
 	 * the FPGA is asserting that it's ready to read commands on the chosen conduit. Some conduits
 	 * may not have the capability to determine this, and will therefore just optimistically report
-	 * true. Before calling \c flIsFPGARunning(), you should verify that the FPGALink device
-	 * actually supports CommFPGA using \c flIsCommCapable(), and select the conduit you wish to
+	 * true. Before calling this function you should verify that the FPGALink device actually
+	 * supports CommFPGA using \c flIsCommCapable(), and select the conduit you wish to
 	 * use with \c flSelectConduit().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param isRunning A pointer to an 8-bit integer which will be set on exit to 1 if the FPGA
 	 *            is running, else 0.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if all is well (<code>*isRunning</code> is valid).
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
@@ -369,60 +361,61 @@ extern "C" {
 	/**
 	 * @brief Synchronously read one or more bytes from the specified channel.
 	 *
-	 * Read \c length bytes from the FPGA channel \c chan to the \c data array. Before calling
-	 * \c flReadChannel(), you should verify that the FPGALink device actually supports
-	 * CommFPGA using \c flIsCommCapable().
+	 * Read \c numBytes bytes from the FPGA channel \c channel into the \c buffer array. Before
+	 * calling this function you should verify that the FPGALink device actually supports CommFPGA
+	 * using \c flIsCommCapable().
 	 *
-	 * Because this function is synchronous, it will block until the data has been returned.
+	 * Because this function is synchronous, it will block until the data has been returned. You
+	 * must not use this function between an async read submit...await pair.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param chan The FPGA channel to read.
-	 * @param length The number of bytes to read.
+	 * @param channel The FPGA channel to read (0-127).
+	 * @param numBytes The number of bytes to read.
 	 * @param buffer The address of a buffer to store the bytes read from the FPGA.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if a USB read or write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
-	 *     - \c FL_BAD_STATE if there are async reads in progress.
 	 */
 	DLLEXPORT(FLStatus) flReadChannel(
-		struct FLContext *handle, uint8 chan, size_t length, uint8 *buffer,
+		struct FLContext *handle, uint8 channel, size_t numBytes, uint8 *buffer,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Synchronously write one or more bytes to the specified channel.
 	 *
-	 * Write \c length bytes from the \c data array to FPGA channel \c chan. Before calling
-	 * \c flWriteChannel(), you should verify that the FPGALink device actually supports
-	 * CommFPGA using \c flIsCommCapable().
+	 * Write \c numBytes bytes from the \c sendData array to FPGA channel \c channel. Before calling
+	 * this function you should verify that the FPGALink device actually supports CommFPGA using
+	 * \c flIsCommCapable().
 	 *
 	 * Because this function is synchronous, it will block until the OS has confirmed that the data
 	 * has been correctly sent over USB and received by the micro. It cannot confirm that the data
 	 * has been received by the FPGA however: it may be waiting in the micro's output buffer.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param chan The FPGA channel to write.
-	 * @param length The number of bytes to write.
-	 * @param data The address of the array of bytes to be written to the FPGA.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param channel The FPGA channel to write (0-127).
+	 * @param numBytes The number of bytes to write.
+	 * @param sendData The address of the array of bytes to be written to the FPGA.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
+	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 *     - \c FL_USB_ERR if a USB write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 *     - \c FL_BAD_STATE if there are async reads in progress.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannel(
-		struct FLContext *handle, uint8 chan, size_t length, const uint8 *data,
+		struct FLContext *handle, uint8 channel, size_t numBytes, const uint8 *sendData,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -430,9 +423,9 @@ extern "C" {
 	 * @brief Set the chunk size to be used for future async writes.
 	 *
 	 * By default, the \c flWriteChannelAsync() function buffers up to 64KiB of data before sending
-	 * anything over USB. Chunking the data in this way is more efficient than sending lots of little
-	 * messages. However, the choice of chunk size affects the steady-state throughput in interesting
-	 * ways. If you need to, you can choose to make the chunks smaller than 64KiB.
+	 * anything over USB. Chunking the data in this way is more efficient than sending lots of
+	 * little messages. However, the choice of chunk size affects the steady-state throughput in
+	 * interesting ways. If you need to, you can choose to make the chunks smaller than 64KiB.
 	 *
 	 * You should not call this when there is some send data buffered. You should either call this
 	 * before the first call to \c flWriteChannelAsync(), or call it immediately after a call to
@@ -440,11 +433,11 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param chunkSize The new chunksize in bytes. Passing zero sets the chunkSize to 64KiB.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_BAD_STATE if there is some outstanding send data.
@@ -456,33 +449,33 @@ extern "C" {
 	/**
 	 * @brief Asynchronously write one or more bytes to the specified channel.
 	 *
-	 * Write \c length bytes from the \c data array to FPGA channel \c chan. Before calling
-	 * \c flWriteChannelAsync(), you should verify that the FPGALink device actually supports
-	 * CommFPGA using \c flIsCommCapable().
+	 * Write \c numBytes bytes from the \c sendData array to FPGA channel \c channel. Before calling
+	 * this function you should verify that the FPGALink device actually supports CommFPGA using
+	 * \c flIsCommCapable().
 	 *
 	 * This function is asynchronous. That means it will return immediately, usually before anything
 	 * has been actually sent over USB. If the operation fails, you will not be notified of the
 	 * failure until a future call to \c flAwaitAsyncWrites() or \c flReadChannelAsyncAwait(). The
-	 * data is copied internally, so there's no need to worry about preserving the data: it's safe to
-	 * call \c flWriteChannelAsync() on a stack-allocated array, for example.
+	 * data is copied internally, so there's no need to worry about preserving the data: it's safe
+	 * to call \c flWriteChannelAsync() on a stack-allocated array, for example.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param chan The FPGA channel to write.
-	 * @param length The number of bytes to write.
-	 * @param data The address of the array of bytes to be written to the FPGA.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param channel The FPGA channel to write (0-127).
+	 * @param numBytes The number of bytes to write.
+	 * @param sendData The address of the array of bytes to be written to the FPGA.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
-	 *     - \c FL_ALLOC_ERR if we ran out of memory.
+	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
 	 *     - \c FL_USB_ERR if a USB write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 */
 	DLLEXPORT(FLStatus) flWriteChannelAsync(
-		struct FLContext *handle, uint8 chan, size_t length, const uint8 *data,
+		struct FLContext *handle, uint8 channel, size_t numBytes, const uint8 *sendData,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -494,11 +487,11 @@ extern "C" {
 	 * the data. See \c flAwaitAsyncWrites().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if a USB write error occurred.
@@ -513,16 +506,16 @@ extern "C" {
 	 *
 	 * The first thing this does is to call \c flFlushAsyncWrites() to flush out any outstanding
 	 * write commands. It will then block until the OS confirms that all the asynchronous write
-	 * commands sent by \c flWriteChannelAsync() were correctly sent over USB and recieved by the
+	 * commands sent by \c flWriteChannelAsync() were correctly sent over USB and received by the
 	 * micro. It cannot confirm that that the writes were received by the FPGA however: they may be
 	 * waiting in the micro's output buffer.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if one of the outstanding async operations failed.
@@ -536,13 +529,14 @@ extern "C" {
 	/**
 	 * @brief Submit an asynchronous read of one or more bytes from the specified channel.
 	 *
-	 * Submit an asynchronous read of \c length bytes from the FPGA channel \c chan. You can request
-	 * at most 64KiB of data asynchronously. Before calling \c flReadChannelAsyncSubmit(), you should
-	 * verify that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
+	 * Submit an asynchronous read of \c numBytes bytes from the FPGA channel \c channel. You can
+	 * request at most 64KiB of data asynchronously. Before calling this function you should verify
+	 * that the FPGALink device actually supports CommFPGA using \c flIsCommCapable().
 	 *
 	 * This function is asynchronous. That means it will return immediately, usually before the read
 	 * request has been sent over USB. You will not find out the result of the read until you later
-	 * call \c flReadChannelAsyncAwait() - this will give you your data, or tell you what went wrong.
+	 * call \c flReadChannelAsyncAwait() - this will give you your data, or tell you what went
+	 * wrong.
 	 *
 	 * You should always ensure that for each call to \c flReadChannelAsyncSubmit(), there is a
 	 * matching call to \c flReadChannelAsyncAwait(). You should not call any of
@@ -550,25 +544,26 @@ extern "C" {
 	 * \c flReadChannel() between a submit...await pair.
 	 *
 	 * USB host controllers typically need just one level of nesting of submit...await pairs to keep
-	 * them busy. That means sequences like submit, submit, await, submit, await, submit, ..., await,
-	 * await.
+	 * them busy. That means sequences like submit, submit, await, submit, await, submit, ...,
+	 * await, await.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param chan The FPGA channel to read.
-	 * @param length The number of bytes to read, <= 64KiB (hence \c uint32 rather than \c size_t).
+	 * @param channel The FPGA channel to read (0-127).
+	 * @param numBytes The number of bytes to read, <= 64KiB (hence \c uint32 rather than
+     *            \c size_t).
 	 * @param buffer A buffer to receive the data, or \c NULL if you want to borrow one.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if a USB read or write error occurred.
 	 *     - \c FL_PROTOCOL_ERR if the device does not support CommFPGA.
 	 */
 	DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
-		struct FLContext *handle, uint8 chan, uint32 length, uint8 *buffer, const char **error
+		struct FLContext *handle, uint8 channel, uint32 numBytes, uint8 *buffer, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -577,28 +572,33 @@ extern "C" {
 	 * Block until the outcome of a previous call to \c flReadChannelAsyncSubmit() is known. If the
 	 * read was successful, you are given the resulting data. If not, an error code/message.
 	 *
-	 * On successful outcome, the \c ReadReport structure is populated with a pointer to the data,
-	 * the number of bytes read, etc. This is an "out" parameter: the current state of the struct
-	 * is not considered. It remains unchanged on failure.
+	 * On successful outcome, the three out parameters are populated with a pointer to the FPGA
+	 * data, the requested length and the actual length. Unless the FPGA and micro support early
+	 * termination of reads, the two lengths will be identical.
 	 *
 	 * Unless you provided your own buffer when you called \c flReadChannelAsyncSubmit(), the data
 	 * returned is stored in an internal buffer. It is guaranteed to remain valid until your next
 	 * call to any of the CommFPGA functions.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param readReport A pointer to a <code>struct ReadReport</code> which will be populated with
-	 *            the result of a successful read, or left unchanged in the event of an error.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param recvData A pointer to a <code>const uint8 *</code> which will be set on exit to point
+	 *            to a buffer containing the bytes read from the FPGA.
+	 * @param requestLength A pointer to a \c uint32 which will be set on exit to the number of
+	 *            bytes requested in the corresponding call to \c flReadChannelAsyncSubmit().
+	 * @param actualLength A pointer to a \c uint32 which will be set on exit to the number of bytes
+	 *            actually read from the FPGA.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if one of the outstanding async operations failed.
 	 */
 	DLLEXPORT(FLStatus) flReadChannelAsyncAwait(
-		struct FLContext *handle, struct ReadReport *readReport, const char **error
+		struct FLContext *handle, const uint8 **recvData, uint32 *requestLength,
+		uint32 *actualLength, const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
@@ -607,11 +607,11 @@ extern "C" {
 	 * doing any reads or writes. I admit this is hacky, and probably represents a bug somewhere.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if a USB error occurred.
@@ -632,9 +632,9 @@ extern "C" {
 	 * @brief Program a device using the specified file.
 	 *
 	 * This will program an FPGA or CPLD using the specified microcontroller ports and the specified
-	 * programming file. Several programming algorithms are supported (JTAG, Xilinx Slave-Serial, Xilinx
-	 * SelectMap and Altera Passive-Serial). In each case, it's necessary to tell the micro which ports
-	 * to use. Here are some examples:
+	 * programming file. Several programming algorithms are supported (JTAG, Xilinx Slave-Serial,
+	 * Xilinx SelectMap and Altera Passive-Serial). In each case, it's necessary to tell the micro
+	 * which ports to use. Here are some examples:
 	 *
 	 * A Digilent board using JTAG: <code>progConfig="J:D0D2D3D4"</code>:
 	 * - TDO: PD0
@@ -648,15 +648,16 @@ extern "C" {
 	 * - TMS: PA3
 	 * - TCK: PA1
 	 *
-	 * EP2C5 Mini Board using Altera Passive-Serial: <code>progConfig="AS:B5B6B1B2"</code> (note that
-	 * the board normally connects MSEL[1:0] to ground, hard-coding it in Active-Serial mode. For
-	 * Passive-Serial to work you need to lift pin 85 and pull it up to VCC):
+	 * EP2C5 Mini Board using Altera Passive-Serial: <code>progConfig="AS:B5B6B1B2"</code> (note
+	 * that the board normally connects MSEL[1:0] to ground, hard-coding it in Active-Serial mode.
+	 * For Passive-Serial to work you need to lift pin 85 and pull it up to VCC):
 	 * - nCONFIG: PD5
 	 * - CONF_DONE: PD6
 	 * - DCLK: PD1
 	 * - DATA0: PD2
 	 *
-	 * Aessent aes220 using Xilinx Slave-Serial: <code>progConfig="XS:D0D5D1D6A7[D3?,B1+,B5+,B3+]"</code>:
+	 * Aessent aes220 using Xilinx Slave-Serial:
+	 * <code>progConfig="XS:D0D5D1D6A7[D3?,B1+,B5+,B3+]"</code>:
 	 * - PROG_B: PD0
 	 * - INIT_B: PD5
 	 * - DONE: PD1
@@ -665,7 +666,8 @@ extern "C" {
 	 * - Tristate DOUT (PD3)
 	 * - Drive M[2:0]="111" (PB1, PB5, PB3) for Slave-Serial
 	 *
-	 * Aessent aes220 using Xilinx SelectMAP: <code>progConfig="XP:D0D5D1D6A01234567[B4-,D2-,D3?,B1+,B5+,B3-]"</code>:
+	 * Aessent aes220 using Xilinx SelectMAP:
+	 * <code>progConfig="XP:D0D5D1D6A01234567[B4-,D2-,D3?,B1+,B5+,B3-]"</code>:
 	 * - PROG_B: PD0
 	 * - INIT_B: PD5
 	 * - DONE: PD1
@@ -686,8 +688,9 @@ extern "C" {
 	 * the AVR firmware is more likely to be tuned to a specific board layout than the more generic
 	 * FX2 firmware.
 	 *
-	 * So, the bottom line is, even if you're using a microcontroller whose port pins are hard-coded,
-	 * you still have to supply the port pins to use when you call functions expecting \c progConfig.
+	 * So, the bottom line is, even if you're using a microcontroller whose port pins are
+	 * hard-coded, you still have to supply the port pins to use when you call functions expecting
+	 * \c progConfig.
 	 *
 	 * You can either append the programming filename to the end of \c progConfig (e.g
 	 * \c "J:A7A0A3A1:fpga.xsvf") or you can supply the programming filename separately in
@@ -695,12 +698,13 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param progConfig The port configuration described above.
-	 * @param progFile The name of the programming file, or \c NULL if it's already given in progConfig.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param progFile The name of the programming file, or \c NULL if it's already given in
+	 *            \c progConfig.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_ALLOC_ERR if we ran out of memory during programming.
@@ -736,13 +740,13 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param progConfig The port configuration described in \c flProgram().
-	 * @param length The number of bytes of programming data.
-	 * @param buffer A pointer to the start of the programming data.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param numBytes The number of bytes of programming data.
+	 * @param progData A pointer to the start of the programming data.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_USB_ERR if a USB error occurred.
@@ -759,7 +763,7 @@ extern "C" {
 	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
 	 */
 	DLLEXPORT(FLStatus) flProgramBlob(
-		struct FLContext *handle, const char *progConfig, uint32 length, const uint8 *buffer,
+		struct FLContext *handle, const char *progConfig, uint32 numBytes, const uint8 *progData,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -770,18 +774,18 @@ extern "C" {
 	 * \c deviceArray is not \c NULL, populate it with at most \c arraySize IDCODEs, in chain order.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param portConfig The port bits to use for TDO, TDI, TMS & TCK (e.g "D0D2D3D4").
+	 * @param portConfig The port bits to use for TDO, TDI, TMS & TCK, e.g "D0D2D3D4".
 	 * @param numDevices A pointer to a \c uint32 which will be set on exit to the number of devices
 	 *            in the JTAG chain.
 	 * @param deviceArray A pointer to an array of \c uint32, which will be populated on exit with a
 	 *            list of IDCODEs in chain order. May be \c NULL, in which case the function returns
 	 *            after setting \c *numDevices.
 	 * @param arraySize The number of 32-bit IDCODE slots available in \c deviceArray.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_CONF_FORMAT if \c portConfig is malformed.
@@ -802,16 +806,18 @@ extern "C" {
 	 * @brief Open an SPI/JTAG connection.
 	 *
 	 * Open a SPI/JTAG connection using the supplied \c portConfig. You must open a connection
-	 * before calling \c jtagShiftInOut(), \c jtagClockFSM(), \c jtagClocks(), \c spiSend() or
-	 * \c spiRecv(). And you must close the connection when you're finished, with \c progClose().
+	 * before calling \c jtagShiftInOut(), \c jtagShiftInOnly(), \c jtagClockFSM(), \c jtagClocks(),
+	 * \c spiSend() or \c spiRecv(). And you must close the connection when you're finished, with
+	 * \c progClose().
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param portConfig The port bits to use for MISO(TDO), MOSI(TDI), SS(TMS) & SCK(TCK).
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param portConfig The port bits to use for MISO(TDO), MOSI(TDI), SS(TMS) and SCK(TCK), e.g
+	 *            "D0D2D3D4".
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_CONF_FORMAT if \c portConfig is malformed.
@@ -825,14 +831,15 @@ extern "C" {
 	/**
 	 * @brief Close an SPI/JTAG connection.
 	 *
-	 * Close an SPI/JTAG connection previously opened by \c progOpen(), and tri-state the four lines.
+	 * Close an SPI/JTAG connection previously opened by \c progOpen(), and tri-state the four
+	 * programming pins.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_PORT_IO if the micro refused to configure one of its ports.
@@ -850,49 +857,51 @@ extern "C" {
 	/**
 	 * @brief Shift data into the JTAG state-machine.
 	 *
-	 * Shift \c numBits bits from \c inData into TDI. If \c isLast is nonzero, leave the TAP
-	 * state-machine in \c Shift-xR, otherwise \c Exit1-xR. If you want \c inData to be all zeros
-	 * you can use \c SHIFT_ZEROS, or if you want it to be all ones you can use \c SHIFT_ONES. This
-	 * is more efficient than explicitly sending an array containing all zeros or all 0xFFs.
+	 * Shift \c numBits bits LSB-first from \c tdiData into TDI. If \c isLast is zero, leave the
+	 * TAP state-machine in \c Shift-xR, otherwise exit to \c Exit1-xR on the final bit. If you want
+	 * \c tdiData to be all zeros you can use \c SHIFT_ZEROS, or if you want it to be all ones you
+	 * can use \c SHIFT_ONES. This is more efficient than explicitly sending an array containing all
+	 * zeros or all 0xFFs.
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param numBits The number of bits to clock into the JTAG state-machine.
-	 * @param inData A pointer to the source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
+	 * @param tdiData A pointer to the source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
 	 * @param isLast Either 0 to remain in \c Shift-xR, or 1 to exit to \c Exit1-xR.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_PROG_SEND if the micro refused to accept programming data.
 	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
 	 */
 	DLLEXPORT(FLStatus) jtagShiftInOnly(
-		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 isLast,
+		struct FLContext *handle, uint32 numBits, const uint8 *tdiData, uint8 isLast,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
 	/**
 	 * @brief Shift data into and out of the JTAG state-machine.
 	 *
-	 * Shift \c numBits bits from \c inData into TDI, at the same time shifting the same number of
-	 * bits from TDO into \c outData. If \c isLast is nonzero, leave the TAP state-machine in
-	 * \c Shift-xR, otherwise \c Exit1-xR. If you want \c inData to be all zeros you can use
-	 * \c SHIFT_ZEROS, or if you want it to be all ones you can use \c SHIFT_ONES. This is more
-	 * efficient than explicitly sending an array containing all zeros or all 0xFFs.
+	 * Shift \c numBits bits LSB-first from \c tdiData into TDI; at the same time shift the same
+	 * number of bits LSB-first from TDO into \c tdoData. If \c isLast is zero, leave the TAP
+	 * state-machine in \c Shift-xR, otherwise exit to \c Exit1-xR on the final bit. If you want
+	 * \c tdiData to be all zeros you can use \c SHIFT_ZEROS, or if you want it to be all ones you
+	 * can use \c SHIFT_ONES. This is more efficient than explicitly sending an array containing all
+	 * zeros or all 0xFFs.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param numBits The number of bits to clock into the JTAG state-machine.
-	 * @param inData A pointer to the source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
-	 * @param outData A pointer to a buffer to receive output data, or \c NULL if you don't care.
+	 * @param numBits The number of bits to clock into and out of the JTAG state-machine.
+	 * @param tdiData A pointer to the source data, or \c SHIFT_ZEROS or \c SHIFT_ONES.
+	 * @param tdoData A pointer to a buffer to receive output data, or \c NULL if you don't care.
 	 * @param isLast Either 0 to remain in \c Shift-xR, or 1 to exit to \c Exit1-xR.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_PROG_SEND if the micro refused to accept programming data.
@@ -900,8 +909,8 @@ extern "C" {
 	 *     - \c FL_PROG_SHIFT if the micro refused to begin a JTAG shift operation.
 	 */
 	DLLEXPORT(FLStatus) jtagShiftInOut(
-		struct FLContext *handle, uint32 numBits, const uint8 *inData, uint8 *outData, uint8 isLast,
-		const char **error
+		struct FLContext *handle, uint32 numBits, const uint8 *tdiData, uint8 *tdoData,
+		uint8 isLast, const char **error
 	) WARN_UNUSED_RESULT;
 	
 	/**
@@ -912,11 +921,11 @@ extern "C" {
 	 * @param handle The handle returned by \c flOpen().
 	 * @param bitPattern The pattern of bits to clock into TMS, LSB first.
 	 * @param transitionCount The number of bits to clock.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_PROG_JTAG_FSM if the micro refused to navigate the TAP state-machine.
@@ -928,15 +937,13 @@ extern "C" {
 	/**
 	 * @brief Toggle TCK \c numClocks times.
 	 *
-	 * Put \c numClocks clocks out on TCK.
-	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param numClocks The number of clocks to put out on TCK.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_PROG_JTAG_CLOCKS if the micro refused to send JTAG clocks.
@@ -978,26 +985,26 @@ extern "C" {
 	/**
 	 * @brief Send a number of whole bytes over SPI, either LSB-first or MSB-first.
 	 *
-	 * Shift \c numBytes bytes from \c buf into the microcontroller's SPI bus (if any), either MSB-first
-	 * or LSB-first. You must have previously called \c progOpen().
+	 * Shift \c numBytes bytes from \c sendData into the microcontroller's SPI bus (if any), either
+	 * MSB-first or LSB-first. You must have previously called \c progOpen().
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param numBytes The number of bytes to send.
-	 * @param buffer A pointer to the source data.
+	 * @param sendData A pointer to the source data.
 	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST (see @ref BitOrder).
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support SPI.
 	 *     - \c FL_USB_ERR if USB communications failed whilst sending the data.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support SPI.
 	 */
 	DLLEXPORT(FLStatus) spiSend(
-		struct FLContext *handle, uint32 numBytes, const uint8 *buffer, uint8 bitOrder,
+		struct FLContext *handle, uint32 numBytes, const uint8 *sendData, uint8 bitOrder,
 		const char **error
 	) WARN_UNUSED_RESULT;
 
@@ -1011,15 +1018,15 @@ extern "C" {
 	 * @param buffer A pointer to a buffer to receive the data.
 	 * @param numBytes The number of bytes to receive.
 	 * @param bitOrder Either \c SPI_MSBFIRST or \c SPI_LSBFIRST (see @ref BitOrder).
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the operation completed successfully.
-	 *     - \c FL_PROTOCOL_ERR if the device does not support SPI.
 	 *     - \c FL_USB_ERR if USB communications failed whilst receiving the data.
+	 *     - \c FL_PROTOCOL_ERR if the device does not support SPI.
 	 */
 	DLLEXPORT(FLStatus) spiRecv(
 		struct FLContext *handle, uint32 numBytes, uint8 *buffer, uint8 bitOrder, const char **error
@@ -1030,10 +1037,10 @@ extern "C" {
 	 *
 	 * Swap the bits in a byte, so that 0x01 -> 0x80, 0x02 -> 0x40 etc.
 	 *
-	 * @param length The number of bytes to be bit-swapped.
-	 * @param buffer A pointer to an array of \c uint8 to be bit-swapped.
+	 * @param numBytes The number of bytes to be bit-swapped.
+	 * @param data A pointer to an array of \c uint8 to be bit-swapped.
 	 */
-	DLLEXPORT(void) spiBitSwap(uint32 length, uint8 *buffer);
+	DLLEXPORT(void) spiBitSwap(uint32 numBytes, uint8 *data);
 	//@}
 
 	// ---------------------------------------------------------------------------------------------
@@ -1055,11 +1062,11 @@ extern "C" {
 	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
 	 * @param newVidPid The Vendor/Product/Device (i.e VVVV:PPPP:DDDD) that you \b want the FX2
 	 *            device to renumerate as.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
@@ -1081,11 +1088,11 @@ extern "C" {
 	 *
 	 * @param handle The handle returned by \c flOpen().
 	 * @param newVidPid The Vendor/Product (i.e VVVV:PPPP) you want the FX2 to be on power-on.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware flashed successfully.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
@@ -1104,12 +1111,12 @@ extern "C" {
 	 *
 	 * @param curVidPid The current Vendor/Product (i.e VVVV:PPPP) of the FX2 device.
 	 * @param fwFile A <code>.hex</code> file containing new FX2 firmware to be loaded into the
-    *            FX2's RAM.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 *            FX2's RAM.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
@@ -1133,11 +1140,11 @@ extern "C" {
 	 * @param handle The handle returned by \c flOpen().
 	 * @param fwFile A <code>.hex</code> or <code>.iic</code> file containing new FX2 firmware to be
 	 *            loaded into the FX2's EEPROM.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
@@ -1156,11 +1163,11 @@ extern "C" {
 	 * @param handle The handle returned by \c flOpen().
 	 * @param eepromSize The size in kilobits of the EEPROM (e.g Nexys2's EEPROM is 128kbit).
 	 * @param saveFile An <code>.iic</code> file to save the EEPROM to.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the firmware loaded successfully.
 	 *     - \c FL_ALLOC_ERR if there was a memory allocation failure.
@@ -1179,11 +1186,11 @@ extern "C" {
 	 * invoke this.
 	 *
 	 * @param handle The handle returned by \c flOpen().
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the port access command completed successfully.
 	 *     - \c FL_USB_ERR if the device is not running suitable FPGALink/AVR firmware.
@@ -1212,17 +1219,17 @@ extern "C" {
 	/**
 	 * @brief Return a newly-allocated buffer with the specified file loaded into it.
 	 *
-	 * The specified file is queried for its length, that length is written to the \c length
+	 * The specified file is queried for its length, that length is written to the \c numBytes
 	 * parameter. Then a buffer of that length is allocated, and the file is loaded into it and a
 	 * pointer to the buffer returned. The responsibility for the buffer passes to the caller; it
 	 * must be freed later by a call to \c flFreeFile().
 	 *
 	 * @param name The name of the file to load.
-	 * @param length A pointer to a \c size_t which will be populated on exit with the file length.
+	 * @param numBytes A pointer to a \c size_t which will be populated with the file's length.
 	 * @returns A pointer to the allocated buffer, or \c NULL if the file could not be loaded.
 	 */
 	DLLEXPORT(uint8*) flLoadFile(
-		const char *name, size_t *length
+		const char *name, size_t *numBytes
 	);
 
 	/**
@@ -1245,11 +1252,11 @@ extern "C" {
 	 * @param pinConfig Either \c PIN_INPUT, \c PIN_HIGH or \c PIN_LOW.
 	 * @param pinRead Pointer to a <code>uint8</code> to be set on exit to 0 or 1 depending on
 	 *            the current state of the pin. May be \c NULL if you're not interested.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the port access command completed successfully.
 	 *     - \c FL_PORT_IO if the micro failed to respond to the port access command.
@@ -1271,11 +1278,11 @@ extern "C" {
 	 * @param handle The handle returned by \c flOpen().
 	 * @param portConfig A comma-separated sequence of port configurations.
 	 * @param readState Pointer to a <code>uint32</code> to be set on exit to the port readback.
-	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an allocated
-	 *            error message if something goes wrong. Responsibility for this allocated memory
-	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is
-	 *            \c NULL, no allocation is done and no message is returned, but the return code
-	 *            will still be valid.
+	 * @param error A pointer to a <code>const char*</code> which will be set on exit to an
+	 *            allocated error message if something goes wrong. Responsibility for this
+	 *            allocated memory passes to the caller and must be freed with \c flFreeError(). If
+	 *            \c error is \c NULL, no allocation is done and no message is returned, but the
+	 *            return code will still be valid.
 	 * @returns
 	 *     - \c FL_SUCCESS if the port access command completed successfully.
 	 *     - \c FL_CONF_FORMAT if \c portConfig is malformed.

@@ -381,7 +381,8 @@ DLLEXPORT(FLStatus) flReadChannel(
 	const char **error)
 {
 	FLStatus retVal = FL_SUCCESS, fStatus;
-	struct ReadReport readReport;
+	const uint8 *data;
+	uint32 requestLength, actualLength;
 	CHECK_STATUS(
 		count == 0, FL_PROTOCOL_ERR, cleanup,
 		"flReadChannel(): Zero-length reads are illegal!");
@@ -398,29 +399,29 @@ DLLEXPORT(FLStatus) flReadChannel(
 			CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
 			count -= 0x10000;
 			buffer += 0x10000;
-			fStatus = flReadChannelAsyncAwait(handle, &readReport, error);
+			fStatus = flReadChannelAsyncAwait(handle, &data, &requestLength, &actualLength, error);
 			CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
 			CHECK_STATUS(
-				readReport.requestLength != readReport.actualLength,
+				actualLength != requestLength,
 				FL_EARLY_TERM, cleanup, "flReadChannel()");
 		}
 		if ( count ) {
 			fStatus = flReadChannelAsyncSubmit(handle, chan, (uint32)count, buffer, error);
 			CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
-			fStatus = flReadChannelAsyncAwait(handle, &readReport, error);
+			fStatus = flReadChannelAsyncAwait(handle, &data, &requestLength, &actualLength, error);
 			CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
 			CHECK_STATUS(
-				readReport.requestLength != readReport.actualLength,
+				actualLength != requestLength,
 				FL_EARLY_TERM, cleanup, "flReadChannel()");
 		}
 	} else {
 		fStatus = flReadChannelAsyncSubmit(handle, chan, (uint32)count, buffer, error);
 		CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
 	}
-	fStatus = flReadChannelAsyncAwait(handle, &readReport, error);
+	fStatus = flReadChannelAsyncAwait(handle, &data, &requestLength, &actualLength, error);
 	CHECK_STATUS(fStatus, fStatus, cleanup, "flReadChannel()");
 	CHECK_STATUS(
-		readReport.requestLength != readReport.actualLength,
+		actualLength != requestLength,
 		FL_EARLY_TERM, cleanup, "flReadChannel()");
 cleanup:
 	return retVal;
@@ -489,7 +490,8 @@ cleanup:
 // Await a previously-submitted async read.
 //
 DLLEXPORT(FLStatus) flReadChannelAsyncAwait(
-	struct FLContext *handle, struct ReadReport *readReport, const char **error)
+	struct FLContext *handle, const uint8 **data, uint32 *requestLength, uint32 *actualLength,
+	const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	USBStatus uStatus;
@@ -499,9 +501,9 @@ DLLEXPORT(FLStatus) flReadChannelAsyncAwait(
 		);
 		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannelAsyncAwait()");
 	}
-	readReport->data = handle->completionReport.buffer;
-	readReport->actualLength = handle->completionReport.actualLength;
-	readReport->requestLength = handle->completionReport.requestLength;
+	*data = handle->completionReport.buffer;
+	*requestLength = handle->completionReport.requestLength;
+	*actualLength = handle->completionReport.actualLength;
 	memset(&handle->completionReport, 0, sizeof(struct CompletionReport));
 cleanup:
 	return retVal;

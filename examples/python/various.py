@@ -19,7 +19,9 @@ import fl
 
 VID_PID = "1d50:602b:0002"
 PROG_CONFIG = "D0D2D3D4"
-handle = fl.FLHandle()
+CONDUIT = 1
+BYTE_ARRAY = b"\xCA\xFE\xBA\xBE"
+conn = fl.FLHandle()
 try:
     fl.flInitialise(0)
 
@@ -28,82 +30,78 @@ try:
         fl.flLoadStandardFirmware("04b4:8613", VID_PID)
 
         print("Awaiting...")
-        found = fl.flAwaitDevice(VID_PID, 600)
-        print("Result: {}".format(found))
+        fl.flAwaitDevice(VID_PID, 600)
 
-    handle = fl.flOpen(VID_PID)
+    conn = fl.flOpen(VID_PID)
 
-    fl.flSingleBitPortAccess(handle, 3, 7, fl.PIN_LOW)
-    print("fl.flMultiBitPortAccess() returned 0x{:010X}".format(
-        fl.flMultiBitPortAccess(handle, "D7+")))
+    fl.flSingleBitPortAccess(conn, 3, 7, fl.PIN_LOW)
+    print("flMultiBitPortAccess() returned {:032b}".format(
+        fl.flMultiBitPortAccess(conn, "D7+")))
     fl.flSleep(100)
 
-    fl.flSelectConduit(handle, 1)
-    print("fl.flIsFPGARunning(): {}".format(fl.flIsFPGARunning(handle)))
-    print("fl.flIsNeroCapable(): {}".format(fl.flIsNeroCapable(handle)))
-    print("fl.flIsCommCapable(): {}".format(fl.flIsCommCapable(handle, 1)))
-    print("fl.flGetFirmwareID(): {:04X}".format(fl.flGetFirmwareID(handle)))
-    print("fl.flGetFirmwareVersion(): {:08X}".format(fl.flGetFirmwareVersion(handle)))
+    print("flGetFirmwareID(): {:04X}".format(fl.flGetFirmwareID(conn)))
+    print("flGetFirmwareVersion(): {:08X}".format(fl.flGetFirmwareVersion(conn)))
+    print("flIsNeroCapable(): {}".format(fl.flIsNeroCapable(conn)))
+    print("flIsCommCapable(): {}".format(fl.flIsCommCapable(conn, CONDUIT)))
 
-    print("fl.flProgram()...")
-    fl.flProgram(handle, "J:{}:../../../../hdlmake/apps/makestuff/swled/cksum/vhdl/fpga.xsvf".format(PROG_CONFIG))
-    print("...done.")
-
-    fl.progOpen(handle, PROG_CONFIG)
-    print("fl.progGetPort(): {")
-    (port, bit) = fl.progGetPort(handle, fl.LP_MISO)
+    fl.progOpen(conn, PROG_CONFIG)
+    print("progGetPort(): {")
+    (port, bit) = fl.progGetPort(conn, fl.LP_MISO)
     print("  MISO: {:c}{}".format(ord('A')+port, bit))
-    (port, bit) = fl.progGetPort(handle, fl.LP_MOSI)
+    (port, bit) = fl.progGetPort(conn, fl.LP_MOSI)
     print("  MOSI: {:c}{}".format(ord('A')+port, bit))
-    (port, bit) = fl.progGetPort(handle, fl.LP_SS)
+    (port, bit) = fl.progGetPort(conn, fl.LP_SS)
     print("  SS:   {:c}{}".format(ord('A')+port, bit))
-    (port, bit) = fl.progGetPort(handle, fl.LP_SCK)
+    (port, bit) = fl.progGetPort(conn, fl.LP_SCK)
     print("  SCK:  {:c}{}".format(ord('A')+port, bit))
     print("}")
 
-    fl.jtagClockFSM(handle, 0x0000005F, 9)
-    fl.jtagShiftInOnly(handle, 32, "\xCA\xFE\xBA\xBE")
-    bs = fl.jtagShiftInOut(handle, 128, "\xCA\xFE\xBA\xBE\x15\xF0\x0D\x1E\xFF\xFF\xFF\xFF\x00\x00\x00\x00")
-    print("fl.jtagShiftInOut() got {} bytes: {{\n  {}\n}}".format(
+    fl.jtagClockFSM(conn, 0x0000005F, 9)
+    fl.jtagShiftInOnly(conn, 32, BYTE_ARRAY)
+    bs = fl.jtagShiftInOut(conn, 128, fl.SHIFT_ONES)
+    print("jtagShiftInOut() got {} bytes: {{\n  {}\n}}".format(
         len(bs),
         " ".join(["{:02X}".format(b) for b in bs])))
 
-    fl.jtagClockFSM(handle, 0x0000005F, 9)
-    fl.spiSend(handle, "\xCA\xFE\xBA\xBE", fl.SPI_LSBFIRST)
-    bs = fl.spiRecv(handle, 8, fl.SPI_LSBFIRST)
-    print("fl.spiRecv() got {} bytes: {{\n  {}\n}}".format(
+    fl.jtagClockFSM(conn, 0x0000005F, 9)
+    fl.spiSend(conn, BYTE_ARRAY, fl.SPI_LSBFIRST)
+    bs = fl.spiRecv(conn, 8, fl.SPI_LSBFIRST)
+    print("spiRecv() got {} bytes: {{\n  {}\n}}".format(
         len(bs),
         " ".join(["{:02X}".format(b) for b in bs])))
+    fl.progClose(conn)
 
-    fl.progClose(handle)
-
-    print("fl.jtagScanChain(): {")
-    for idCode in fl.jtagScanChain(handle, PROG_CONFIG):
+    print("jtagScanChain(): {")
+    for idCode in fl.jtagScanChain(conn, PROG_CONFIG):
         print("  0x{:08X}".format(idCode))
     print("}")
 
-    fl.flWriteChannel(handle, 0, b"\x01")
+    print("flProgram()...")
+    fl.flProgram(conn, "J:{}:../../../../hdlmake/apps/makestuff/swled/cksum/vhdl/fpga.xsvf".format(PROG_CONFIG))
+    print("...done.")
 
-    bs = fl.flReadChannel(handle, 2, 16)
-    print("Sync read got {} bytes: {{\n  {}\n}}".format(
+    fl.flSelectConduit(conn, CONDUIT)
+    print("flIsFPGARunning(): {}".format(fl.flIsFPGARunning(conn)))
+
+    fl.flWriteChannel(conn, 0, BYTE_ARRAY)
+
+    bs = fl.flReadChannel(conn, 1, 16)
+    print("flReadChannel(1, 16) got {} bytes: {{\n  {}\n}}".format(
         len(bs),
         " ".join(["{:02X}".format(b) for b in bs])))
-        
-    print("Single byte read: {:02X}".format(fl.flReadChannel(handle, 2)))
+    
+    print("flReadChannel(2) got {:02X}".format(fl.flReadChannel(conn, 2)))
 
-    fl.flReadChannelAsyncSubmit(handle, 2, 16)
-    fl.flReadChannelAsyncSubmit(handle, 2)
-    bs = fl.flReadChannelAsyncAwait(handle)
-    print("First async read got {} bytes: {{\n  {}\n}}".format(
-        len(bs),
-        " ".join(["{:02X}".format(b) for b in bytearray(bs)])))
-
-    bs = fl.flReadChannelAsyncAwait(handle)
-    print("Second async read got {} bytes: {{\n  {}\n}}".format(
-        len(bs),
-        " ".join(["{:02X}".format(b) for b in bytearray(bs)])))
+    fl.flReadChannelAsyncSubmit(conn, 0, 4)
+    fl.flReadChannelAsyncSubmit(conn, 1, 8)
+    fl.flReadChannelAsyncSubmit(conn, 2, 16)
+    for i in range(3):
+        bs = fl.flReadChannelAsyncAwait(conn)
+        print("flReadChannelAsyncAwait() got {} bytes: {{\n  {}\n}}".format(
+            len(bs),
+            " ".join(["{:02X}".format(b) for b in bytearray(bs)])))
 
 except fl.FLException as ex:
     print(ex)
 finally:
-    fl.flClose(handle)
+    fl.flClose(conn)

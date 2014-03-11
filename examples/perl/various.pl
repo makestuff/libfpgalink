@@ -19,10 +19,12 @@ use fl;
 use strict;
 use warnings;
 
-my ($handle, $bytes, $found, $port, $bit, $VID_PID, $PROG_CONFIG);
+my ($conn, $bs, $port, $bit, $i, $VID_PID, $PROG_CONFIG, $CONDUIT, $BYTE_ARRAY);
 
 $VID_PID = "1d50:602b:0002";
 $PROG_CONFIG = "D0D2D3D4";
+$CONDUIT = 1;
+$BYTE_ARRAY = "\xCA\xFE\xBA\xBE";
 eval {
 	fl::flInitialise(0);
 
@@ -30,95 +32,93 @@ eval {
 		print "Loading firmware...\n";
 		fl::flLoadStandardFirmware("04b4:8613", $VID_PID);
 
-		print "Awaiting $VID_PID...\n";
-		$found = fl::flAwaitDevice($VID_PID, 600);
-		print "Result: ".$found."\n";
+		print "Awaiting...\n";
+		fl::flAwaitDevice($VID_PID, 600);
 	}
 
-	$handle = fl::flOpen($VID_PID);
+	$conn = fl::flOpen($VID_PID);
 
-	fl::flSingleBitPortAccess($handle, 3, 7, $fl::PIN_LOW);
-	printf("fl::flMultiBitPortAccess() returned 0x%08X\n", fl::flMultiBitPortAccess($handle, "D7+"));
+	fl::flSingleBitPortAccess($conn, 3, 7, $fl::PIN_LOW);
+	printf("flMultiBitPortAccess() returned %032b\n",
+		fl::flMultiBitPortAccess($conn, "D7+"));
 	fl::flSleep(100);
 
-	fl::flSelectConduit($handle, 1);
-	print "fl::flIsFPGARunning(): ".fl::flIsFPGARunning($handle)."\n";
-	print "fl::flIsNeroCapable(): ".fl::flIsNeroCapable($handle)."\n";
-	print "fl::flIsCommCapable(): ".fl::flIsCommCapable($handle, 1)."\n";
-	print "fl::flGetFirmwareID(): ".sprintf("%04X", fl::flGetFirmwareID($handle))."\n";
-	printf("fl::flGetFirmwareVersion(): %08X\n", fl::flGetFirmwareVersion($handle));
+	printf("flGetFirmwareID(): %04X\n", fl::flGetFirmwareID($conn));
+	printf("flGetFirmwareVersion(): %08X\n", fl::flGetFirmwareVersion($conn));
+	printf("flIsNeroCapable(): %s\n", fl::flIsNeroCapable($conn) ? "True" : "False");
+	printf("flIsCommCapable(): %s\n", fl::flIsCommCapable($conn, $CONDUIT) ? "True" : "False");
 
-	print "fl::flProgram()...\n";
-	fl::flProgram($handle, "J:$PROG_CONFIG:../../../../hdlmake/apps/makestuff/swled/cksum/vhdl/fpga.xsvf");
-	print "...done.\n";
-
-	fl::progOpen($handle, $PROG_CONFIG);
-	print "fl::progGetPort(): {\n";
-	($port, $bit) = fl::progGetPort($handle, $fl::LP_MISO);
+	fl::progOpen($conn, $PROG_CONFIG);
+	print "progGetPort(): {\n";
+	($port, $bit) = fl::progGetPort($conn, $fl::LP_MISO);
 	printf("  MISO: %c%d\n", ord('A')+$port, $bit);
-	($port, $bit) = fl::progGetPort($handle, $fl::LP_MOSI);
+	($port, $bit) = fl::progGetPort($conn, $fl::LP_MOSI);
 	printf("  MOSI: %c%d\n", ord('A')+$port, $bit);
-	($port, $bit) = fl::progGetPort($handle, $fl::LP_SS);
+	($port, $bit) = fl::progGetPort($conn, $fl::LP_SS);
 	printf("  SS:   %c%d\n", ord('A')+$port, $bit);
-	($port, $bit) = fl::progGetPort($handle, $fl::LP_SCK);
+	($port, $bit) = fl::progGetPort($conn, $fl::LP_SCK);
 	printf("  SCK:  %c%d\n", ord('A')+$port, $bit);
 	print "}\n";
 
-	fl::jtagClockFSM($handle, 0x0000005F, 9);
-	fl::jtagShiftInOnly($handle, 32, "\xCA\xFE\xBA\xBE");
-	$bytes = fl::jtagShiftInOut($handle, 128, "\xCA\xFE\xBA\xBE\x15\xF0\x0D\x1E\xFF\xFF\xFF\xFF\x00\x00\x00\x00");
-	printf("fl::jtagShiftInOut() got %d bytes: {\n  ", length($bytes));
-	foreach ( unpack("(a1)*", $bytes) ) {
+	fl::jtagClockFSM($conn, 0x0000005F, 9);
+	fl::jtagShiftInOnly($conn, 32, $BYTE_ARRAY);
+	$bs = fl::jtagShiftInOut($conn, 128, "\xCA\xFE\xBA\xBE\x15\xF0\x0D\x1E\xFF\xFF\xFF\xFF\x00\x00\x00\x00");
+	printf("jtagShiftInOut() got %d bytes: {\n  ", length($bs));
+	foreach ( unpack("(a1)*", $bs) ) {
 		printf(" %02X", ord);
 	}
 	print "\n}\n";
 
-	fl::jtagClockFSM($handle, 0x0000005F, 9);
-	fl::spiSend($handle, "\xCA\xFE\xBA\xBE", $fl::SPI_LSBFIRST);
-	$bytes = fl::spiRecv($handle, 8, $fl::SPI_LSBFIRST);
-	printf("fl::spiRecv() got %d bytes: {\n  ", length($bytes));
-	foreach ( unpack("(a1)*", $bytes) ) {
+	fl::jtagClockFSM($conn, 0x0000005F, 9);
+	fl::spiSend($conn, $BYTE_ARRAY, $fl::SPI_LSBFIRST);
+	$bs = fl::spiRecv($conn, 8, $fl::SPI_LSBFIRST);
+	printf("spiRecv() got %d bytes: {\n  ", length($bs));
+	foreach ( unpack("(a1)*", $bs) ) {
 		printf(" %02X", ord);
 	}
 	print "\n}\n";
 
-	fl::progClose($handle);
+	fl::progClose($conn);
 
-	print "fl::jtagScanChain(): {\n";
-	foreach ( fl::jtagScanChain($handle, $PROG_CONFIG) ) {
+	print "jtagScanChain(): {\n";
+	foreach ( fl::jtagScanChain($conn, $PROG_CONFIG) ) {
 		printf("  0x%08X\n", $_);
 	}
 	print "}\n";
 
-	fl::flWriteChannel($handle, 0, "\x01");
+	print "flProgram()...\n";
+	fl::flProgram($conn, "J:$PROG_CONFIG:../../../../hdlmake/apps/makestuff/swled/cksum/vhdl/fpga.xsvf");
+	print "...done.\n";
 
-	$bytes = fl::flReadChannel($handle, 2, 16);
-	printf("Sync read got %d bytes: {\n  ", length($bytes));
-	foreach ( unpack("(a1)*", $bytes) ) {
+	fl::flSelectConduit($conn, $CONDUIT);
+	printf("flIsFPGARunning(): %s\n", fl::flIsFPGARunning($conn) ? "True" : "False");
+
+	fl::flWriteChannel($conn, 0, $BYTE_ARRAY);
+
+	$bs = fl::flReadChannel($conn, 1, 16);
+	printf("flReadChannel(1, 16) got %d bytes: {\n  ", length($bs));
+	foreach ( unpack("(a1)*", $bs) ) {
 		printf(" %02X", ord);
 	}
 	print "\n}\n";
 
-	printf("Single byte read: %02X\n", fl::flReadChannel($handle, 2));
+	printf("flReadChannel(2): %02X\n", fl::flReadChannel($conn, 2));
 
-	fl::flReadChannelAsyncSubmit($handle, 2, 16);
-	fl::flReadChannelAsyncSubmit($handle, 2);
-	$bytes = fl::flReadChannelAsyncAwait($handle);
-	printf("First async read got %d bytes: {\n  ", length($bytes));
-	foreach(unpack("(a1)*", $bytes)) {
-		printf(" %02X", ord);
+	fl::flReadChannelAsyncSubmit($conn, 0, 4);
+	fl::flReadChannelAsyncSubmit($conn, 1, 8);
+	fl::flReadChannelAsyncSubmit($conn, 2, 16);
+	for ( $i = 0; $i < 3; $i++ ) {
+		$bs = fl::flReadChannelAsyncAwait($conn);
+		printf("flReadChannelAsyncAwait() got %d bytes: {\n  ", length($bs));
+		foreach(unpack("(a1)*", $bs)) {
+			printf(" %02X", ord);
+		}
+		print "\n}\n";
 	}
-	print "\n}\n";
-	$bytes = fl::flReadChannelAsyncAwait($handle);
-	printf("Second async read got %d bytes: {\n  ", length($bytes));
-	foreach(unpack("(a1)*", $bytes)) {
-		printf(" %02X", ord);
-	}
-	print "\n}\n";
 };
 if ( $@ ) {
-	warn "WARNING: $@";
+	warn "$@";
 };
-if ( defined($handle) ) {
-	fl::flClose($handle);
+if ( defined($conn) ) {
+	fl::flClose($conn);
 }

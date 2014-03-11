@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2014 Chris McClelland
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 %module fl
 
 %include "stdint.i"
@@ -124,16 +140,17 @@ FLStatus flIsFPGARunning(
 	argvi++;
 }
 FLStatus flReadChannel(
-	struct FLContext *handle, uint8_t chan, size_t numBytes, uint8_t *, const char **OUTPUT
+	struct FLContext *handle, uint8_t channel, size_t numBytes, uint8_t *, const char **OUTPUT
 );
 %typemap(check) size_t;
 %typemap(in, numinputs=0) uint8_t*;
 %typemap(default) size_t numBytes;
 
 // Allow the caller to pass in a string/byte-array to send.
-%apply (size_t LENGTH, const char *STRING) { (size_t length, const uint8_t *data) };
+%apply (size_t LENGTH, const char *STRING) { (size_t numBytes, const uint8_t *sendData) };
 FLStatus flWriteChannel(
-	struct FLContext *handle, uint8_t chan, size_t length, const uint8_t *data, const char **OUTPUT
+	struct FLContext *handle, uint8_t channel, size_t numBytes, const uint8_t *sendData,
+	const char **OUTPUT
 );
 
 FLStatus flSetAsyncWriteChunkSize(
@@ -141,9 +158,10 @@ FLStatus flSetAsyncWriteChunkSize(
 );
 
 // Allow the caller to pass in a string/byte-array to send.
-%apply (size_t LENGTH, const char *STRING) { (size_t length, const uint8_t *data) };
+%apply (size_t LENGTH, const char *STRING) { (size_t numBytes, const uint8_t *sendData) };
 FLStatus flWriteChannelAsync(
-	struct FLContext *handle, uint8_t chan, size_t length, const uint8_t *data, const char **OUTPUT
+	struct FLContext *handle, uint8_t channel, size_t numBytes, const uint8_t *sendData,
+	const char **OUTPUT
 );
 
 FLStatus flFlushAsyncWrites(
@@ -162,30 +180,41 @@ FLStatus flAwaitAsyncWrites(
 	// arg4 created by the binding
 }
 FLStatus flReadChannelAsyncSubmit(
-	struct FLContext *handle, uint8_t chan, uint32_t numBytes, uint8_t *data, const char **OUTPUT
+	struct FLContext *handle, uint8_t channel, uint32_t numBytes, uint8_t *data, const char **OUTPUT
 );
 %typemap(default) uint32_t numBytes;
 %typemap(in, numinputs=0) uint8_t*;
 
 // Copy the returned data into a new byte-array and return it to the caller.
-%typemap(in, numinputs=0) struct ReadReport* {
-	$1 = &readReport;
+%typemap(in, numinputs=0) const uint8_t **ppData {
+	$1 = &pData;
+}
+%typemap(in, numinputs=0) uint32_t *pRequestLength {
+	$1 = &requestLength;
+}
+%typemap(in, numinputs=0) uint32_t *pActualLength {
+	$1 = &actualLength;
 }
 %typemap(out) FLStatus flReadChannelAsyncAwait(
-	char *error = NULL, struct ReadReport readReport, SV *retVal = NULL)
+	char *error = NULL, const uint8 *pData, uint32 requestLength, uint32 actualLength, SV *retVal = NULL)
 {
 	FL_CHECK();
-	retVal = newSV(readReport.actualLength);     // allocate enough space
-	sv_2mortal(retVal);                    // make it mortal
-	sv_setpv(retVal, "");                  // make it defined (i.e not undef)
-	SvCUR_set(retVal, readReport.actualLength);  // set its length to the returned chunk-length
-	memcpy(SvPVX(retVal), readReport.data, readReport.actualLength); // copy the chunk into it
+	retVal = newSV(actualLength);     // allocate enough space
+	sv_2mortal(retVal);               // make it mortal
+	sv_setpv(retVal, "");             // make it defined (i.e not undef)
+	SvCUR_set(retVal, actualLength);  // set its length to the returned chunk-length
+	memcpy(SvPVX(retVal), pData, actualLength); // copy the chunk into it
 	ST(argvi) = retVal;
 	argvi++;
 }
 FLStatus flReadChannelAsyncAwait(
-	struct FLContext *handle, struct ReadReport *, const char **OUTPUT
+	struct FLContext *handle, const uint8_t **ppData, uint32_t *pRequestLength,
+	uint32_t *pActualLength, const char **OUTPUT
 );
+%typemap(in, numinputs=0) const uint8_t **ppData;
+%typemap(in, numinputs=0) uint32_t *pRequestLength;
+%typemap(in, numinputs=0) uint32_t *pActualLength;
+
 
 // Default progFile to NULL (i.e assume programming file is specified in progConfig).
 %typemap(default) const char *progFile {
@@ -253,11 +282,11 @@ FLStatus progClose(
 }
 FLStatus jtagShiftInOnly(
 	struct FLContext *handle,
-	uint32_t numBits, const char *inData, uint8_t isLast,
+	uint32_t numBits, const char *tdiData, uint8_t isLast,
 	const char **OUTPUT
 );
 
-%typemap(in, numinputs=0) uint8_t *outData {
+%typemap(in, numinputs=0) uint8_t *tdoData {
 	// arg4 created by the binding
 }
 %typemap(check) uint32_t {
@@ -275,7 +304,7 @@ FLStatus jtagShiftInOnly(
 }
 FLStatus jtagShiftInOut(
 	struct FLContext *handle,
-	uint32_t numBits, const char *inData, uint8_t *outData, uint8_t isLast,
+	uint32_t numBits, const char *tdiData, uint8_t *tdoData, uint8_t isLast,
 	const char **OUTPUT
 );
 %typemap(check) uint32_t;
@@ -287,7 +316,7 @@ FLStatus jtagClockFSM(
 );
 
 FLStatus jtagClocks(
-	struct FLContext *handle, uint32_t numClocks, const char **error
+	struct FLContext *handle, uint32_t numClocks, const char **OUTPUT
 );
 
 // Also call progGetBit and return a (port, bit) tuple.
@@ -301,10 +330,10 @@ uint8_t progGetPort(
 	struct FLContext *handle, uint8_t logicalPort
 );
 
-%apply (size_t LENGTH, const char *STRING) { (uint32_t numBytes, const uint8_t *data) };
+%apply (size_t LENGTH, const char *STRING) { (uint32_t numBytes, const uint8_t *sendData) };
 FLStatus spiSend(
 	struct FLContext *handle,
-	uint32_t numBytes, const uint8_t *data, uint8_t bitOrder,
+	uint32_t numBytes, const uint8_t *sendData, uint8_t bitOrder,
 	const char **OUTPUT
 );
 
