@@ -194,7 +194,8 @@ int main(int argc, const char *argv[]) {
 	
 	if ( dataFile ) {
 		if ( isCommCapable ) {
-			struct ReadReport readReport;
+			const uint8 *recvData;
+			uint32 actualLength;
 			uint32 j;
 			uint16 checksum;
 			printf("Selecting conduit 0x01...\n");
@@ -253,12 +254,12 @@ int main(int argc, const char *argv[]) {
 				
 				// ...and then await their completion
 				for ( i = 0; i < 2; i++ ) {
-					status = flReadChannelAsyncAwait(handle, &readReport, &error);
+					status = flReadChannelAsyncAwait(
+						handle, &recvData, &actualLength, &actualLength, &error);
 					CHECK_STATUS(status, 31, cleanup);
 					printf(
-						"read[%d]: requestLength = %d, actualLength = %d, bytes = %02X %02X %02X %02X\n",
-						i, readReport.requestLength, readReport.actualLength,
-						readReport.data[0], readReport.data[1], readReport.data[2], readReport.data[3]);
+						"read[%d]: actualLength = %d, bytes = %02X %02X %02X %02X\n", i, actualLength,
+						recvData[0], recvData[1], recvData[2], recvData[3]);
 				}
 			}
 		} else {
