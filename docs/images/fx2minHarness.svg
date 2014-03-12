@@ -14,7 +14,7 @@
    height="640"
    id="svg2"
    version="1.1"
-   inkscape:version="0.48.3.1 r9886"
+   inkscape:version="0.48.4 r9939"
    sodipodi:docname="fx2minHarness.svg"
    inkscape:export-filename="fx2minHarness.png"
    inkscape:export-xdpi="90"
@@ -26,16 +26,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4142136"
-     inkscape:cx="208.13065"
-     inkscape:cy="367.62187"
+     inkscape:zoom="8.0000002"
+     inkscape:cx="29.234559"
+     inkscape:cy="484.00261"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
      inkscape:window-width="2560"
-     inkscape:window-height="1550"
+     inkscape:window-height="1551"
      inkscape:window-x="0"
-     inkscape:window-y="27"
+     inkscape:window-y="25"
      inkscape:window-maximized="1"
      inkscape:snap-bbox="true"
      inkscape:snap-bbox-midpoints="true"
@@ -2859,7 +2859,7 @@
       <stop
          id="stop4840-3-3"
          offset="1"
-         style="stop-color:#ffffff;stop-opacity:1;" />
+         style="stop-color:#ffffff;stop-opacity:0;" />
     </linearGradient>
     <marker
        inkscape:stockid="Arrow2Mstart"
@@ -2922,7 +2922,7 @@
       <stop
          id="stop4840-3-8"
          offset="1"
-         style="stop-color:#ffffff;stop-opacity:1;" />
+         style="stop-color:#ffffff;stop-opacity:0;" />
     </linearGradient>
     <marker
        inkscape:stockid="Arrow2Mstart"
@@ -3055,7 +3055,7 @@
       <stop
          id="stop3363-2"
          offset="1"
-         style="stop-color:#ffffff;stop-opacity:1;" />
+         style="stop-color:#ffffff;stop-opacity:0;" />
     </linearGradient>
     <linearGradient
        inkscape:collect="always"
