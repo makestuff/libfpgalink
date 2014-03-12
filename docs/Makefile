@@ -6,7 +6,9 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
-THEME         = _themes/sphinx_rtd_theme
+SVGS   := $(wildcard images/*.svg)
+PNGS   := $(SVGS:%.svg=%.png)
+EXTRAS := _themes/sphinx_rtd_theme $(PNGS)
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -50,13 +52,13 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/*
 
-$(THEME):
+_themes/sphinx_rtd_theme:
 	mkdir -p _themes
 	wget --no-check-certificate -qO- https://github.com/snide/sphinx_rtd_theme/archive/master.tar.gz | tar zxf -
 	mv sphinx_rtd_theme-master/sphinx_rtd_theme $@
 	rm -rf sphinx_rtd_theme-master
 
-html: $(THEME)
+html: $(EXTRAS)
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
@@ -182,3 +184,6 @@ pseudoxml:
 	$(SPHINXBUILD) -b pseudoxml $(ALLSPHINXOPTS) $(BUILDDIR)/pseudoxml
 	@echo
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
+
+%.png : %.svg
+	inkscape -f $< -e $@

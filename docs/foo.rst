@@ -71,3 +71,7 @@ See?
   end package;
 
 See?
+
+.. image:: images/fx2minHarness.png
+
+And that's all.
