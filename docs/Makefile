@@ -6,6 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
+THEME         = _themes/sphinx_rtd_theme
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -49,7 +50,13 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/*
 
-html:
+$(THEME):
+	mkdir -p _themes
+	wget --no-check-certificate -qO- https://github.com/snide/sphinx_rtd_theme/archive/master.tar.gz | tar zxf -
+	mv sphinx_rtd_theme-master/sphinx_rtd_theme $@
+	rm -rf sphinx_rtd_theme-master
+
+html: $(THEME)
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
