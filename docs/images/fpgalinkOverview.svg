@@ -3244,7 +3244,7 @@
          id="tspan5414"
          y="647.36218"
          x="255"
-         sodipodi:role="line">  uint32 count,</tspan><tspan
+         sodipodi:role="line">  size_t numBytes,</tspan><tspan
          id="tspan5446"
          y="662.36218"
          x="255"
@@ -3286,11 +3286,11 @@
          id="tspan5414-2"
          y="577.36218"
          x="255"
-         sodipodi:role="line">  uint32 count,</tspan><tspan
+         sodipodi:role="line">  size_t numBytes,</tspan><tspan
          id="tspan5442"
          y="592.36218"
          x="255"
-         sodipodi:role="line">  const uint8 *buffer)</tspan></text>
+         sodipodi:role="line">  const uint8 *sendData)</tspan></text>
     <text
        sodipodi:linespacing="125%"
        id="text6016-5-2-0-3-21-7-09"
@@ -3301,11 +3301,11 @@
          id="tspan5446-2"
          y="687.36218"
          x="255"
-         sodipodi:role="line">flPlayXSVF(</tspan><tspan
+         sodipodi:role="line">flProgram(</tspan><tspan
          id="tspan5484"
          y="702.36218"
          x="255"
-         sodipodi:role="line">  const char *svfFile)</tspan></text>
+         sodipodi:role="line">  const char *progConfig)</tspan></text>
     <path
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccccccccccccc"

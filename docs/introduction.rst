@@ -1,5 +1,4 @@
-************
-Introduction
+INTRODUCTION
 ************
 
 Justification
