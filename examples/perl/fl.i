@@ -279,6 +279,7 @@ FLStatus progClose(
 
 %typemap(default) uint8_t isLast {
 	// If not supplied, isLast == 0 (false)
+	$1 = 0;
 }
 FLStatus jtagShiftInOnly(
 	struct FLContext *handle,

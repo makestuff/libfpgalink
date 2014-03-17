@@ -23,10 +23,29 @@ EXTRA_CC_SRCS := $(LOCALNAME)_wrap.c
 PRE_BUILD := $(EXTRA_CC_SRCS)
 EXTRA_CLEAN := $(EXTRA_CC_SRCS) $(LOCALNAME).pm
 ifeq ($(OS),Windows_NT)
-	EXTRA_INCS := -I/c/Perl64/lib/CORE
-	LINK_EXTRALIBS_REL := /c/Perl64/lib/CORE/perl516.lib
+	MACHINE := $(shell echo $${MACHINE})
+	PLATFORM := $(shell echo $${PLATFORM})
+	ifeq ($(PLATFORM),mingw)
+		CSTD := gnu99
+		ALIASING := -fno-strict-aliasing
+		ifeq ($(MACHINE),x64)
+			EXTRA_INCS := -I/c/Perl64/lib/CORE
+			LINK_EXTRALIBS_REL := /c/Perl64/lib/CORE/libperl518.a
+		else ifeq ($(MACHINE),x86)
+			EXTRA_INCS := -I/c/Perl/lib/CORE
+			LINK_EXTRALIBS_REL := /c/Perl/lib/CORE/libperl518.a
+		endif
+	else
+		ifeq ($(MACHINE),x64)
+			EXTRA_INCS := -I/c/Perl64/lib/CORE
+			LINK_EXTRALIBS_REL := /c/Perl64/lib/CORE/perl516.lib
+		else ifeq ($(MACHINE),x86)
+			EXTRA_INCS := -I/c/Perl/lib/CORE
+			LINK_EXTRALIBS_REL := /c/Perl/lib/CORE/perl516.lib
+		endif
+	endif
 	LINK_EXTRALIBS_DBG := $(LINK_EXTRALIBS_REL)
-	SWIG := /swigwin-2.0.12/swig.exe
+	SWIG := $HOME/3rd/swigwin-2.0.12/swig.exe
 else
 	EXTRA_INCS := -I/usr/lib/perl/5.18.2/CORE
 	EXTRA_CFLAGS := -DLINUX=2 -D_REENTRANT -D_LARGEFILE64_SOURCE

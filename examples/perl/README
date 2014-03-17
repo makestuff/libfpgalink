@@ -20,17 +20,22 @@ PERL5LIB=lin.x64/rel LD_LIBRARY_PATH=lin.x64/rel ./various.pl
 
 BUILDING ON WINDOWS
 
-First you need ActivePerl 5.16 (assuming Windows x64 here):
+If you're using an MSVC compiler you'll need ActivePerl 5.16:
 
-http://downloads.activestate.com/ActivePerl/releases/5.16.3.1603/ActivePerl-5.16.3.1603-MSWin32-x64-296746.msi
+x86: http://downloads.activestate.com/ActivePerl/releases/5.16.3.1603/ActivePerl-5.16.3.1603-MSWin32-x86-296746.msi
+x64: http://downloads.activestate.com/ActivePerl/releases/5.16.3.1603/ActivePerl-5.16.3.1603-MSWin32-x64-296746.msi
 
-More recent versions are no longer built with MSVC. You may be able to get the
-binding to work with more recent versions, but this build will definitely not
-"just work" with anything other than 5.16.
+If you're using MinGW then you'll need ActivePerl 5.18:
 
-Second, install SWIG:
+x86: http://downloads.activestate.com/ActivePerl/releases/5.18.2.1801/ActivePerl-5.18.2.1801-MSWin32-x86-64int-297964.msi
+x64: http://downloads.activestate.com/ActivePerl/releases/5.18.2.1801/ActivePerl-5.18.2.1801-MSWin32-x64-297964.msi
 
-cd /
+You may be able to get 5.18 working with MSVC or 5.16 working with MinGW, but it
+will definitely not "just work".
+
+Now install SWIG:
+
+cd $HOME/3rd
 wget http://prdownloads.sourceforge.net/swig/swigwin-2.0.12.zip
 unzip.exe swigwin-2.0.12.zip
 
@@ -38,4 +43,10 @@ Finally, type "make" in this directory to build the binding.
 
 You can run the example code like this:
 
-PERL5LIB=win.x64/rel PATH=win.x64/rel:$PATH ./various.pl
+MSVC:
+  x86: PERL5LIB=msvc.x86/rel PATH=msvc.x86/rel:$PATH ./various.pl
+  x64: PERL5LIB=msvc.x64/rel PATH=msvc.x64/rel:$PATH ./various.pl
+
+MinGW:
+  x86: PERL5LIB=mingw.x86/rel PATH=mingw.x86/rel:$PATH ./various.pl
+  x64: PERL5LIB=mingw.x64/rel PATH=mingw.x64/rel:$PATH ./various.pl
