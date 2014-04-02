@@ -503,7 +503,7 @@ def flWriteChannel(handle, channel, sendData):
     if ( isinstance(sendData, bytearray) ):
         # Write the contents of the byte array:
         numBytes = len(sendData)
-        BufType = uint8*numBytes
+        BufType = c_char*numBytes
         buf = BufType.from_buffer(sendData)
         status = flc.flWriteChannel(handle, channel, numBytes, buf, byref(error))
     elif ( isinstance(sendData, bytes) ):
@@ -571,7 +571,7 @@ def flWriteChannelAsync(handle, channel, sendData):
     if ( isinstance(sendData, bytearray) ):
         # Write the contents of the byte array:
         numBytes = len(sendData)
-        BufType = uint8*numBytes
+        BufType = c_char*numBytes
         buf = BufType.from_buffer(sendData)
         status = flc.flWriteChannelAsync(handle, channel, numBytes, buf, byref(error))
     elif ( isinstance(sendData, bytes) ):
@@ -822,7 +822,7 @@ def flProgramBlob(handle, progConfig, progData):
     error = ErrorString()
     if ( isinstance(progData, bytearray) ):
         numBytes = len(progData)
-        BufType = uint8*numBytes
+        BufType = c_char*numBytes
         buf = BufType.from_buffer(progData)
         status = flc.flProgramBlob(handle, progConfig.encode('ascii'), numBytes, buf, byref(error))
     elif ( isinstance(progData, bytes) ):
@@ -932,15 +932,15 @@ def _bitsToBytes(x):
 #
 def jtagShiftInOut(handle, numBits, tdiData, isLast = False):
     numBytes = _bitsToBytes(numBits)
-    BufType = uint8*numBytes
+    OutType = uint8*numBytes
     if ( not isinstance(tdiData, c_char_p) ):
         if ( numBytes != len(tdiData) ):
             raise FLException("jtagShiftInOut(): Expecting {} bytes tdiData".format(numBytes))
         if ( isinstance(tdiData, bytearray) ):
+            InType = c_char*numBytes
             tdiData = BufType.from_buffer(tdiData)
-        tdiData = cast(tdiData, c_char_p)
     outData = bytearray(numBytes)
-    outDataBuf = BufType.from_buffer(outData)
+    outDataBuf = OutType.from_buffer(outData)
     error = ErrorString()
     status = flc.jtagShiftInOut(
         handle, numBits, tdiData, outDataBuf, 0x01 if isLast else 0x00, error)
@@ -971,13 +971,12 @@ def jtagShiftInOut(handle, numBits, tdiData, isLast = False):
 #
 def jtagShiftInOnly(handle, numBits, tdiData, isLast = False):
     numBytes = _bitsToBytes(numBits)
-    BufType = uint8*numBytes
+    BufType = c_char*numBytes
     if ( not isinstance(tdiData, c_char_p) ):
         if ( numBytes != len(tdiData) ):
             raise FLException("jtagShiftInOnly(): Expecting {} bytes tdiData".format(numBytes))
         if ( isinstance(tdiData, bytearray) ):
             tdiData = BufType.from_buffer(tdiData)
-        tdiData = cast(tdiData, c_char_p)
     error = ErrorString()
     status = flc.jtagShiftInOnly(
         handle, numBits, tdiData, 0x01 if isLast else 0x00, error)
@@ -1056,8 +1055,8 @@ def progGetPort(handle, logicalPort):
 def spiSend(handle, sendData, bitOrder):
     numBytes = len(sendData)
     if ( isinstance(sendData, bytearray) ):
+        BufType = c_char*numBytes
         sendData = BufType.from_buffer(sendData)
-        sendData = cast(sendData, c_char_p)
     error = ErrorString()
     status = flc.spiSend(
         handle, numBytes, sendData, bitOrder, error)
