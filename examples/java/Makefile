@@ -7,6 +7,9 @@ classes: jna-3.5.1.jar
 test: classes
 	java -classpath classes:jna-3.5.1.jar foo.Main
 
+doc: jna-3.5.1.jar
+	javadoc -d doc -classpath jna-3.5.1.jar $$(find src/eu/ -name "*.java")
+
 clean: FORCE
 	rm -rf classes bin
 
