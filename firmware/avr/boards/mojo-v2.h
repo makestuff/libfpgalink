@@ -2,7 +2,7 @@
 #define MOJO_H
 
 // Platform definitions
-#define MCU at90usb162
+#define MCU atmega16u4
 #define XTAL 8000000
 
 // Miscellaneous

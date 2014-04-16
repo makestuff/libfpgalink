@@ -74,7 +74,13 @@ bool isConduitReady(void) {
 //
 int main(void) {
 	#if REG_ENABLED == 0
-		REGCR |= (1 << REGDIS);  // Disable regulator: using JTAG supply rail, which may be 3.3V.
+		#ifdef __AVR_at90usb162__
+			REGCR |= (1 << REGDIS);  // Disable regulator: using JTAG supply rail, which may be 3.3V.
+		#endif
+	#else
+		#ifdef __AVR_atmega16u4__
+			UHWCON |= (1 << UVREGE);  // Enable regulator.
+		#endif
 	#endif
 	MCUSR &= ~(1 << WDRF);
 	wdt_disable();
