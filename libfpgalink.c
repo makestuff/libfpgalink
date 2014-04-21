@@ -200,9 +200,16 @@ static FLStatus bufferAppend(
 	struct FLContext *handle, const uint8 *data, size_t count, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
-	size_t spaceAvailable = handle->chunkSize - (size_t)(handle->writePtr - handle->writeBuf);
+	size_t spaceAvailable;
 	size_t queueDepth = usbNumOutstandingRequests(handle->device);
 	USBStatus uStatus;
+	if ( !handle->writePtr ) {
+		// There is not an active write buffer
+		uStatus = usbBulkWriteAsyncPrepare(handle->device, &handle->writePtr, error);
+		CHECK_STATUS(uStatus, FL_ALLOC_ERR, cleanup, "bufferAppend()");
+		handle->writeBuf = handle->writePtr;
+	}
+	spaceAvailable = handle->chunkSize - (size_t)(handle->writePtr - handle->writeBuf);
 	while ( count > spaceAvailable ) {
 		// Reduce the depth of the work queue a little
 		while ( queueDepth > 2 && !handle->completionReport.flags.isRead ) {
@@ -344,12 +351,6 @@ DLLEXPORT(FLStatus) flWriteChannelAsync(
 	CHECK_STATUS(
 		!handle->isCommCapable, FL_PROTOCOL_ERR, cleanup,
 		"flWriteChannelAsync(): This device does not support CommFPGA");
-	if ( !handle->writePtr ) {
-		// There is not an active write buffer
-		uStatus = usbBulkWriteAsyncPrepare(handle->device, &handle->writePtr, error);
-		CHECK_STATUS(uStatus, FL_ALLOC_ERR, cleanup, "flWriteChannelAsync()");
-		handle->writeBuf = handle->writePtr;
-	}
 	command[0] = chan & 0x7F;
 	command[1] = 0x00;
 	command[2] = 0x00;
@@ -448,12 +449,6 @@ DLLEXPORT(FLStatus) flReadChannelAsyncSubmit(
 		"flReadChannelAsyncSubmit(): Transfer length exceeds 0x10000");
 
 	// Write command
-	if ( !handle->writePtr ) {
-		// There is not an active write buffer
-		uStatus = usbBulkWriteAsyncPrepare(handle->device, &handle->writePtr, error);
-		CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flReadChannelAsyncSubmit()");
-		handle->writeBuf = handle->writePtr;
-	}
 	command[0] = chan | 0x80;
 	flWriteWord(count16, command+1);
 	fStatus = bufferAppend(handle, command, 3, error);
