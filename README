@@ -12,7 +12,7 @@ To build, first you need to install the MakeStuff Build Environment (http://bit.
 your platform, then do:
 
 chris@wotan$ cd makestuff/libs
-chris@wotan$ ../common/msget.sh libfpgalink   # or msgit.sh if you want a local git repo
+chris@wotan$ ../scripts/msget.sh libfpgalink   # or msgit.sh if you want a local git repo
 chris@wotan$ cd libfpgalink
 chris@wotan$ make deps
 
