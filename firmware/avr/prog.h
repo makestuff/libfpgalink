@@ -19,6 +19,7 @@
 
 #include <makestuff.h>
 #include "../../vendorCommands.h"
+#include "../../libfpgalink.h"
 
 // Kick off a shift operation. Next time progExecuteShift() runs, it will execute the shift.
 void progShiftBegin(uint32 numBits, ProgOp progOp, uint8 flagByte);
@@ -33,5 +34,8 @@ void progClockFSM(uint32 bitPattern, uint8 transitionCount);
 
 // Keep TMS and TDI as they are, and clock the JTAG state machine "numClocks" times.
 void progClocks(uint32 numClocks);
+
+// Map the ports, to select either a hardware SPI or a bit-bang SPI
+bool progPortMap(LogicalPort logicalPort, uint8 physicalPort, uint8 physicalBit);
 
 #endif

@@ -15,149 +15,124 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <avr/io.h>
+#include <avr/pgmspace.h>
+#include "makestuff.h"
+#include STR(boards/BSP.h)
 #include "prog.h"
 #include "desc.h"
+#include "usbio.h"
 #include "debug.h"
+#include "ports.h"
 
+typedef enum {
+	NONE,
+	HW,
+	BB
+} PortMapping;
+static PortMapping m_funcIndex = NONE;
 static uint32 m_numBits = 0UL;
 static ProgOp m_progOp = PROG_NOP;
 static uint8 m_flagByte = 0x00;
+static uint8 m_selectBM = 0x00;
+static uint8 m_selectMask = 0x00;
 
-// Port and bits to use:
-#define JTAG_HWSPI
-#ifdef JTAG_HWSPI
-	// These are fixed for a given micro: the SPI pins
-	#define PROG_PORT B
-	#define bmTMS     0x01
-	#define bmTCK     0x02
-	#define bmTDI     0x04
-	#define bmTDO     0x08
-#else
-	// These can be anything, depending on how JTAG is wired
-	#define PROG_PORT B
-	#define bmTMS     0x01
-	#define bmTCK     0x02
-	#define bmTDI     0x04
-	#define bmTDO     0x08
-#endif
-#define bmSCLK    bmTDI
-#define bmMOSI    bmTCK
+#define PAR_DDR DDR(PAR_PORT)
+#define PAR_IO PORT(PAR_PORT)
 
-// Make PORT{B,C,D...} & PIN{B,C,D...} macros
-#define PORT CONCAT(PORT, PROG_PORT)
-#define PIN CONCAT(PIN, PROG_PORT)
-
-// Transition the JTAG state machine to another state: clock "transitionCount" bits from
-// "bitPattern" into TMS, LSB-first.
-//
-void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
-	while ( transitionCount-- ) {
-		if ( bitPattern & 1 ) {
-			PORT |= bmTMS;
+bool progPortMap(LogicalPort logicalPort, uint8 physicalPort, uint8 physicalBit) {
+	switch ( logicalPort ) {
+	case LP_CHOOSE:
+		if ( (m_selectBM & m_selectMask) == m_selectMask ) {
+			m_funcIndex = HW;
+		} else if ( ((m_selectBM >> 4) & m_selectMask) == m_selectMask ) {
+			m_funcIndex = BB;
 		} else {
-			PORT &= ~bmTMS;
+			m_selectBM = 0x00;
+			m_selectMask = 0x00;
+			return false;  // these choices cannot be accomodated by either HW or BB SPI
 		}
-		PORT |= bmTCK;
-		PORT &= ~bmTCK;
-		bitPattern >>= 1;
+		m_selectBM = 0x00;
+		m_selectMask = 0x00;
+		break;
+	case LP_MISO:
+		m_selectMask |= (1<<0);
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_MISO_BIT ) {
+			m_selectBM |= (1<<0);  // this MISO choice is compatible with HW SPI
+		}
+		if ( physicalPort == BB_MISO_PORT && physicalBit == BB_MISO_BIT ) {
+			m_selectBM |= (1<<4);  // this MISO choice is compatible with BB SPI
+		}
+		break;
+	case LP_MOSI:
+		m_selectMask |= (1<<1);
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_MOSI_BIT ) {
+			m_selectBM |= (1<<1);  // this MOSI choice is compatible with HW SPI
+		}
+		if ( physicalPort == BB_MOSI_PORT && physicalBit == BB_MOSI_BIT ) {
+			m_selectBM |= (1<<5);  // this MOSI choice is compatible with BB SPI
+		}
+		break;
+	case LP_SS:
+		m_selectMask |= (1<<2);
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_SS_BIT ) {
+			m_selectBM |= (1<<2);  // this SS choice is compatible with HW SPI
+		}
+		if ( physicalPort == BB_SS_PORT && physicalBit == BB_SS_BIT ) {
+			m_selectBM |= (1<<6);  // this SS choice is compatible with BB SPI
+		}
+		break;
+	case LP_SCK:
+		m_selectMask |= (1<<3);
+		if ( physicalPort == HW_SPI_PORT && physicalBit == HW_SCK_BIT ) {
+			m_selectBM |= (1<<3);  // this SCK choice is compatible with HW SPI
+		}
+		if ( physicalPort == BB_SCK_PORT && physicalBit == BB_SCK_BIT ) {
+			m_selectBM |= (1<<7);  // this SCK choice is compatible with BB SPI
+		}
+		break;
+	case LP_D8:
+		break;
+	default:
+		return false;
 	}
+	return true;
 }
 
-#define setTDI(x) if ( x ) { PORT |= bmTDI; } else { PORT &= ~bmTDI; }
-#define setMOSI(x) if ( x ) { PORT |= bmMOSI; } else { PORT &= ~bmMOSI; }
-#define jtagBit(x) setTDI(byte & x); PORT |= bmTCK; PORT &= ~bmTCK
-#define mosiBit(x) setMOSI(byte & x); PORT |= bmSCLK; PORT &= ~bmSCLK
+// Enable the parallel port
+static inline void parEnable(void) {
+	PAR_DDR = 0xFF;
+}
+
+// Disable the parallel port
+static inline void parDisable(void) {
+	PAR_DDR = 0x00;
+}
 
 // If the JTAG lines are wired to the right pins on the AVR SPI port, we can use
-// it instead of bit-banging, which is much faster
-//#if (PROG_PORT == B) && (bmTDO == 0x08) && (bmTDI == 0x04) && (bmTMS == 0x01) && (bmTMS == 0x02)
-#ifdef JTAG_HWSPI
-	// Use SPI hardware!
+// it instead of bit-banging, which is much faster. Beware though, if SS is not used
+// as an output, the SPI engine doesn't seem to work.
 
-	// TCK-clock the supplied byte into TDI, LSB first.
-	static inline void jtagShiftOut(uint8 byte) {
-		SPDR = byte;
-		while ( !(SPSR & (1<<SPIF)) );
-	}
+// Enable the SPI port
+static inline void hwSpiEnable(void) {
+	SPSR = (1<<SPI2X);
+	SPCR = (1<<SPE) | (1<<DORD) | (1<<MSTR) | (0<<SPR0);
+}
 
-	// JTAG-clock the supplied byte into TDI, MSB first. Return the byte clocked out of TDO.
-	static inline uint8 jtagShiftInOut(uint8 byte) {
-		SPDR = byte;
-		while ( !(SPSR & (1<<SPIF)) );
-		return SPDR;
-	}
+// Disable the SPI port
+static inline void hwSpiDisable(void) {
+	SPSR = 0x00;
+	SPCR = 0x00;
+}
 
-	// Enable the SPI port
-	static inline void spiEnable(void) {
-		SPSR = (1<<SPI2X);
-		SPCR = (1<<SPE) | (1<<DORD) | (1<<MSTR) | (0<<SPR0);
-	}
+// Enable the SPI port
+static inline void bbSpiEnable(void) {
+	// We're bit-banging, so nothing needs to be done
+}
 
-	// Disable the SPI port
-	static inline void spiDisable(void) {
-		SPSR = 0x00;
-		SPCR = 0x00;
-	}
-#else
-	// Use bit-banging!
-
-	// TCK-clock the supplied byte into TDI, LSB first
-	static void jtagShiftOut(uint8 byte) {
-		jtagBit(0x01); jtagBit(0x02); jtagBit(0x04); jtagBit(0x08);
-		jtagBit(0x10); jtagBit(0x20); jtagBit(0x40); jtagBit(0x80);
-	}
-
-	// JTAG-clock the supplied byte into TDI, MSB first. Return the byte clocked out of TDO.
-	static uint8 jtagShiftInOut(uint8 byte) {
-		uint8 tdoByte = 0x00;
-		setTDI(byte & 0x01);
-		if ( PIN & bmTDO ) { tdoByte |= 0x01; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		setTDI(byte & 0x02);
-		if ( PIN & bmTDO ) { tdoByte |= 0x02; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		setTDI(byte & 0x04);
-		if ( PIN & bmTDO ) { tdoByte |= 0x04; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		setTDI(byte & 0x08);
-		if ( PIN & bmTDO ) { tdoByte |= 0x08; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		setTDI(byte & 0x10);
-		if ( PIN & bmTDO ) { tdoByte |= 0x10; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		setTDI(byte & 0x20);
-		if ( PIN & bmTDO ) { tdoByte |= 0x20; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		setTDI(byte & 0x40);
-		if ( PIN & bmTDO ) { tdoByte |= 0x40; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		setTDI(byte & 0x80);
-		if ( PIN & bmTDO ) { tdoByte |= 0x80; }
-		PORT |= bmTCK; PORT &= ~bmTCK;
-		return tdoByte;
-	}
-
-	// Enable the SPI port
-	static inline void spiEnable(void) {
-		// We're bit-banging, so nothing needs to be done
-	}
-
-	// Disable the SPI port
-	static inline void spiDisable(void) {
-		// We're bit-banging, so nothing needs to be done
-	}
-#endif
-
-// SCLK-clock the supplied byte into MOSI, LSB first.
-//
-#if bmTCK == bmSCLK && bmTDI == bmMOSI
-	#define mosiShiftOut(x) jtagShiftOut(x)
-#else
-	static void mosiShiftOut(uint8 byte) {
-		mosiBit(0x01); mosiBit(0x02); mosiBit(0x04); mosiBit(0x08);
-		mosiBit(0x10); mosiBit(0x20); mosiBit(0x40); mosiBit(0x80);
-	}
-#endif
+// Disable the SPI port
+static inline void bbSpiDisable(void) {
+	// We're bit-banging, so nothing needs to be done
+}
 
 // Kick off a shift operation. Next time progExecuteShift() runs, it will execute the shift.
 //
@@ -171,228 +146,174 @@ void progShiftBegin(uint32 numBits, ProgOp progOp, uint8 flagByte) {
 //
 #define bitsToBytes(x) ((x>>3) + (x&7 ? 1 : 0))
 
-static void jtagIsSendingIsReceiving(void) {
-	// The host is giving us data and is expecting a response
-	uint16 bitsRead, bitsRemaining;
-	uint8 bytesRead, bytesRemaining;
-	uint8 buf[ENDPOINT_SIZE], *ptr;
-	spiEnable();
-	while ( m_numBits ) {
-		bitsRead = (m_numBits >= (ENDPOINT_SIZE<<3)) ? ENDPOINT_SIZE<<3 : m_numBits;
-		bytesRead = bitsToBytes(bitsRead);
-		Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
-		Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
-		ptr = buf;
-		if ( bitsRead == m_numBits ) {
-			// This is the last chunk
-			uint8 tdoByte, tdiByte, leftOver, i;
-			bitsRemaining = (bitsRead-1) & 0xFFF8;        // Now an integer number of bytes
-			leftOver = (uint8)(bitsRead - bitsRemaining); // How many bits in last byte (1-8)
-			bytesRemaining = (bitsRemaining>>3);
-			while ( bytesRemaining-- ) {
-				*ptr = jtagShiftInOut(*ptr);
-				ptr++;
-			}
-			spiDisable();
-			tdiByte = *ptr;  // Now do the bits in the final byte
-			tdoByte = 0x00;
-			i = 1;
-			while ( i && leftOver ) {
-				leftOver--;
-				if ( (m_flagByte & bmISLAST) && !leftOver ) {
-					PORT |= bmTMS; // Exit Shift-DR state on next clock
-				}
-				setTDI(tdiByte & 0x01);
-				tdiByte >>= 1;
-				if ( PIN & bmTDO ) {
-					tdoByte |= i;
-				}
-				PORT |= bmTCK;
-				PORT &= ~bmTCK;
-				i <<= 1;
-			}
-			*ptr = tdoByte;
-		} else {
-			// This is not the last chunk
-			bytesRemaining = (bitsRead>>3);
-			while ( bytesRemaining-- ) {
-				*ptr = jtagShiftInOut(*ptr);
-				ptr++;
-			}
-		}
-		Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
-		Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
-		m_numBits -= bitsRead;
-		Endpoint_ClearIN();
-		Endpoint_ClearOUT();
-	}
+// Bit-bang version of prog ops:
+#define MISO_PORT BB_MISO_PORT
+#define MOSI_PORT BB_MOSI_PORT
+#define SS_PORT BB_SS_PORT
+#define SCK_PORT BB_SCK_PORT
+#define MISO_BIT  BB_MISO_BIT
+#define MOSI_BIT  BB_MOSI_BIT
+#define SS_BIT  BB_SS_BIT
+#define SCK_BIT  BB_SCK_BIT
+#define OP_HDR   bb
+#include "prog_ops.h"
+
+// SCK-clock the supplied byte into MOSI, LSB first
+static inline void bbShiftOut(uint8 byte) {
+	mosiBit(0x01); mosiBit(0x02); mosiBit(0x04); mosiBit(0x08);
+	mosiBit(0x10); mosiBit(0x20); mosiBit(0x40); mosiBit(0x80);
+}
+
+// JTAG-clock the supplied byte into MOSI, LSB first. Return the byte clocked out of MISO.
+static inline uint8 bbShiftInOut(uint8 byte) {
+	uint8 misoByte = 0x00;
+	mosiSet(byte & 0x01);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x01; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x02);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x02; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x04);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x04; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x08);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x08; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x10);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x10; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x20);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x20; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x40);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x40; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	mosiSet(byte & 0x80);
+	if ( MISO_IN & bmMISO ) { misoByte |= 0x80; }
+	SCK_OUT |= bmSCK; SCK_OUT &= ~bmSCK;
+	return misoByte;
+}
+
+// Hardware SPI version of prog ops:
+#undef  MISO_PORT
+#undef  MOSI_PORT
+#undef  SS_PORT
+#undef  SCK_PORT
+#undef  MISO_BIT
+#undef  MOSI_BIT
+#undef  SS_BIT
+#undef  SCK_BIT
+#define MISO_PORT HW_SPI_PORT
+#define MOSI_PORT HW_SPI_PORT
+#define SS_PORT HW_SPI_PORT
+#define SCK_PORT HW_SPI_PORT
+#define MISO_BIT  HW_MISO_BIT
+#define MOSI_BIT  HW_MOSI_BIT
+#define SS_BIT  HW_SS_BIT
+#define SCK_BIT  HW_SCK_BIT
+#define OP_HDR   hw
+#include "prog_ops.h"
+
+// SCK-clock the supplied byte into MOSI, LSB first.
+static inline void hwShiftOut(uint8 byte) {
+	SPDR = byte;
+	while ( !(SPSR & (1<<SPIF)) );
+}
+
+// JTAG-clock the supplied byte into MOSI, LSB first. Return the byte clocked out of MISO.
+static inline uint8 hwShiftInOut(uint8 byte) {
+	SPDR = byte;
+	while ( !(SPSR & (1<<SPIF)) );
+	return SPDR;
+}
+
+static void nullFunc(void) {
 	m_progOp = PROG_NOP;
 }
 
-static void jtagIsSendingNotReceiving(void) {
-	// The host is giving us data, but does not need a response
-	uint16 bitsRead, bitsRemaining;
-	uint8 bytesRead, bytesRemaining;
-	uint8 buf[ENDPOINT_SIZE], *ptr;
-	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
-	spiEnable();
-	while ( m_numBits ) {
-		bitsRead = (m_numBits >= (ENDPOINT_SIZE<<3)) ? ENDPOINT_SIZE<<3 : m_numBits;
-		bytesRead = bitsToBytes(bitsRead);
-		Endpoint_Read_Stream_LE(buf, bytesRead, NULL);
-		ptr = buf;
-		if ( bitsRead == m_numBits ) {
-			// This is the last chunk
-			uint8 tdiByte, leftOver, i;
-			bitsRemaining = (bitsRead-1) & 0xFFF8;        // Now an integer number of bytes
-			leftOver = (uint8)(bitsRead - bitsRemaining); // How many bits in last byte (1-8)
-			bytesRemaining = (bitsRemaining>>3);
-			while ( bytesRemaining-- ) {
-				jtagShiftOut(*ptr++);
-			}
-			spiDisable();
-			tdiByte = *ptr;  // Now do the bits in the final byte
-			i = 1;
-			while ( i && leftOver ) {
-				leftOver--;
-				if ( (m_flagByte & bmISLAST) && !leftOver ) {
-					PORT |= bmTMS; // Exit Shift-DR state on next clock
-				}
-				setTDI(tdiByte & 0x01);
-				tdiByte >>= 1;
-				PORT |= bmTCK;
-				PORT &= ~bmTCK;
-				i <<= 1;
-			}
-		} else {
-			// This is not the last chunk
-			bytesRemaining = (bitsRead>>3);
-			while ( bytesRemaining-- ) {
-				jtagShiftOut(*ptr++);
-			}
-		}
-		m_numBits -= bitsRead;
+typedef void (*FuncPtr)(void);
+typedef struct {
+	FuncPtr jtagIsSendingIsReceiving;
+	FuncPtr jtagIsSendingNotReceiving;
+	FuncPtr jtagNotSendingIsReceiving;
+	FuncPtr jtagNotSendingNotReceiving;
+	FuncPtr progSerSend;
+	FuncPtr progSerRecv;
+	FuncPtr progParSend;
+} IndirectionTable;
+
+static const IndirectionTable indirectionTable[] PROGMEM = {
+	{
+		nullFunc,  // NULL functions, just in case we get no mapping instructions
+		nullFunc,
+		nullFunc,
+		nullFunc,
+		nullFunc,
+		nullFunc,
+		nullFunc
+	}, {
+		hwIsSendingIsReceiving, // bit-bang implementations
+		hwIsSendingNotReceiving,
+		hwNotSendingIsReceiving,
+		hwNotSendingNotReceiving,
+		hwSerSend,
+		hwSerRecv,
+		hwParSend
+	}, {
+		bbIsSendingIsReceiving, // bit-bang implementations
+		bbIsSendingNotReceiving,
+		bbNotSendingIsReceiving,
+		bbNotSendingNotReceiving,
+		bbSerSend,
+		bbSerRecv,
+		bbParSend
 	}
-	Endpoint_ClearOUT();
-	m_progOp = PROG_NOP;
+};
+
+static inline FuncPtr getFunc(uint8 index, uint8 offset) {
+	const void *const baseAddr = &indirectionTable[index];
+	return (FuncPtr)pgm_read_word(baseAddr + offset);
 }
 
-static void jtagNotSendingIsReceiving(void) {
-	// The host is not giving us data, but is expecting a response
-	uint16 bitsRead, bitsRemaining;
-	uint8 bytesRead, bytesRemaining;
-	uint8 buf[ENDPOINT_SIZE], *ptr;
-	const uint8 tdiByte = (m_flagByte & bmSENDONES) ? 0xFF : 0x00;
-	Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
-	spiEnable();
-	while ( m_numBits ) {
-		bitsRead = (m_numBits >= (ENDPOINT_SIZE<<3)) ? ENDPOINT_SIZE<<3 : m_numBits;
-		bytesRead = bitsToBytes(bitsRead);
-		ptr = buf;
-		if ( bitsRead == m_numBits ) {
-			// This is the last chunk
-			uint8 tdoByte, leftOver, i;
-			bitsRemaining = (bitsRead-1) & 0xFFF8;        // Now an integer number of bytes
-			leftOver = (uint8)(bitsRead - bitsRemaining); // How many bits in last byte (1-8)
-			bytesRemaining = (bitsRemaining>>3);
-			while ( bytesRemaining-- ) {
-				*ptr++ = jtagShiftInOut(tdiByte);
-			}
-			spiDisable();
-			tdoByte = 0x00;  // Now do the bits in the final byte
-			i = 1;
-			setTDI(tdiByte & 0x01);
-			while ( i && leftOver ) {
-				leftOver--;
-				if ( (m_flagByte & bmISLAST) && !leftOver ) {
-					PORT |= bmTMS; // Exit Shift-DR state on next clock
-				}
-				if ( PIN & bmTDO ) {
-					tdoByte |= i;
-				}
-				PORT |= bmTCK;
-				PORT &= ~bmTCK;
-				i <<= 1;
-			}
-			*ptr = tdoByte;
-		} else {
-			// This is not the last chunk
-			bytesRemaining = (bitsRead>>3);
-			while ( bytesRemaining-- ) {
-				*ptr++ = jtagShiftInOut(tdiByte);
-			}
-		}
-		Endpoint_Write_Stream_LE(buf, bytesRead, NULL);
-		m_numBits -= bitsRead;
-	}
-	Endpoint_ClearIN();
-	m_progOp = PROG_NOP;
-}
+#define jtagIsSendingIsReceiving() (*getFunc(m_funcIndex, offsetof(IndirectionTable, jtagIsSendingIsReceiving)))()
+#define jtagIsSendingNotReceiving() (*getFunc(m_funcIndex, offsetof(IndirectionTable, jtagIsSendingNotReceiving)))()
+#define jtagNotSendingIsReceiving() (*getFunc(m_funcIndex, offsetof(IndirectionTable, jtagNotSendingIsReceiving)))()
+#define jtagNotSendingNotReceiving() (*getFunc(m_funcIndex, offsetof(IndirectionTable, jtagNotSendingNotReceiving)))()
+#define progSerSend() (*getFunc(m_funcIndex, offsetof(IndirectionTable, progSerSend)))()
+#define progSerRecv() (*getFunc(m_funcIndex, offsetof(IndirectionTable, progSerRecv)))()
+#define progParSend() (*getFunc(m_funcIndex, offsetof(IndirectionTable, progParSend)))()
 
-static void jtagNotSendingNotReceiving(void) {
-	// The host is not giving us data, and does not need a response
-	uint32 bitsRemaining, bytesRemaining;
-	uint8 leftOver;
-	const uint8 tdiByte = (m_flagByte & bmSENDONES) ? 0xFF : 0x00;
-	bitsRemaining = (m_numBits-1) & 0xFFFFFFF8;    // Now an integer number of bytes
-	leftOver = (uint8)(m_numBits - bitsRemaining); // How many bits in last byte (1-8)
-	bytesRemaining = (bitsRemaining>>3);
-	spiEnable();
-	while ( bytesRemaining-- ) {
-		jtagShiftOut(tdiByte);
-	}
-	spiDisable();
-	setTDI(tdiByte & 0x01);
-	while ( leftOver ) {
-		leftOver--;
-		if ( (m_flagByte & bmISLAST) && !leftOver ) {
-			PORT |= bmTMS; // Exit Shift-DR state on next clock
-		}
-		PORT |= bmTCK;
-		PORT &= ~bmTCK;
-	}
-	m_numBits = 0;
-	m_progOp = PROG_NOP;
-}
-
-// Actually execute the shift operation initiated by progBeginShift(). This is done in a
-// separate method because vendor commands cannot read & write to bulk endpoints.
+// Actually execute the shift operation initiated by progBeginShift(). This is
+// done in a separate function because vendor commands cannot read & write to
+// bulk endpoints.
 //
 void progShiftExecute(void) {
-	#ifdef FOO_DEBUG
-		if ( m_progOp ) {
-			debugSendFlashString(PSTR("progShiftExecute("));
-			debugSendLongHex(m_numBits);
-			debugSendByte(',');
-			debugSendByteHex(m_progOp);
-			debugSendByte(',');
-			debugSendByteHex(m_flagByte);
-			debugSendByte(')');
-			debugSendByte('\r');
-		}
-	#endif
 	switch ( m_progOp ) {
 	case PROG_JTAG_ISSENDING_ISRECEIVING:
-		// The host is giving us data, and is expecting a response (xdr)
+		// The host is giving us data, and is expecting a response
 		jtagIsSendingIsReceiving();
 		break;
 	case PROG_JTAG_ISSENDING_NOTRECEIVING:
-		// The host is giving us data, but does not need a response (xdn)
+		// The host is giving us data, but does not need a response
 		jtagIsSendingNotReceiving();
 		break;
 	case PROG_JTAG_NOTSENDING_ISRECEIVING:
-		// The host is not giving us data, but is expecting a response (x0r)
+		// The host is not giving us data, but is expecting a response
 		jtagNotSendingIsReceiving();
 		break;
 	case PROG_JTAG_NOTSENDING_NOTRECEIVING:
+		// The host is neither giving us data, nor expecting a response
 		jtagNotSendingNotReceiving();
 		break;
-	//case PROG_PARALLEL:
-	//	doProgram(true);
-	//	break;
-	//case PROG_SERIAL:
-	//	doProgram(false);
-	//	break;
+	case PROG_SPI_SEND:
+		progSerSend();
+		break;
+	case PROG_SPI_RECV:
+		progSerRecv();
+		break;
+	case PROG_PARALLEL:
+		progParSend();
+		break;
 	case PROG_NOP:
 	default:
 		break;
@@ -402,8 +323,30 @@ void progShiftExecute(void) {
 // Keep TMS and TDI as they are, and clock the JTAG state machine "numClocks" times.
 //
 void progClocks(uint32 numClocks) {
-	while ( numClocks-- ) {
-		PORT |= bmTCK;
-		PORT &= ~bmTCK;
+	switch ( m_funcIndex ) {
+	case HW:
+		hwProgClocks(numClocks);
+		return;
+	case BB:
+		bbProgClocks(numClocks);
+		return;
+	default:
+		return;
+	}
+}
+
+// Transition the JTAG state machine to another state: clock "transitionCount" bits from
+// "bitPattern" into TMS, LSB-first.
+//
+void progClockFSM(uint32 bitPattern, uint8 transitionCount) {
+	switch ( m_funcIndex ) {
+	case HW:
+		hwProgClockFSM(bitPattern, transitionCount);
+		return;
+	case BB:
+		bbProgClockFSM(bitPattern, transitionCount);
+		return;
+	default:
+		return;
 	}
 }

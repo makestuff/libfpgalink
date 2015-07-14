@@ -25,7 +25,7 @@
 
 int main(int argc, const char *argv[]) {
 	const uint8 *buffer, *p, *savePtr;
-	uint32 length;
+	size_t length;
 	uint8 byte;
 	uint32 xsdrSize = 0;
 	uint32 numBytes, temp;

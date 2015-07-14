@@ -31,7 +31,7 @@ extern const uint8 dev_strings[];
 void livePatch(uint8 patchClass, uint8 newByte);
 
 // General-purpose diagnostic code, for debugging. See CMD_GET_DIAG_CODE vendor command.
-xdata uint8 m_diagnosticCode = 0;
+__xdata uint8 m_diagnosticCode = 0;
 
 void fifoSetEnabled(uint8 mode) {
 	// Ensure that CTL1 & CTL2 (fx2GotData_in & fx2GotRoom_in) default low (unasserted). This
@@ -50,8 +50,8 @@ void fifoSetEnabled(uint8 mode) {
 //
 void mainInit(void) {
 
-	xdata uint8 thisByte = 0xFF;
-	xdata uint16 blockSize;
+	__xdata uint8 thisByte = 0xFF;
+	__xdata uint16 blockSize;
 
 	// This is only necessary for cases where you want to load firmware into the RAM of an FX2 that
 	// has already loaded firmware from an EEPROM. It should definitely be removed for firmwares
@@ -136,7 +136,9 @@ void mainInit(void) {
 	OEE = 0x00;
 
 #ifdef EEPROM
-	#include "init.inc"
+	#ifdef BSP
+		#include STR(boards/BSP.c)
+	#endif
 #endif
 
 #ifdef DEBUG
@@ -225,8 +227,8 @@ uint8 handleVendorCommand(uint8 cmd) {
 	//
 	case CMD_MODE_STATUS:
 		if ( SETUP_TYPE == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
-			const xdata uint16 param = SETUP_VALUE();
-			const xdata uint8 value = SETUPDAT[4];
+			const __xdata uint16 param = SETUP_VALUE();
+			const __xdata uint8 value = SETUPDAT[4];
 			if ( param == FIFO_MODE ) {
 				// Enable or disable FIFO mode
 				fifoSetEnabled(value);
@@ -244,12 +246,12 @@ uint8 handleVendorCommand(uint8 cmd) {
 			EP0BUF[5] = (IOA & bmBIT2) ? 0 : 1;  // Flags
 			EP0BUF[6] = 0x11;                    // NeroProg endpoints
 			EP0BUF[7] = 0x26;                    // CommFPGA endpoints
-			EP0BUF[8] = 0x00;                    // Reserved
-			EP0BUF[9] = 0x00;                    // Reserved
-			EP0BUF[10] = 0x00;                   // Reserved
-			EP0BUF[11] = 0x00;                   // Reserved
-			EP0BUF[12] = 0x00;                   // Reserved
-			EP0BUF[13] = 0x00;                   // Reserved
+			EP0BUF[8] = 0xFF;                    // Firmware ID MSB
+			EP0BUF[9] = 0xFF;                    // Firmware ID LSB
+			EP0BUF[10] = (uint8)(DATE>>24);      // Version MSB
+			EP0BUF[11] = (uint8)(DATE>>16);      // Version
+			EP0BUF[12] = (uint8)(DATE>>8);       // Version
+			EP0BUF[13] = (uint8)DATE;            // Version LSB
 			EP0BUF[14] = 0x00;                   // Reserved
 			EP0BUF[15] = 0x00;                   // Reserved
 			
@@ -262,7 +264,7 @@ uint8 handleVendorCommand(uint8 cmd) {
 
 	// Clock data into and out of the JTAG chain. Reads from EP2OUT and writes to EP4IN.
 	//
-	case CMD_JTAG_CLOCK_DATA:
+	case CMD_PROG_CLOCK_DATA:
 		if ( SETUP_TYPE == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			EP0BCL = 0x00;                                     // Allow host transfer in
 			while ( EP0CS & bmEPBUSY );                        // Wait for data
@@ -296,10 +298,10 @@ uint8 handleVendorCommand(uint8 cmd) {
 	//
 	case CMD_PORT_BIT_IO:
 		if ( SETUP_TYPE == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
-			const xdata uint8 portNumber = SETUPDAT[2];
-			const xdata uint8 bitNumber = SETUPDAT[3];
-			const xdata uint8 drive = SETUPDAT[4];
-			const xdata uint8 high = SETUPDAT[5];
+			const __xdata uint8 portNumber = SETUPDAT[2];
+			const __xdata uint8 bitNumber = SETUPDAT[3];
+			const __xdata uint8 drive = SETUPDAT[4];
+			const __xdata uint8 high = SETUPDAT[5];
 			if ( portNumber > 4 || bitNumber > 7 ) {
 				return false;  // illegal port or bit
 			}
@@ -316,10 +318,18 @@ uint8 handleVendorCommand(uint8 cmd) {
 
 	case CMD_PORT_MAP:
 		if ( SETUP_TYPE == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
-			const xdata uint8 patchClass = SETUPDAT[4];
-			const xdata uint8 patchPort = SETUPDAT[5];
+			__xdata uint8 patchClass = SETUPDAT[4];
+			const __xdata uint8 patchPort = SETUPDAT[5];
+			if ( patchClass == 0x00 ) {
+				// Patch class zero is just an anchor for the less flexible Harvard architecture
+				// micros like the AVR; since the FX2LP has a Von Neumann architecture it can
+				// efficiently self-modify its code, so the port mapping can be done individually,
+				// so there's no need for an anchor to group mapping operations together.
+				return true;
+			}
+			patchClass--;
 			if ( patchClass < 4 ) {
-				const xdata uint8 patchBit = SETUPDAT[2];
+				const __xdata uint8 patchBit = SETUPDAT[2];
 				livePatch(patchClass, 0x80 + (patchPort << 4) + patchBit);
 			} else {
 				livePatch(
@@ -336,10 +346,10 @@ uint8 handleVendorCommand(uint8 cmd) {
 	case CMD_READ_WRITE_EEPROM:
 		if ( SETUP_TYPE == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
 			// It's an IN operation - read from prom and send to host
-			xdata uint16 address = SETUP_VALUE();
-			xdata uint16 length = SETUP_LENGTH();
-			xdata uint16 chunkSize;
-			xdata uint8 i;
+			__xdata uint16 address = SETUP_VALUE();
+			__xdata uint16 length = SETUP_LENGTH();
+			__xdata uint16 chunkSize;
+			__xdata uint8 i;
 			while ( length ) {
 				while ( EP0CS & bmEPBUSY );
 				chunkSize = length < EP0BUF_SIZE ? length : EP0BUF_SIZE;
@@ -355,9 +365,9 @@ uint8 handleVendorCommand(uint8 cmd) {
 			}
 		} else if ( SETUP_TYPE == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			// It's an OUT operation - read from host and send to prom
-			xdata uint16 address = SETUP_VALUE();
-			xdata uint16 length = SETUP_LENGTH();
-			xdata uint16 chunkSize;
+			__xdata uint16 address = SETUP_VALUE();
+			__xdata uint16 length = SETUP_LENGTH();
+			__xdata uint16 chunkSize;
 			while ( length ) {
 				EP0BCL = 0x00; // allow pc transfer in
 				while ( EP0CS & bmEPBUSY ); // wait for data

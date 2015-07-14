@@ -550,7 +550,7 @@ void parseString(ParseContext *cxt, const char *str, struct Buffer *csvfBuf) {
 
 void renderBuffer(char *&p, const Buffer *buf) {
 	const char *src = (const char *)buf->data;
-	uint32 length = buf->length;
+	uint32 length = (uint32)buf->length;
 	*p++ = '{';
 	while ( length-- ) {
 		sprintf(p, "%02X", *src & 0xFF);
@@ -640,12 +640,12 @@ TEST(FPGALink_testParse) {
 	bufDestroy(&csvfBuf);
 }
 
-static void compare(CmdPtr pExpected, CmdPtr pActual) {
+static void compare(int j, CmdPtr pExpected, CmdPtr pActual) {
 	const char *const sExpected = getCmdName(pExpected);
 	const char *const sActual = getCmdName(pActual);
 	uint32 expected = pExpected[0];
 	uint32 actual = pActual[0];
-	printf("  %s:%s\n", sExpected, sActual);
+	printf("  [%d] %s:%s\n", j, sExpected, sActual);
 	CHECK_EQUAL(sExpected, sActual);
 	if ( expected == XRUNTEST && actual == XRUNTEST ) {
 		expected = readLongBE(pExpected + 1);
@@ -655,7 +655,7 @@ static void compare(CmdPtr pExpected, CmdPtr pActual) {
 }
 
 TEST(FPGALink_testProcessIndex) {
-	int i, num;
+	int i, j, num;
 	const CmdPtr *pExpected;
 	const CmdPtr *pActual;
 	CmdArray xruntest0  = {XRUNTEST, 0x00, 0x00, 0x00, 0x00};
@@ -791,8 +791,29 @@ TEST(FPGALink_testProcessIndex) {
 		xsdr,
 		xcomplete
 	};
-	const CmdPtr *const src[] = {src0, src1, src2, src3};
-	const CmdPtr *const exp[] = {exp0, exp1, exp2, exp3};
+	const CmdPtr src4[] = {
+		xsir,
+		xsdrsize,
+		xtdomask,
+		xsdrtdo,
+		xsdrsize,
+		xsdr,
+		xruntest1,
+		xcomplete
+	};
+	const CmdPtr exp4[] = {
+		xruntest0,
+		xsir,
+		xsdrsize,
+		xtdomask,
+		xsdrtdo,
+		xruntest1,
+		xsdrsize,
+		xsdr,
+		xcomplete
+	};
+	const CmdPtr *const src[] = {src0, src1, src2, src3, src4};
+	const CmdPtr *const exp[] = {exp0, exp1, exp2, exp3, exp4};
 	const uint8 *dst[1024];  // worst case 2x
 	num = sizeof(src) / sizeof(src[0]);
 	for ( i = 0; i < num; i++ ) {
@@ -800,12 +821,35 @@ TEST(FPGALink_testProcessIndex) {
 		processIndex(src[i], dst);
 		pExpected = exp[i];
 		pActual = dst;
+		j = 0;
 		while ( **pExpected != XCOMPLETE && **pActual != XCOMPLETE ) {
-			compare(*pExpected++, *pActual++);
+			compare(j++, *pExpected++, *pActual++);
 		}
-		printf("  %s:%s\n", getCmdName(*pExpected), getCmdName(*pActual));
+		printf("  [%d] %s:%s\n", j, getCmdName(*pExpected), getCmdName(*pActual));
 		CHECK(**pExpected == XCOMPLETE);
 		CHECK(**pActual == XCOMPLETE);
 	}
 }
 
+TEST(FPGALink_testBuildIndex) {
+	const uint8 src[] = {
+		0x02, 0x06, 0x09, 0x08,  0x00, 0x00, 0x00, 0x20,
+		0x01, 0xFF, 0xFF, 0xFF,  0x0F, 0x09, 0x00, 0x93,
+		0x00, 0x80, 0x00, 0x61,  0x00, 0xF2, 0x08, 0x00,
+		0x00, 0x00, 0x05, 0x03,  0x00, 0x04, 0x00, 0x00,
+		0x00, 0x10, 0x00
+	};
+	const size_t len = sizeof(src);
+	struct Buffer csvfBuf;
+	FLStatus fStatus;
+	struct ParseContext cxt;
+	BufferStatus bStatus = bufInitialise(&csvfBuf, len, 0x00, NULL);
+	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	memset(&cxt, 0, sizeof(cxt));
+	cxt.numCommands = 8;
+	bStatus = bufAppendBlock(&csvfBuf, src, len, NULL);
+	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	fStatus = buildIndex(&cxt, &csvfBuf, NULL);
+	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	bufDestroy(&csvfBuf);
+}

@@ -119,7 +119,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			#ifdef DEBUG
 				printf(")\n");
 			#endif
-			fStatus = jtagShift(handle, numBits, tdiData, NULL, true, error);  // -> Exit1-DR
+			fStatus = jtagShiftInOnly(handle, numBits, tdiData, true, error);  // -> Exit1-DR
 			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			fStatus = jtagClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle
 			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
@@ -155,7 +155,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			do {
 				fStatus = jtagClockFSM(handle, 0x00000001, 3, error);  // -> Shift-DR
 				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
-				fStatus = jtagShift(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
+				fStatus = jtagShiftInOut(handle, xsdrSize, tdiData, tdoData, true, error);  // -> Exit1-DR
 				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 				fStatus = jtagClockFSM(handle, 0x0000001A, 6, error);  // -> Run-Test/Idle
 				CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
@@ -196,7 +196,7 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			while ( numBytes-- ) {
 				*tdiPtr++ = *ptr++;
 			}
-			fStatus = jtagShift(handle, xsdrSize, tdiAll, NULL, true, error);  // -> Exit1-DR
+			fStatus = jtagShiftInOnly(handle, xsdrSize, tdiAll, true, error);  // -> Exit1-DR
 			free(tdiAll);
 			CHECK_STATUS(fStatus, fStatus, cleanup, "csvfPlay()");
 			fStatus = jtagClockFSM(handle, 0x00000001, 2, error);  // -> Run-Test/Idle

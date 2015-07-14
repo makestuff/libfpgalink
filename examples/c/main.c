@@ -19,6 +19,34 @@
 #include <libfpgalink.h>
 #include "args.h"
 
+static const char *nibbles[] = {
+	"0000",  // '0'
+	"0001",  // '1'
+	"0010",  // '2'
+	"0011",  // '3'
+	"0100",  // '4'
+	"0101",  // '5'
+	"0110",  // '6'
+	"0111",  // '7'
+	"1000",  // '8'
+	"1001",  // '9'
+
+	"XXXX",  // ':'
+	"XXXX",  // ';'
+	"XXXX",  // '<'
+	"XXXX",  // '='
+	"XXXX",  // '>'
+	"XXXX",  // '?'
+	"XXXX",  // '@'
+
+	"1010",  // 'A'
+	"1011",  // 'B'
+	"1100",  // 'C'
+	"1101",  // 'D'
+	"1110",  // 'E'
+	"1111"   // 'F'
+};
+
 int main(int argc, const char *argv[]) {
 	int retVal;
 	struct FLContext *handle = NULL;
@@ -26,9 +54,9 @@ int main(int argc, const char *argv[]) {
 	const char *error = NULL;
 	uint8 byte = 0x10;
 	uint8 buf[256];
-	bool flag;
+	uint8 flag;
 	bool isNeroCapable, isCommCapable;
-	uint32 fileLen;
+	size_t fileLen;
 	uint8 *buffer = NULL;
 	uint32 numDevices, scanChain[16], i;
 	const char *vp = NULL, *ivp = NULL, *queryPort = NULL, *portConfig = NULL, *progConfig = NULL, *dataFile = NULL;
@@ -94,9 +122,9 @@ int main(int argc, const char *argv[]) {
 			do {
 				printf(".");
 				fflush(stdout);
-				flSleep(100);
 				status = flIsDeviceAvailable(vp, &flag, &error);
 				CHECK_STATUS(status, 12, cleanup);
+				flSleep(250);
 				count--;
 			} while ( !flag && count );
 			printf("\n");
@@ -115,14 +143,26 @@ int main(int argc, const char *argv[]) {
 	}
 	
 	if ( portConfig ) {
+		uint32 readState;
+		char hex[9];
+		const uint8 *p = (const uint8 *)hex;
 		printf("Configuring ports...\n");
-		status = flPortConfig(handle, portConfig, &error);
+		status = flMultiBitPortAccess(handle, portConfig, &readState, &error);
 		CHECK_STATUS(status, 16, cleanup);
+		sprintf(hex, "%08X", readState);
+		printf("Readback:   28   24   20   16    12    8    4    0\n          %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf("  %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s", nibbles[*p++ - '0']);
+		printf(" %s\n", nibbles[*p++ - '0']);
 		flSleep(100);
 	}
 
 	isNeroCapable = flIsNeroCapable(handle);
-	isCommCapable = flIsCommCapable(handle);
+	isCommCapable = flIsCommCapable(handle, 0x01);
 	if ( queryPort ) {
 		if ( isNeroCapable ) {
 			status = jtagScanChain(handle, queryPort, &numDevices, scanChain, 16, &error);
@@ -154,51 +194,80 @@ int main(int argc, const char *argv[]) {
 	
 	if ( dataFile ) {
 		if ( isCommCapable ) {
-			printf("Enabling FIFO mode...\n");
-			status = flFifoMode(handle, true, &error);
+			const uint8 *recvData;
+			uint32 actualLength;
+			uint32 j;
+			uint16 checksum;
+			printf("Selecting conduit 0x01...\n");
+			status = flSelectConduit(handle, 0x01, &error);
 			CHECK_STATUS(status, 21, cleanup);
+
+			// Do some synchronous writes
 			printf("Zeroing registers 1 & 2...\n");
-			byte = 0x00;
-			status = flWriteChannel(handle, 1000, 0x01, 1, &byte, &error);
+			byte = 0xCA;
+			status = flWriteChannel(handle, 0x01, 1, &byte, &error);
 			CHECK_STATUS(status, 22, cleanup);
-			status = flWriteChannel(handle, 1000, 0x02, 1, &byte, &error);
+			byte = 0xFE;
+			status = flWriteChannel(handle, 0x02, 1, &byte, &error);
 			CHECK_STATUS(status, 23, cleanup);
-			
+
 			buffer = flLoadFile(dataFile, &fileLen);
-			if ( buffer ) {
-				uint16 checksum = 0x0000;
-				uint32 i;
-				for ( i = 0; i < fileLen; i++ ) {
-					checksum = (uint16)(checksum + buffer[i]);
-				}
-				printf(
-					"Writing %0.2f MiB (checksum 0x%04X) from %s to FPGALink device %s...\n",
-					(double)fileLen/(1024*1024), checksum, dataFile, vp);
-				status = flWriteChannel(handle, 30000, 0x00, fileLen, buffer, &error);
-				CHECK_STATUS(status, 24, cleanup);
-			} else {
+			if ( !buffer ) {
 				fprintf(stderr, "Unable to load file %s!\n", dataFile);
 				FAIL(25, cleanup);
 			}
-			printf("Reading channel 0...");
-			status = flReadChannel(handle, 1000, 0x00, 1, buf, &error);
-			CHECK_STATUS(status, 26, cleanup);
-			printf("got 0x%02X\n", buf[0]);
-			printf("Reading channel 1...");
-			status = flReadChannel(handle, 1000, 0x01, 1, buf, &error);
-			CHECK_STATUS(status, 27, cleanup);
-			printf("got 0x%02X\n", buf[0]);
-			printf("Reading channel 2...");
-			status = flReadChannel(handle, 1000, 0x02, 1, buf, &error);
-			CHECK_STATUS(status, 28, cleanup);
-			printf("got 0x%02X\n", buf[0]);
+			checksum = 0x0000;
+			for ( i = 0; i < fileLen; i++ ) {
+				checksum = (uint16)(checksum + buffer[i]);
+			}
+			
+			for ( j = 0; j < 16; j++ ) {
+				printf(
+					"Writing %0.2f MiB (checksum 0x%04X) from %s to FPGALink device %s...\n",
+					(double)fileLen/(1024*1024), checksum, dataFile, vp);
+
+				// Write the file 16 times to the FPGA using the async write API
+				for ( i = 0; i < 16; i++ ) {
+					status = flWriteChannelAsync(handle, 0x00, fileLen, buffer, &error);
+					CHECK_STATUS(status, 24, cleanup);
+				}
+				
+				// Do some synchronous reads
+				printf("Reading channel 0...");
+				status = flReadChannel(handle, 0x00, 1, buf, &error);
+				CHECK_STATUS(status, 26, cleanup);
+				printf("got 0x%02X\n", buf[0]);
+				printf("Reading channel 1...");
+				status = flReadChannel(handle, 0x01, 1, buf, &error);
+				CHECK_STATUS(status, 27, cleanup);
+				printf("got 0x%02X\n", buf[0]);
+				printf("Reading channel 2...");
+				status = flReadChannel(handle, 0x02, 1, buf, &error);
+				CHECK_STATUS(status, 28, cleanup);
+				printf("got 0x%02X\n", buf[0]);
+
+				// Submit a couple of async reads...
+				status = flReadChannelAsyncSubmit(handle, 0x01, 65536, NULL, &error);
+				CHECK_STATUS(status, 29, cleanup);
+				status = flReadChannelAsyncSubmit(handle, 0x02, 65536, NULL, &error);
+				CHECK_STATUS(status, 30, cleanup);
+				
+				// ...and then await their completion
+				for ( i = 0; i < 2; i++ ) {
+					status = flReadChannelAsyncAwait(
+						handle, &recvData, &actualLength, &actualLength, &error);
+					CHECK_STATUS(status, 31, cleanup);
+					printf(
+						"read[%d]: actualLength = %d, bytes = %02X %02X %02X %02X\n", i, actualLength,
+						recvData[0], recvData[1], recvData[2], recvData[3]);
+				}
+			}
 		} else {
 			fprintf(stderr, "Data file load requested but device at %s does not support CommFPGA\n", vp);
 			FAIL(29, cleanup);
 		}
 	}
 	retVal = 0;
-
 cleanup:
 	if ( error ) {
 		fprintf(stderr, "%s\n", error);

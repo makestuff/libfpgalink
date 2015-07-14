@@ -17,7 +17,7 @@
 #include "desc.h"
 #include "date.h"
 
-static USBDeviceDescriptor PROGMEM deviceDescriptor = {
+static const USBDeviceDescriptor PROGMEM deviceDescriptor = {
 	.Header = {
 		.Size = sizeof(USBDeviceDescriptor),
 		.Type = DTYPE_Device
@@ -36,7 +36,7 @@ static USBDeviceDescriptor PROGMEM deviceDescriptor = {
 	.NumberOfConfigurations = FIXED_NUM_CONFIGURATIONS
 };
 
-static USBConfigurationDescriptor PROGMEM configurationDescriptor = {
+static const USBConfigurationDescriptor PROGMEM configurationDescriptor = {
 	.ConfigurationHeader = {
 		.Header = {
 			.Size = sizeof(USBConfigurationDescriptorHeader),
@@ -46,7 +46,8 @@ static USBConfigurationDescriptor PROGMEM configurationDescriptor = {
 		.TotalInterfaces = 1,
 		.ConfigurationNumber = 1,
 		.ConfigurationStrIndex = NO_DESCRIPTOR,
-		.ConfigAttributes = (USB_CONFIG_ATTR_RESERVED | USB_CONFIG_ATTR_SELFPOWERED),
+		.ConfigAttributes = USB_CONFIG_ATTR_RESERVED,
+		//.ConfigAttributes = (USB_CONFIG_ATTR_RESERVED | USB_CONFIG_ATTR_SELFPOWERED),
 		.MaxPowerConsumption = USB_CONFIG_POWER_MA(100)
 	},
 	.Interface = {
@@ -84,7 +85,7 @@ static USBConfigurationDescriptor PROGMEM configurationDescriptor = {
 	}
 };
 
-static USBStringDescriptor PROGMEM languageString = {
+static const USBStringDescriptor PROGMEM languageString = {
 	.Header = {
 		.Size = USB_STRING_LEN(1),
 		.Type = DTYPE_String
@@ -92,7 +93,7 @@ static USBStringDescriptor PROGMEM languageString = {
 	.UnicodeString = {LANGUAGE_ID_ENG}
 };
 
-static USBStringDescriptor PROGMEM manufacturerString = {
+static const USBStringDescriptor PROGMEM manufacturerString = {
 	.Header = {
 		.Size = USB_STRING_LEN(9),
 		.Type = DTYPE_String
@@ -100,7 +101,7 @@ static USBStringDescriptor PROGMEM manufacturerString = {
 	.UnicodeString = L"MakeStuff"
 };
 
-static USBStringDescriptor PROGMEM productString = {
+static const USBStringDescriptor PROGMEM productString = {
 	.Header = {
 		.Size = USB_STRING_LEN(21),
 		.Type = DTYPE_String

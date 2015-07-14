@@ -17,29 +17,16 @@
 #ifndef VENDORCOMMANDS_H
 #define VENDORCOMMANDS_H
 
-// The buffer available on the FX2LP firmware side
-#define CSVF_BUF_SIZE 128
-
 // Vendor commands
 #define CMD_MODE_STATUS       0x80
-#define CMD_JTAG_CLOCK_DATA   0x81
+#define CMD_PROG_CLOCK_DATA   0x81
 #define CMD_JTAG_CLOCK_FSM    0x82
 #define CMD_JTAG_CLOCK        0x83
 #define CMD_CALCULATOR        0x84
 #define CMD_PORT_BIT_IO       0x85
 #define CMD_PORT_MAP          0x86
+#define CMD_BOOTLOADER        0x87
 #define CMD_READ_WRITE_EEPROM 0xA2
-
-// Bits in the mode word
-#define MODE_JTAG      (1<<0)
-
-typedef enum {
-	PATCH_TDO,
-	PATCH_TDI,
-	PATCH_TMS,
-	PATCH_TCK,
-	PATCH_D8
-} PatchOp;
 
 typedef enum {
 	PROG_NOP,
@@ -48,7 +35,8 @@ typedef enum {
 	PROG_JTAG_NOTSENDING_ISRECEIVING,
 	PROG_JTAG_NOTSENDING_NOTRECEIVING,
 	PROG_PARALLEL,
-	PROG_SERIAL
+	PROG_SPI_SEND,
+	PROG_SPI_RECV
 } ProgOp;
 
 #define bmISLAST       (1<<0)

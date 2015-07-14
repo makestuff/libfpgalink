@@ -51,7 +51,7 @@ DLLEXPORT(FLStatus) flLoadStandardFirmware(
 		&ramFirmware, newVid, newPid, newDid,
 		&ramBuf, error);
 	CHECK_STATUS(flStatus, flStatus, cleanup, "flLoadStandardFirmware()");
-	fxStatus = fx2WriteRAM(device, ramBuf.data, ramBuf.length, error);
+	fxStatus = fx2WriteRAM(device, ramBuf.data, (uint32)ramBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flLoadStandardFirmware()");
 cleanup:
 	bufDestroy(&ramBuf);
@@ -84,7 +84,7 @@ DLLEXPORT(FLStatus) flFlashStandardFirmware(
 		&i2cBuf, error);
 	CHECK_STATUS(flStatus, flStatus, cleanup, "flFlashStandardFirmware()");
 
-	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, i2cBuf.length, error);
+	fxStatus = fx2WriteEEPROM(handle->device, i2cBuf.data, (uint32)i2cBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flFlashStandardFirmware()");
 cleanup:
 	bufDestroy(&i2cBuf);
@@ -102,16 +102,17 @@ DLLEXPORT(FLStatus) flLoadCustomFirmware(
 	struct USBDevice *device = NULL;
 	USBStatus uStatus;
 	const char *const ext = fwFile + strlen(fwFile) - 4;
+	const bool isHex = (strcmp(".hex", ext) == 0) || (strcmp(".ihx", ext) == 0);
 	CHECK_STATUS(
-		strcmp(".hex", ext), FL_FILE_ERR, cleanup,
-		"flLoadCustomFirmware(): Filename should have .hex extension");
+		!isHex, FL_FILE_ERR, cleanup,
+		"flLoadCustomFirmware(): Filename should have .hex or .ihx extension");
 	uStatus = usbOpenDevice(curVidPid, 1, 0, 0, &device, error);
 	CHECK_STATUS(uStatus, FL_USB_ERR, cleanup, "flLoadCustomFirmware()");
 	bStatus = bufInitialise(&fwBuf, 8192, 0x00, error);
 	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flLoadCustomFirmware()");
 	bStatus = bufReadFromIntelHexFile(&fwBuf, NULL, fwFile, error);
 	CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flLoadCustomFirmware()");
-	fxStatus = fx2WriteRAM(device, fwBuf.data, fwBuf.length, error);
+	fxStatus = fx2WriteRAM(device, fwBuf.data, (uint32)fwBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flLoadCustomFirmware()");
 cleanup:
 	bufDestroy(&fwBuf);
@@ -123,7 +124,7 @@ cleanup:
 
 // Flash custom firmware (.hex or .iic) into the FX2's EEPROM
 DLLEXPORT(FLStatus) flFlashCustomFirmware(
-	struct FLContext *handle, const char *fwFile, uint32 eepromSize, const char **error)
+	struct FLContext *handle, const char *fwFile, const char **error)
 {
 	FLStatus retVal = FL_SUCCESS;
 	struct Buffer fwData = {0,};
@@ -133,11 +134,11 @@ DLLEXPORT(FLStatus) flFlashCustomFirmware(
 	FX2Status fxStatus;
 	I2CStatus iStatus;
 	const char *const ext = fwFile + strlen(fwFile) - 4;
-	const bool isHex = (strcmp(".hex", ext) == 0);
+	const bool isHex = (strcmp(".hex", ext) == 0) || (strcmp(".ihx", ext) == 0);
 	const bool isI2C = (strcmp(".iic", ext) == 0);
 	CHECK_STATUS(
 		!isHex && !isI2C, FL_FX2_ERR, cleanup,
-		"flFlashCustomFirmware(): Filename should have .hex or .iic extension");
+		"flFlashCustomFirmware(): Filename should have .hex, .ihx or .iic extension");
 	bStatus = bufInitialise(&iicBuf, 8192, 0x00, error);
 	CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flFlashCustomFirmware()");
 	if ( isHex ) {
@@ -148,18 +149,17 @@ DLLEXPORT(FLStatus) flFlashCustomFirmware(
 		CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "flFlashCustomFirmware()");
 		bStatus = bufReadFromIntelHexFile(&fwData, &fwMask, fwFile, error);
 		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flFlashCustomFirmware()");
+		i2cInitialise(&iicBuf, 0x0000, 0x0000, 0x0000, CONFIG_BYTE_400KHZ);
 		iStatus = i2cWritePromRecords(&iicBuf, &fwData, &fwMask, error);
 		CHECK_STATUS(iStatus, FL_FX2_ERR, cleanup, "flFlashCustomFirmware()");
+		iStatus = i2cFinalise(&iicBuf, error);
+		CHECK_STATUS(iStatus, FL_FX2_ERR, cleanup);
 	} else if ( isI2C ) {
 		// Load the .iic file into the iicBuf:
 		bStatus = bufAppendFromBinaryFile(&iicBuf, fwFile, error);
 		CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flFlashCustomFirmware()");
 	}
-	CHECK_STATUS(
-		iicBuf.length > (eepromSize << 7), FL_FX2_ERR, cleanup,
-		"flFlashCustomFirmware(): Cannot load %lu bytes into an %lukbit EEPROM!",
-		iicBuf.length, eepromSize);
-	fxStatus = fx2WriteEEPROM(handle->device, iicBuf.data, iicBuf.length, error);
+	fxStatus = fx2WriteEEPROM(handle->device, iicBuf.data, (uint32)iicBuf.length, error);
 	CHECK_STATUS(fxStatus, FL_FX2_ERR, cleanup, "flFlashCustomFirmware()");
 cleanup:
 	bufDestroy(&iicBuf);

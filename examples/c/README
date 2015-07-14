@@ -1,32 +1,33 @@
 CALLING FPGALINK FROM "C"
 
-The examples below assume your device is a 1200K Digilent Nexys2. For Atlys and
-Nexys3, remove the "-p" option, replace "1443:0005" with "1443:0007" and choose
-an appropriate CSVF file for your board.
+The examples below assume your device is a 1200K Digilent Nexys2. For other
+boards, remove the "-d" option, replace "1443:0005" with whatever your board
+enumerates as and choose an appropriate CSVF file.
 
-    FPGALink "C" Example Copyright (C) 2011 Chris McClelland
+  FPGALink "C" Example Copyright (C) 2011-2013 Chris McClelland
 
-    Usage: fpgalink [-hps] -v <VID:PID> [-i <VID:PID>] [-x <csvfFile>]
-                    [-f <dataFile>]
+  Usage: lin.x64/rel/c [-h] [-i <VID:PID>] -v <VID:PID> [-d <portConfig>]
+            [-q <jtagPort>] [-p <progConfig>] [-f <dataFile>]
 
-    Load FX2LP firmware, load the FPGA, interact with the FPGA.
+  Load FX2LP firmware, load the FPGA, interact with the FPGA.
 
-      -h             print this help and exit
-      -p             FPGA is powered from USB (Nexys2 only!)
-      -s             scan the JTAG chain
-      -v <VID:PID>   renumerated vendor and product ID of the FPGALink device
-      -i <VID:PID>   initial vendor and product ID of the FPGALink device
-      -x <xsvfFile>  XSVF or CSVF file to play into the JTAG chain
-      -f <dataFile>  binary data to write to register 0
+    -i <VID:PID>    initial vendor and product ID of the FPGALink device
+    -v <VID:PID>    renumerated vendor and product ID of the FPGALink device
+    -d <portConfig> configure the ports
+    -q <jtagPort>   scan the JTAG chain
+    -p <progConfig> configuration and programming file
+    -f <dataFile>   binary data to write to channel 0
+    -h              print this help and exit
 
 In order to build the example code, you'll need to install the MakeStuff build
-infrastructure from http://bit.ly/makestuff. Then you'll be able to build and
-run the code like this:
+infrastructure from http://bit.ly/makestuff and build FPGALink from source
+(don't worry, it's straightforward). Then you'll be able to build and run the
+example code like this:
 
-$ make
-$ dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=160
-$ ./lin.x64/rel/c -i 1443:0005 -v 1443:0005 -p -s \
-    -x ../../hdl/apps/makestuff/swled/cksum/vhdl/csvf/fx2all-nexys2-1200.csvf \
+  make
+  dd of=/var/tmp/foo.dat if=/dev/urandom bs=65536 count=16
+  lin.x64/rel/c -i 1443:0005 -v 1d50:602b:0002 -d D7+ -q D0D2D3D4 \
+    -p J:D0D2D3D4:../../../../hdlmake/apps/makestuff/swled/cksum/vhdl/fpga.xsvf \
     -f /var/tmp/foo.dat
 
 This connects to the device at 1443:0005 (hopefully a 1200K Digilent Nexys2),

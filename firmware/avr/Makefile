@@ -59,17 +59,30 @@
 # To rebuild project do "make clean" then "make all".
 #----------------------------------------------------------------------------
 
-# The version of LUFA to download and use
-LUFA_VERSION=130303
+# Determine branch:
+BRANCH := $(shell TRY=$(CURDIR); BRANCH=dev; while [ "$${TRY}" != "/" ]; do if [ -e "$${TRY}/.branch" ]; then BRANCH=$$(cat "$${TRY}/.branch"); break; fi; TRY=$$(dirname $${TRY}); done; echo $${BRANCH})
+USE_BRANCH := $(shell echo $(BRANCH) | grep -Pc '^2\d\d\d\d\d\d\d$$')
 
-# MCU name
-MCU = at90usb162
+# The version of LUFA to download and use
+LUFA_VERSION=130901
 
 # Identifiers for the device
-MAKESTUFF_TODAY_DATE := $(shell date +%Y%m%d)
+ifeq ($(USE_BRANCH),0)
+	FIRMWARE_VERSION := $(shell date +%Y%m%d)
+else
+	FIRMWARE_VERSION := $(BRANCH)
+endif
 VID := 1D50
 PID := 602B
 DID := 0001
+
+# Options
+USART_DEBUG := 0
+BSP := mojo
+
+# Numbers in BSP needed for Makefile
+MCU := $(word 3,$(shell grep MCU boards/$(BSP).h))
+F_CPU := $(word 3,$(shell grep XTAL boards/$(BSP).h))
 
 # Target architecture (see library "Board Types" documentation).
 ARCH = AVR8
@@ -92,7 +105,7 @@ BOARD = BUMBLEB
 #     does not *change* the processor frequency - it should merely be updated to
 #     reflect the processor speed set externally so that the code can use accurate
 #     software delays.
-F_CPU = 16000000
+#F_CPU = 16000000 - see grep for XTAL above
 
 
 # Input clock frequency.
@@ -135,7 +148,7 @@ LUFA_OPTS  = -D USB_DEVICE_ONLY
 LUFA_OPTS += -D FIXED_CONTROL_ENDPOINT_SIZE=8
 LUFA_OPTS += -D FIXED_NUM_CONFIGURATIONS=1
 LUFA_OPTS += -D USE_FLASH_DESCRIPTORS
-LUFA_OPTS += -D USE_STATIC_OPTIONS="(USB_DEVICE_OPT_FULLSPEED | USB_OPT_REG_ENABLED | USB_OPT_AUTO_PLL)"
+LUFA_OPTS += -D USE_STATIC_OPTIONS="(USB_DEVICE_OPT_FULLSPEED | USB_OPT_AUTO_PLL)"
 LUFA_OPTS += -D USB_STREAM_TIMEOUT_MS=1000
 
 
@@ -194,6 +207,8 @@ CSTANDARD = -std=c99
 # Place -D or -U options here for C sources
 CDEFS  = -DF_CPU=$(F_CPU)UL
 CDEFS += -DF_USB=$(F_USB)UL
+CDEFS += -DBSP=$(BSP)
+CDEFS += -DUSART_DEBUG=$(USART_DEBUG)
 CDEFS += -DBOARD=BOARD_$(BOARD) -DARCH=ARCH_$(ARCH)
 CDEFS += $(LUFA_OPTS)
 
@@ -477,7 +492,7 @@ ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 all: date.h LUFA-$(LUFA_VERSION) begin gccversion sizebefore build sizeafter end
 
 date.h:
-	echo "#define DATE 0x$(MAKESTUFF_TODAY_DATE)" > $@
+	echo "#define DATE 0x$(FIRMWARE_VERSION)" > $@
 	echo "#define VID 0x$(VID)" >> $@
 	echo "#define PID 0x$(PID)" >> $@
 	echo "#define DID 0x$(DID)" >> $@
@@ -738,7 +753,7 @@ debug gdb-config
 $(LUFA_PATH)/LUFA/makefile LUFA-$(LUFA_VERSION): $(TOP)/3rd/LUFA-$(LUFA_VERSION)
 	mkdir -p LUFA-$(LUFA_VERSION)
 	cp -r $(TOP)/3rd/LUFA-$(LUFA_VERSION)/LUFA LUFA-$(LUFA_VERSION)
-	sed -i 's/^LUFA_VERSION_NUM\s\+:=.*$$/LUFA_VERSION_NUM := $(LUFA_VERSION)/g' LUFA-130303/LUFA/makefile
+	sed -i 's/^LUFA_VERSION_NUM\s\+:=.*$$/LUFA_VERSION_NUM := $(LUFA_VERSION)/g' LUFA-$(LUFA_VERSION)/LUFA/makefile
 
 $(TOP)/3rd/LUFA-$(LUFA_VERSION):
 	wget -O lufa.zip --no-check-certificate http://www.fourwalledcubicle.com/files/LUFA/LUFA-$(LUFA_VERSION).zip

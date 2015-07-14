@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2012 Chris McClelland
+ * Copyright (C) 2009-2013 Chris McClelland
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -17,190 +17,71 @@
 #include <avr/io.h>
 #include <avr/wdt.h>
 #include <avr/power.h>
-#include <avr/io.h>
 #include <string.h>
 #include <LUFA/Version.h>
 #include <LUFA/Drivers/USB/USB.h>
 #include "makestuff.h"
+#include STR(boards/BSP.h)
 #include "desc.h"
 #include "prog.h"
 #include "../../vendorCommands.h"
+#include "usbio.h"
 #include "debug.h"
+#include "date.h"
+#include "epp.h"
+#include "usart.h"
 
-#define EPP_ADDRSTB (1<<4)
-#define EPP_DATASTB (1<<5)
-#define EPP_WRITE   (1<<6)
-#define EPP_WAIT    (1<<7)
-
+// Which conduit to use
 static uint8 m_fifoMode = 0;
 
-void fifoSetEnabled(uint8 mode) {
-	m_fifoMode = mode;
+// start LUFA DFU bootloader programmatically
+void Jump_To_Bootloader(void);
+
+// Select the conduit to use for future read/write operations
+void selectConduit(uint8 mode) {
 	switch(mode) {
 	case 0:
-		// Port C and D inputs, pull-ups off
-		DDRC = 0x00;
-		DDRD = 0x00;
-		PORTC = 0x00;
-		PORTD = 0x00;
+		// Undo previous settings (if any)
+		if ( m_fifoMode == 1 ) {
+			eppDisable();
+		} else if ( m_fifoMode == 2 ) {
+			usartDisable();
+		}
 		break;
 	case 1:
-		// EPP_WAIT pulled-up input, other port C lines outputs, high
-		PORTC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE | EPP_WAIT);
-		DDRC &= ~EPP_WAIT;
-		DDRC |= (EPP_ADDRSTB | EPP_DATASTB | EPP_WRITE);
+		eppEnable();
+		break;
+	case 2:
+		usartEnable();
 		break;
 	}
+	m_fifoMode = mode;
 }
 
-void doComms(void) {
-	Endpoint_SelectEndpoint(OUT_ENDPOINT_ADDR);
-	if ( Endpoint_IsOUTReceived() ) {
-		uint8 buf[64];
-		uint32 num64;
-		uint8 mod64;
-		uint8 i;
-		Endpoint_Read_Stream_LE(buf, 5, NULL);
-		Endpoint_ClearOUT();
-		i = buf[0];
-		num64 = buf[1];
-		num64 <<= 8;
-		num64 |= buf[2];
-		num64 <<= 8;
-		num64 |= buf[3];
-		num64 <<= 8;
-		num64 |= buf[4];
-		num64 >>= 6;
-		mod64 = buf[4] & 0x3F;
-
-		// Wait for FPGA to assert eppWait
-		while ( PINC & EPP_WAIT );
-
-		// Put addr on port D, strobe an addr write
-		PORTC &= ~EPP_WRITE;    // AVR writes to FPGA
-		PORTD = i;              // set value of data lines
-		DDRD = 0xFF;            // drive data lines
-		PORTC &= ~EPP_ADDRSTB;  // assert address strobe
-		
-		// Wait for FPGA to deassert eppWait
-		while ( !(PINC & EPP_WAIT) );
-		
-		// Deassert address strobe, telling FPGA that it's OK to end the cycle
-		PORTC |= EPP_ADDRSTB;
-		
-		if ( i & 0x80 ) {
-			// The host is reading a channel ----------------------------------------------------------
-
-			DDRD = 0x00;         // stop driving data lines
-			PORTC |= EPP_WRITE;  // FPGA writes to AVR
-
-			// We're reading from the FPGA and sending to the host
-			Endpoint_SelectEndpoint(IN_ENDPOINT_ADDR);
-			
-			while ( num64-- ) {
-				// Fetch 64 bytes from FPGA
-				for ( i = 0; i < 64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
-					
-					// Assert data strobe, to read a byte
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-
-					// Sample data lines
-					buf[i] = PIND;
-					
-					// Deassert data strobe, telling FPGA that it's OK to end the cycle
-					PORTC |= EPP_DATASTB;
-				}
-
-				// Send the data packet to host
-				while ( !Endpoint_IsINReady() );
-				Endpoint_Write_Stream_LE(buf, 64, NULL);
-				Endpoint_ClearIN();
-			}
-			
-			if ( mod64 ) {
-				// Get last few bytes of data from FPGA
-				for ( i = 0; i < mod64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
-					
-					// Put byte on port D, strobe a data read
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-					
-					// Sample data lines
-					buf[i] = PIND;
-					
-					// Signal FPGA that it's OK to end cycle
-					PORTC |= EPP_DATASTB;
-				}
-				
-				// And send it to the host
-				while ( !Endpoint_IsINReady() );
-				Endpoint_Write_Stream_LE(buf, mod64, NULL);
-				Endpoint_ClearIN();
-			}
-		} else {
-			// The host is writing a channel ----------------------------------------------------------
-
-			// Get num64 packets from host, sending each one in turn to the FPGA
-			while ( num64-- ) {
-				// Get a data packet from host
-				Endpoint_Read_Stream_LE(buf, 64, NULL);
-				Endpoint_ClearOUT();
-
-				for ( i = 0; i < 64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
-					
-					// Put byte on port D, strobe a data write
-					PORTD = buf[i];
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-					
-					// Signal FPGA that it's OK to end cycle
-					PORTC |= EPP_DATASTB;
-				}
-			}
-			
-			// Get last few bytes of data from host
-			if ( mod64 ) {
-				Endpoint_Read_Stream_LE(buf, mod64, NULL);
-				Endpoint_ClearOUT();
-				for ( i = 0; i < mod64; i++ ) {
-					// Wait for FPGA to assert eppWait
-					while ( PINC & EPP_WAIT );
-					
-					// Put byte on port D, strobe a data write
-					PORTD = buf[i];
-					PORTC &= ~EPP_DATASTB;
-					
-					// Wait for FPGA to deassert eppWait
-					while ( !(PINC & EPP_WAIT) );
-					
-					// Signal FPGA that it's OK to end cycle
-					PORTC |= EPP_DATASTB;
-				}
-			}
-
-			DDRD = 0x00;         // stop driving port D
-			PORTC |= EPP_WRITE;  // FPGA writes to AVR
-		}
+// Check to see if the FPGA is ready to do I/O on the selected conduit
+bool isConduitReady(void) {
+	switch ( m_fifoMode ) {
+	case 1:
+		return eppIsReady();
+	case 2:
+		return usartIsReady();
+	default:
+		return false;
 	}
 }
 
-// Called once at startup
+// Main loop and control request callback ----------------------------------------------------------
 //
 int main(void) {
-	REGCR |= (1 << REGDIS);  // Disable regulator: using JTAG supply rail, which may be 3.3V.
+	#if REG_ENABLED == 0
+		#ifdef __AVR_at90usb162__
+			REGCR |= (1 << REGDIS);  // Disable regulator: using JTAG supply rail, which may be 3.3V.
+		#endif
+	#else
+		#ifdef __AVR_atmega16u4__
+			UHWCON |= (1 << UVREGE);  // Enable regulator.
+		#endif
+	#endif
 	MCUSR &= ~(1 << WDRF);
 	wdt_disable();
 	clock_prescale_set(clock_div_1);
@@ -211,10 +92,34 @@ int main(void) {
 	DDRC = 0x00;
 	DDRD = 0x00;
 
+	#ifdef BSP_INIT
+		#include BSP_INIT
+	#endif
+
 	sei();
-	#ifdef DEBUG
+	#if USART_DEBUG == 1
+	{
+		// Read the Manufacturer and Product strings and print them on the debug console...
+		uint16 size;
+		const char *addr;
 		debugInit();
-		debugSendFlashString(PSTR("MakeStuff FPGALink/AVR v1.1...\r"));
+		size = CALLBACK_USB_GetDescriptor((DTYPE_String << 8) + 0x01, 0x0000, (const void **)&addr);
+		size = (size >> 1) - 1;
+		addr += 2;
+		while ( size-- ) {
+			debugSendByte(pgm_read_byte(addr));
+			addr += 2;
+		}
+		debugSendByte(' ');
+		size = CALLBACK_USB_GetDescriptor((DTYPE_String << 8) + 0x02, 0x0000, (const void **)&addr);
+		size = (size >> 1) - 1;
+		addr += 2;
+		while ( size-- ) {
+			debugSendByte(pgm_read_byte(addr));
+			addr += 2;
+		}
+		debugSendByte('\r');
+	}
 	#endif
 	USB_Init();
 	for ( ; ; ) {
@@ -224,13 +129,35 @@ int main(void) {
 			progShiftExecute();
 			break;
 		case 1:
-			doComms();
+			eppExecute();
+			break;
+		case 2:
+			usartExecute();
 			break;
 		}
 	}
 }
 
-#define FIFO_MODE 0x0000
+#if USART_DEBUG == 1
+	const char progOp0[] PROGMEM = "PROG_NOP";
+	const char progOp1[] PROGMEM = "PROG_JTAG_ISSENDING_ISRECEIVING";
+	const char progOp2[] PROGMEM = "PROG_JTAG_ISSENDING_NOTRECEIVING";
+	const char progOp3[] PROGMEM = "PROG_JTAG_NOTSENDING_ISRECEIVING";
+	const char progOp4[] PROGMEM = "PROG_JTAG_NOTSENDING_NOTRECEIVING";
+	const char progOp5[] PROGMEM = "PROG_PARALLEL";
+	const char progOp6[] PROGMEM = "PROG_SPI_SEND";
+	const char progOp7[] PROGMEM = "PROG_SPI_RECV";
+	static const char *const progOpName[] PROGMEM = { progOp0, progOp1, progOp2, progOp3, progOp4, progOp5, progOp6, progOp7 };
+	const char lp0[] PROGMEM = "LP_CHOOSE";
+	const char lp1[] PROGMEM = "LP_MISO";
+	const char lp2[] PROGMEM = "LP_MOSI";
+	const char lp3[] PROGMEM = "LP_SS";
+	const char lp4[] PROGMEM = "LP_SCK";
+	const char lp5[] PROGMEM = "LP_D8";
+	static const char *const logicalPortName[] PROGMEM = { lp0, lp1, lp2, lp3, lp4, lp5 };
+#endif
+
+#define SELECT_CONDUIT 0x0000
 
 #define updatePort(port) \
 	if ( CONCAT(DDR, port) | bitMask ) { \
@@ -251,10 +178,16 @@ void EVENT_USB_Device_ControlRequest(void) {
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			const uint16 param = USB_ControlRequest.wValue;
 			const uint16 value = USB_ControlRequest.wIndex;
-			if ( param == FIFO_MODE ) {
-				// Enable or disable FIFO mode
+			if ( param == SELECT_CONDUIT ) {
+				// Select conduit to use for future I/O
 				Endpoint_ClearSETUP();
-				fifoSetEnabled(value);
+				selectConduit(value);
+				#if USART_DEBUG == 1
+					debugSendFlashString(PSTR("SELECT_CONDUIT("));
+					debugSendByteHex(value);
+					debugSendByte(')');
+					debugSendByte('\r');
+				#endif
 				Endpoint_ClearStatusStage();
 			}
 		} else if ( USB_ControlRequest.bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_VENDOR) ) {
@@ -265,15 +198,15 @@ void EVENT_USB_Device_ControlRequest(void) {
 			statusBuffer[2] = 'M';
 			statusBuffer[3] = 'I';
 			statusBuffer[4] = 0x00;                    // Last operation diagnostic code
-			statusBuffer[5] = (PINC & EPP_WAIT)?0x00:0x01;                    // Flags
+			statusBuffer[5] = isConduitReady() ? 0x01 : 0x00;
 			statusBuffer[6] = 0x24;                    // NeroJTAG endpoints
 			statusBuffer[7] = 0x24;                    // CommFPGA endpoints
-			statusBuffer[8] = 0x00;                    // Reserved
-			statusBuffer[9] = 0x00;                    // Reserved
-			statusBuffer[10] = 0x00;                   // Reserved
-			statusBuffer[11] = 0x00;                   // Reserved
-			statusBuffer[12] = 0x00;                   // Reserved
-			statusBuffer[13] = 0x00;                   // Reserved
+			statusBuffer[8] = 0xAA;                    // Firmware ID MSB
+			statusBuffer[9] = 0xAA;                    // Firmware ID LSB
+			statusBuffer[10] = (uint8)(DATE>>24);      // Version MSB
+			statusBuffer[11] = (uint8)(DATE>>16);      // Version
+			statusBuffer[12] = (uint8)(DATE>>8);       // Version
+			statusBuffer[13] = (uint8)DATE;            // Version LSB
 			statusBuffer[14] = 0x00;                   // Reserved
 			statusBuffer[15] = 0x00;                   // Reserved
 			Endpoint_Write_Control_Stream_LE(statusBuffer, 16);
@@ -281,22 +214,25 @@ void EVENT_USB_Device_ControlRequest(void) {
 		}
 		break;
 
-	case CMD_JTAG_CLOCK_DATA:
+	case CMD_PROG_CLOCK_DATA:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			uint32 numBits;
+			const ProgOp operation = (ProgOp)USB_ControlRequest.wIndex;
+			const uint8 flagByte = (uint8)USB_ControlRequest.wValue;
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&numBits, 4);
-			#ifdef DEBUG
-				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_DATA("));
+			#if USART_DEBUG == 1
+				debugSendFlashString(PSTR("CMD_PROG_CLOCK_DATA("));
 				debugSendLongHex(numBits);
 				debugSendByte(',');
-				debugSendWordHex(USB_ControlRequest.wIndex);
+				debugSendFlashString(
+					(const char*)pgm_read_word(&progOpName[operation]));
 				debugSendByte(',');
-				debugSendWordHex(USB_ControlRequest.wValue);
+				debugSendByteHex(flagByte);
 				debugSendByte(')');
 				debugSendByte('\r');
 			#endif
-			progShiftBegin(numBits, (ProgOp)USB_ControlRequest.wIndex, (uint8)USB_ControlRequest.wValue);
+			progShiftBegin(numBits, operation, flagByte);
 			Endpoint_ClearStatusStage();
 			// Now that numBits & flagByte are set, this operation will continue in mainLoop()...
 		}
@@ -308,6 +244,14 @@ void EVENT_USB_Device_ControlRequest(void) {
 			const uint8 transitionCount = (uint8)USB_ControlRequest.wValue;
 			Endpoint_ClearSETUP();
 			Endpoint_Read_Control_Stream_LE(&bitPattern, 4);
+			#if USART_DEBUG == 1
+				debugSendFlashString(PSTR("CMD_JTAG_CLOCK_FSM("));
+				debugSendByteHex(transitionCount);
+				debugSendByte(',');
+				debugSendLongHex(bitPattern);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
 			Endpoint_ClearStatusStage();
 			progClockFSM(bitPattern, transitionCount);
 		}
@@ -319,6 +263,12 @@ void EVENT_USB_Device_ControlRequest(void) {
 			Endpoint_ClearSETUP();
 			numCycles <<= 16;
 			numCycles |= USB_ControlRequest.wValue;
+			#if USART_DEBUG == 1
+				debugSendFlashString(PSTR("CMD_JTAG_CLOCK("));
+				debugSendLongHex(numCycles);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
 			progClocks(numCycles);
 			Endpoint_ClearStatusStage();
 		}
@@ -363,8 +313,32 @@ void EVENT_USB_Device_ControlRequest(void) {
 
 	case CMD_PORT_MAP:
 		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
+			const LogicalPort logicalPort = (LogicalPort)(USB_ControlRequest.wIndex & 0x00FF);
+			const uint8 physicalPort = USB_ControlRequest.wIndex >> 8;
+			const uint8 physicalBit = USB_ControlRequest.wValue & 0x00FF;
+			#if USART_DEBUG == 1
+				debugSendFlashString(PSTR("CMD_PORT_MAP("));
+				debugSendFlashString(
+					(const char*)pgm_read_word(&logicalPortName[logicalPort]));
+				debugSendByte(',');
+				debugSendByteHex(physicalPort);
+				debugSendByte(',');
+				debugSendByteHex(physicalBit);
+				debugSendByte(')');
+				debugSendByte('\r');
+			#endif
+			if ( progPortMap(logicalPort, physicalPort, physicalBit) ) {
+				Endpoint_ClearSETUP();
+				Endpoint_ClearStatusStage();
+			}
+		}
+		break;
+
+	case CMD_BOOTLOADER:
+		if ( USB_ControlRequest.bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_VENDOR) ) {
 			Endpoint_ClearSETUP();
 			Endpoint_ClearStatusStage();
+			Jump_To_Bootloader();
 		}
 		break;
 	}

@@ -20,14 +20,16 @@
 #include <makestuff.h>
 #include <libbuffer.h>
 #include "libfpgalink.h"
+#include "libusbwrap.h"
 #include "firmware.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+	#define U32MAX 0xFFFFFFFFU
+
 	// Struct used to maintain context for most of the FPGALink operations
-	struct USBDevice;
 	struct FLContext {
 		// USB connection
 		struct USBDevice *device;
@@ -36,45 +38,24 @@ extern "C" {
 		bool isCommCapable;
 		uint8 commOutEP;
 		uint8 commInEP;
-		struct Buffer writeBuffer;
+		uint16 firmwareID;
+		uint32 firmwareVersion;
 
 		// JTAG stuff
 		bool isNeroCapable;
 		uint8 progOutEP;
 		uint8 progInEP;
-		uint8 tdoPort, tdoBit;
-		uint8 tdiPort, tdiBit;
-		uint8 tmsPort, tmsBit;
-		uint8 tckPort, tckBit;
+		uint8 misoPort, misoBit;  // TDO
+		uint8 mosiPort, mosiBit;  // TDI
+		uint8 ssPort, ssBit;      // TMS
+		uint8 sckPort, sckBit;    // TCK
+
+		// Async API context
+		struct CompletionReport completionReport;
+		uint8 *writeBuf;
+		uint8 *writePtr;
+		uint32 chunkSize;
 	};
-
-	// Write some raw bytes to the FL. Sync problems (requiring power-cycle to clear) will
-	// arise if these bytes are not valid FPGALink READ or WRITE commands:
-	//   WRITE (six or more bytes):  [Chan,      N, Data0, Data1, ... DataN]
-	//   READ (exactly five bytes):  [Chan|0x80, N]
-	//     Chan is the FPGA channel (0-127)
-	//     N is a big-endian uint32 representing the number of data bytes to read or write
-	//
-	// Immediately after sending a read command you MUST call flRead() with count=N.
-	//
-	// The timeout should be sufficiently large to actually transfer the number of bytes requested,
-	// or sync problems (requiring power-cycle to clear) will arise. A good rule of thumb is
-	// 100 + K/10 where K is the number of kilobytes to transfer.
-	FLStatus flWrite(
-		struct FLContext *handle, const uint8 *bytes, uint32 count, uint32 timeout,
-		const char **error
-	) WARN_UNUSED_RESULT;
-
-	// Read some raw bytes from the FL. Bytes will only be available if they have been
-	// previously requested with a FPGALink READ command sent with flWrite(). The count value
-	// should be the same as the actual number of bytes requested by the flWrite() READ command.
-	//
-	// The timeout should be sufficiently large to actually transfer the number of bytes requested,
-	// or sync problems (requiring power-cycle to clear) will arise. A good rule of thumb is
-	// 100 + K/10 where K is the number of kilobytes to transfer.
-	FLStatus flRead(
-		struct FLContext *handle, uint8 *buffer, uint32 count, uint32 timeout, const char **error
-	) WARN_UNUSED_RESULT;
 
 	// Utility functions for manipulating big-endian words
 	uint16 flReadWord(const uint8 *p);
@@ -98,8 +79,7 @@ extern "C" {
 	 * @param xsvfFile The XSVF filename.
 	 * @param csvfBuf A pointer to a \c Buffer to be populated with the CSVF data.
 	 * @param maxBufSize A pointer to a \c uint32 which will be set on exit to the number of bytes
-	 *            necessary for buffering in the playback logic. If this is greater than the
-	 *            \c CSVF_BUF_SIZE defined for the firmware, bad things will happen.
+	 *            necessary for buffering in the playback logic.
 	 * @param error A pointer to a <code>char*</code> which will be set on exit to an allocated
 	 *            error message if something goes wrong. Responsibility for this allocated memory
 	 *            passes to the caller and must be freed with \c flFreeError(). If \c error is

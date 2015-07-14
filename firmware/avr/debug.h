@@ -19,16 +19,14 @@
 
 #include <makestuff.h>
 
-// Comment out to disable debugging
-//#define DEBUG
-
-#ifdef DEBUG
+#if USART_DEBUG == 1
 	void debugInit(void);
 	void debugSendByte(uint8 byte);
 	void debugSendByteHex(uint8 byte);
 	void debugSendWordHex(uint16 word);
 	void debugSendLongHex(uint32 word);
 	void debugSendFlashString(const char *str);
+	#define DEBUG_MASK (1<<2)
 #endif
 
 #endif

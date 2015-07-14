@@ -1,0 +1,48 @@
+FPGALINK JAVA BINDING
+
+$ make
+wget -q https://maven.java.net/content/repositories/releases/net/java/dev/jna/jna/3.5.1/jna-3.5.1.jar
+mkdir -p classes
+javac -classpath classes:jna-3.5.1.jar -d classes $(find src -name "*.java")
+$ make test
+java -classpath classes:jna-3.5.1.jar foo.Main
+Loading firmware...
+Awaiting...
+flMultiBitPortAccess() returned 00000000000000000000000000000001
+flGetFirmwareID(): FFFF
+flGetFirmwareVersion(): 20140308
+flIsNeroCapable(): true
+flIsCommCapable(): true
+progGetPort(): {
+  MISO: D0
+  MOSI: D2
+  SS:   D3
+  SCK:  D4
+}
+jtagShiftInOut() got 16 bytes: {
+  93 E0 C2 21 CA FE BA BE FF FF FF FF FF FF FF FF
+}
+spiRecv() got 8 bytes: {
+  93 E0 C2 21 CA FE BA BE
+}
+jtagScanChain(): {
+  0x21C2E093
+  0xF5046093
+}
+flProgram()...
+...done.
+flIsFPGARunning(): true
+flReadChannel(1, 16) got 16 bytes: {
+  03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03
+}
+flReadChannel(2): 40
+flReadChannelAsyncAwait() got 4 bytes: {
+  5A 5A 5A 5A
+}
+flReadChannelAsyncAwait() got 8 bytes: {
+  03 03 03 03 03 03 03 03
+}
+flReadChannelAsyncAwait() got 16 bytes: {
+  40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40
+}
+$ 

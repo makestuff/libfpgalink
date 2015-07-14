@@ -28,7 +28,7 @@ int main(int argc, const char *argv[]) {
 	BufferStatus bStatus;
 	FLStatus fStatus;
 	const char *error = NULL;
-	uint32 csvfBufSize = 0;
+	uint32 playbackBufSize = 0;
 	const char *srcFile, *dstFile;
 	const char *ext;
    if ( argc != 3 ) {
@@ -41,15 +41,15 @@ int main(int argc, const char *argv[]) {
 	bStatus = bufInitialise(&csvfBuf, 10240, 0x00, &error);
 	CHECK_STATUS(bStatus, 2, cleanup);
 	if ( strcmp(".svf", ext+1) == 0 ) {
-		fStatus = flLoadSvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
+		fStatus = flLoadSvfAndConvertToCsvf(srcFile, &csvfBuf, &playbackBufSize, &error);
 	} else if ( strcmp(".xsvf", ext) == 0 ) {
-		fStatus = flLoadXsvfAndConvertToCsvf(srcFile, &csvfBuf, &csvfBufSize, &error);
+		fStatus = flLoadXsvfAndConvertToCsvf(srcFile, &csvfBuf, &playbackBufSize, &error);
 	} else {
 		fprintf(stderr, "Source filename should have an .svf or an .xsvf extension\n");
 		FAIL(3, cleanup);
 	}
 	CHECK_STATUS(fStatus, 4, cleanup);
-	//printf("CSVF_BUF_SIZE = %d\n", csvfBufSize);
+	//printf("Playback buffer size = %d\n", playbackBufSize);
 	bStatus = bufWriteBinaryFile(&csvfBuf, dstFile, 0, csvfBuf.length, &error);
 	CHECK_STATUS(bStatus, 6, cleanup);
 
