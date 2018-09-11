@@ -8,7 +8,7 @@ microcontroller (primarily the Cypress FX2LP). It allows you to:
 
 See http://bit.ly/fpgalnk-api for the API docs.
 
-To build, first you need to install the MakeStuff Build Environment (http://bit.ly/makestuff) for
+To build, first you need to install the MakeStuff Build Environment (http://tiny.cc/msbil) for
 your platform, then do:
 
 chris@wotan$ cd makestuff/libs
