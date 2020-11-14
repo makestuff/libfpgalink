@@ -11,8 +11,8 @@ the version.
 
 The EEPROM firmware may be customised with board-specific initialisation and/or a customized DID:
 
-  make clean; make FLAGS="-DEEPROM -DBSP=aes220" DID=0003
-  make clean; make FLAGS="-DEEPROM -DBSP=nexys2" DID=0004
+  make clean; make FLAGS="-DEEPROM -DBSP=aes220" DID=0003 DATE=20201114
+  make clean; make FLAGS="-DEEPROM -DBSP=nexys2" DID=0004 DATE=20201114
 
 The customized "DID" allows multiple FPGALink units to be connected simultaneously, and individually
 addressed.
