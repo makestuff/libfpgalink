@@ -3,13 +3,13 @@ The build process builds two separate firmwares:
    * A RAM firmware which renumerates on startup
    * An EEPROM firmware which does not renumerate on startup
 
-These are committed to source-control under gen_fw so people can build the library itself without
-needing to build the firmware. To rebuild these two firmwares, the process is as follows:
+These are built by the build.sh script, which produces two "*Firmware.c" files in ../../src, which
+are committed to source-control so people can build the library itself without needing to build the
+firmware. Running "build.sh YYYYMMDD" with the date of the previous build will allow you to do a
+git diff to check if anything has actually changed. If so, just run "build.sh" on its own to update
+the version.
 
-  make clean; make;                  cp firmware.hex ../../gen_fw/ramFirmware.hex
-  make clean; make FLAGS="-DEEPROM"; cp firmware.hex ../../gen_fw/eepromNoBootFirmware.hex
-
-The EEPROM firmware may be customised with board-specific initialisation:
+The EEPROM firmware may be customised with board-specific initialisation and/or a customized DID:
 
   make clean; make FLAGS="-DEEPROM -DBSP=aes220" DID=0003
   make clean; make FLAGS="-DEEPROM -DBSP=nexys2" DID=0004

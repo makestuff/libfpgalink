@@ -1,23 +1,8 @@
 project(fpgalink)
 
-add_custom_command(
-  OUTPUT  ${CMAKE_CURRENT_SOURCE_DIR}/src/ramFirmware.c
-  COMMAND mkfw ${CMAKE_CURRENT_SOURCE_DIR}/gen_fw/ramFirmware.hex ram bix > ${CMAKE_CURRENT_SOURCE_DIR}/src/ramFirmware.c
-  DEPENDS mkfw gen_fw/ramFirmware.hex
-)
-add_custom_command(
-  OUTPUT  ${CMAKE_CURRENT_SOURCE_DIR}/src/eepromNoBootFirmware.c
-  COMMAND mkfw ${CMAKE_CURRENT_SOURCE_DIR}/gen_fw/eepromNoBootFirmware.hex eepromNoBoot iic > ${CMAKE_CURRENT_SOURCE_DIR}/src/eepromNoBootFirmware.c
-  DEPENDS mkfw gen_fw/eepromNoBootFirmware.hex
-)
-
 # Create a shared library
 file(GLOB SOURCES src/*.cpp src/*.c)
-add_library(${PROJECT_NAME} SHARED
-  ${SOURCES}
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ramFirmware.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/eepromNoBootFirmware.c
-)
+add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 # Ensure clients can find the includes
 target_include_directories(${PROJECT_NAME} PUBLIC include)
