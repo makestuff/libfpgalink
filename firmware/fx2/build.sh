@@ -5,7 +5,7 @@ DATE=$(date +%Y%m%d)
 if [ $# -eq 1 ]; then
   DATE=$1
 fi
-HEADER="\*
+HEADER="/*
  * THIS FILE IS MACHINE-GENERATED! DO NOT EDIT IT!
  *
  * $(sdcc -v | head -1)

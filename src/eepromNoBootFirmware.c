@@ -1,4 +1,4 @@
-\*
+/*
  * THIS FILE IS MACHINE-GENERATED! DO NOT EDIT IT!
  *
  * SDCC : mcs51/z80/z180/r2k/r3ka/gbz80/tlcs90/ds390/TININative/ds400/hc08/s08/stm8 3.8.0 #10562 (Linux)
