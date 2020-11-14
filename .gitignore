@@ -1,1 +1,3 @@
-hdl/
+firmware/fx2/fx2lib
+src/ramFirmware.c
+src/eepromNoBootFirmware.c

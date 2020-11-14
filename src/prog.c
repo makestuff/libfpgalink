@@ -16,10 +16,10 @@
  */
 #include <stdlib.h>
 #include <string.h>
-#include <makestuff.h>
-#include <libusbwrap.h>
-#include <liberror.h>
-#include "libfpgalink.h"
+#include <makestuff/common.h>
+#include <makestuff/libusbwrap.h>
+#include <makestuff/liberror.h>
+#include <makestuff/libfpgalink.h>
 #include "private.h"
 #include "csvfplay.h"
 #include "vendorCommands.h"
@@ -190,8 +190,8 @@ static FLStatus populateMap(
 		} else if ( ch == '?' ) {
 			SET_BIT(thisPort, thisBit, PIN_INPUT, "populateMap");
 		} else {
-			CHECK_STATUS(
-				true, FL_CONF_FORMAT, cleanup,
+			FAIL_RET(
+				FL_CONF_FORMAT, cleanup,
 				"populateMap(): Expecting '+', '-' or '?' at char %d", ptr-portConfig);
 		}
 		ptr++;
@@ -435,8 +435,8 @@ static FLStatus xProgram(struct FLContext *handle, ProgOp progOp, const char *po
 			CHECK_STATUS(fStatus, fStatus, cleanup, "xProgram()");
 		} else {
 			// If DONE remains low and INIT goes low, an error occurred
-			CHECK_STATUS(
-				true, FL_PROG_ERR, cleanup,
+			FAIL_RET(
+				FL_PROG_ERR, cleanup,
 				"xProgram(): INIT unexpectedly low (CRC error during config)");
 		}
 	}
@@ -875,10 +875,10 @@ DLLEXPORT(FLStatus) flProgramBlob(
 			// This is Xilinx Slave Serial
 			return xProgram(handle, PROG_SPI_SEND, portConfig, blobData, blobLength, error);
 		} else if ( algoType == '\0' ) {
-			CHECK_STATUS(true, FL_CONF_FORMAT, cleanup, "flProgram(): Missing Xilinx algorithm code");
+			FAIL_RET(FL_CONF_FORMAT, cleanup, "flProgram(): Missing Xilinx algorithm code");
 		} else {
-			CHECK_STATUS(
-				true, FL_CONF_FORMAT, cleanup,
+			FAIL_RET(
+				FL_CONF_FORMAT, cleanup,
 				"flProgram(): '%c' is not a valid Xilinx algorithm code", algoType);
 		}
 	} else if ( algoVendor == 'A' ) {
@@ -888,20 +888,20 @@ DLLEXPORT(FLStatus) flProgramBlob(
 			// This is Altera Passive Serial
 			return aProgram(handle, portConfig, blobData, blobLength, error);
 		} else if ( algoType == '\0' ) {
-			CHECK_STATUS(true, FL_CONF_FORMAT, cleanup, "flProgram(): Missing Altera algorithm code");
+			FAIL_RET(FL_CONF_FORMAT, cleanup, "flProgram(): Missing Altera algorithm code");
 		} else {
-			CHECK_STATUS(
-				true, FL_CONF_FORMAT, cleanup,
+			FAIL_RET(
+				FL_CONF_FORMAT, cleanup,
 				"flProgram(): '%c' is not a valid Altera algorithm code", algoType);
 		}
 	} else if ( algoVendor == 'J' ) {
 		// This is a JTAG algorithm
 		return jProgram(handle, portConfig, blobData, error);
 	} else if ( algoVendor == '\0' ) {
-		CHECK_STATUS(true, FL_CONF_FORMAT, cleanup, "flProgram(): Missing algorithm vendor code");
+		FAIL_RET(FL_CONF_FORMAT, cleanup, "flProgram(): Missing algorithm vendor code");
 	} else {
-		CHECK_STATUS(
-			true, FL_CONF_FORMAT, cleanup,
+		FAIL_RET(
+			FL_CONF_FORMAT, cleanup,
 			"flProgram(): '%c' is not a valid algorithm vendor code", algoVendor);
 	}
 cleanup:
@@ -949,8 +949,8 @@ DLLEXPORT(FLStatus) flProgram(
 			bStatus = bufAppendFromBinaryFile(&fileBuf, progFile, error);
 			CHECK_STATUS(bStatus, FL_FILE_ERR, cleanup, "flProgram()");
 		} else {
-			CHECK_STATUS(
-				true, FL_FILE_ERR, cleanup,
+			FAIL_RET(
+				FL_FILE_ERR, cleanup,
 				"flProgram(): JTAG files should have .svf, .xsvf or .csvf extension");
 		}
 	} else {
@@ -1015,8 +1015,8 @@ DLLEXPORT(FLStatus) flMultiBitPortAccess(
 		} else if ( ch == '?' ) {
 			pinConfig = PIN_INPUT;
 		} else {
-			CHECK_STATUS(
-				true, FL_CONF_FORMAT, cleanup,
+			FAIL_RET(
+				FL_CONF_FORMAT, cleanup,
 				"flMultiBitPortAccess(): Expecting '+', '-' or '?':\n  %s\n  %s^", portConfig, spaces(ptr-portConfig));
 		}
 		fStatus = flSingleBitPortAccess(handle, thisPort, thisBit, pinConfig, &bitState, error);

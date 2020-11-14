@@ -14,17 +14,17 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <makestuff.h>
+#include <stdio.h>
+#include <stdlib.h>
 #ifdef WIN32
 	#include <Windows.h>
 #else
-	#define _BSD_SOURCE
+	#define __USE_XOPEN_EXTENDED
 	#include <unistd.h>
 #endif
-#include <stdio.h>
-#include <stdlib.h>
-#include <liberror.h>
-#include <libusbwrap.h>
+#include <makestuff/common.h>
+#include <makestuff/liberror.h>
+#include <makestuff/libusbwrap.h>
 #include "private.h"
 #include "vendorCommands.h"
 

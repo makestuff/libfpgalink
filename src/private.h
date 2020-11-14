@@ -17,10 +17,10 @@
 #ifndef PRIVATE_H
 #define PRIVATE_H
 
-#include <makestuff.h>
-#include <libbuffer.h>
-#include "libfpgalink.h"
-#include "libusbwrap.h"
+#include <makestuff/common.h>
+#include <makestuff/libbuffer.h>
+#include <makestuff/libfpgalink.h>
+#include <makestuff/libusbwrap.h>
 #include "firmware.h"
 
 #ifdef __cplusplus

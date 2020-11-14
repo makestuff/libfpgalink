@@ -17,8 +17,8 @@
 #ifndef PROG_H
 #define PROG_H
 
-#include <makestuff.h>
-#include "../../vendorCommands.h"
+#include <makestuff/common.h>
+#include "../../src/vendorCommands.h"
 
 // Default TDO=PD0, TDI=PD1, TMS=PD2 & TCK=PD3. In reality this is overwritten
 // at runtime by livePatch().

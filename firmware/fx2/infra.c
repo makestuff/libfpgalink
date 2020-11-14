@@ -17,7 +17,7 @@
 #include <fx2regs.h>
 #include <eputils.h>
 #include <delay.h>
-#include <makestuff.h>
+#include <makestuff/common.h>
 #include "defs.h"
 
 static uint8 currentConfiguration;  // Current configuration
@@ -60,4 +60,8 @@ uint8 handle_set_interface(uint8 ifc, uint8 alt) {
 	} else {
 		return false;
 	}
+}
+
+uint8 handle_get_descriptor() {
+   return false;
 }

@@ -14,8 +14,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <UnitTest++.h>
+#ifndef CSVFPLAY_H
+#define CSVFPLAY_H
 
-int main() {
-	return UnitTest::RunAllTests();
+#include <makestuff/common.h>
+#include <makestuff/libfpgalink.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+	// Play the CSVF stream into the JTAG port.
+	FLStatus csvfPlay(
+		struct FLContext *handle, const uint8 *csvfData, const char **error
+	) WARN_UNUSED_RESULT;
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif

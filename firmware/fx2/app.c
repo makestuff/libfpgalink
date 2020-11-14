@@ -19,8 +19,8 @@
 #include <eputils.h>
 #include <delay.h>
 #include <setupdat.h>
-#include <makestuff.h>
-#include "../../vendorCommands.h"
+#include <makestuff/common.h>
+#include "../../src/vendorCommands.h"
 #include "prom.h"
 #include "prog.h"
 #include "defs.h"

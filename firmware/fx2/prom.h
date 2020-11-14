@@ -17,7 +17,7 @@
 #ifndef PROM_H
 #define PROM_H
 
-#include <makestuff.h>
+#include <makestuff/common.h>
 
 bool promRead(bool bank, uint16 addr, uint8 length, __xdata uint8 *buf);
 bool promWrite(bool bank, uint16 addr, uint8 length, const __xdata uint8 *buf);

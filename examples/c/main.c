@@ -16,7 +16,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <libfpgalink.h>
+#include <makestuff/libfpgalink.h>
 #include "args.h"
 
 static const char *nibbles[] = {
@@ -68,12 +68,12 @@ int main(int argc, const char *argv[]) {
 	while ( argc ) {
 		if ( argv[0][0] != '-' ) {
 			unexpected(prog, *argv);
-			FAIL(1, cleanup);
+			FAIL_RET(1, cleanup);
 		}
 		switch ( argv[0][1] ) {
 		case 'h':
 			usage(prog);
-			FAIL(0, cleanup);
+			FAIL_RET(0, cleanup);
 			break;
 		case 'q':
 			GET_ARG("q", queryPort, 2, cleanup);
@@ -95,14 +95,14 @@ int main(int argc, const char *argv[]) {
 			break;
 		default:
 			invalid(prog, argv[0][1]);
-			FAIL(8, cleanup);
+			FAIL_RET(8, cleanup);
 		}
 		argv++;
 		argc--;
 	}
 	if ( !vp ) {
 		missing(prog, "v <VID:PID>");
-		FAIL(9, cleanup);
+		FAIL_RET(9, cleanup);
 	}
 
 	status = flInitialise(0, &error);
@@ -130,7 +130,7 @@ int main(int argc, const char *argv[]) {
 			printf("\n");
 			if ( !flag ) {
 				fprintf(stderr, "FPGALink device did not renumerate properly as %s\n", vp);
-				FAIL(13, cleanup);
+				FAIL_RET(13, cleanup);
 			}
 			
 			printf("Attempting to open connection to FPGLink device %s again...\n", vp);
@@ -138,7 +138,7 @@ int main(int argc, const char *argv[]) {
 			CHECK_STATUS(status, 14, cleanup);
 		} else {
 			fprintf(stderr, "Could not open FPGALink device at %s and no initial VID:PID was supplied\n", vp);
-			FAIL(15, cleanup);
+			FAIL_RET(15, cleanup);
 		}
 	}
 	
@@ -177,7 +177,7 @@ int main(int argc, const char *argv[]) {
 			}
 		} else {
 			fprintf(stderr, "JTAG chain scan requested but FPGALink device at %s does not support NeroJTAG\n", vp);
-			FAIL(18, cleanup);
+			FAIL_RET(18, cleanup);
 		}
 	}
 
@@ -188,7 +188,7 @@ int main(int argc, const char *argv[]) {
 			CHECK_STATUS(status, 19, cleanup);
 		} else {
 			fprintf(stderr, "Program operation requested but device at %s does not support NeroProg\n", vp);
-			FAIL(20, cleanup);
+			FAIL_RET(20, cleanup);
 		}
 	}
 	
@@ -214,7 +214,7 @@ int main(int argc, const char *argv[]) {
 			buffer = flLoadFile(dataFile, &fileLen);
 			if ( !buffer ) {
 				fprintf(stderr, "Unable to load file %s!\n", dataFile);
-				FAIL(25, cleanup);
+				FAIL_RET(25, cleanup);
 			}
 			checksum = 0x0000;
 			for ( i = 0; i < fileLen; i++ ) {
@@ -264,7 +264,7 @@ int main(int argc, const char *argv[]) {
 			}
 		} else {
 			fprintf(stderr, "Data file load requested but device at %s does not support CommFPGA\n", vp);
-			FAIL(29, cleanup);
+			FAIL_RET(29, cleanup);
 		}
 	}
 	retVal = 0;

@@ -19,7 +19,7 @@
 #include <delay.h>
 #include "prog.h"
 #include "defs.h"
-#include "../../vendorCommands.h"
+#include "../../src/vendorCommands.h"
 #include "debug.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -16,7 +16,7 @@
  */
 #include <fx2regs.h>
 #include <fx2macros.h>
-#include <makestuff.h>
+#include <makestuff/common.h>
 #include "debug.h"
 
 // Bits from I2C address byte

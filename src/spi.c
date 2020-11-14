@@ -15,9 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdlib.h>
-#include <makestuff.h>
-#include <libusbwrap.h>
-#include <liberror.h>
+#include <makestuff/common.h>
+#include <makestuff/libusbwrap.h>
+#include <makestuff/liberror.h>
 #include "private.h"
 #include "vendorCommands.h"
 

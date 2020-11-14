@@ -14,21 +14,24 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef CSVFPLAY_H
-#define CSVFPLAY_H
+#ifndef FIRMWARE_H
+#define FIRMWARE_H
 
-#include <makestuff.h>
-#include "libfpgalink.h"
+#include <makestuff/common.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-	// Play the CSVF stream into the JTAG port.
-	FLStatus csvfPlay(
-		struct FLContext *handle, const uint8 *csvfData, const char **error
-	) WARN_UNUSED_RESULT;
-
+	struct FirmwareInfo {
+		const uint8 *const data;
+		const uint16 length;
+		const uint16 vp;
+	};
+	
+	extern const struct FirmwareInfo ramFirmware;
+	extern const struct FirmwareInfo eepromNoBootFirmware;
+	
 #ifdef __cplusplus
 }
 #endif

@@ -21,8 +21,8 @@
 #include <stdio.h>
 #endif
 #include <stdlib.h>
-#include <makestuff.h>
-#include <liberror.h>
+#include <makestuff/common.h>
+#include <makestuff/liberror.h>
 #include "private.h"
 #include "vendorCommands.h"
 #include "xsvf.h"
@@ -176,8 +176,8 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 				dumpSimple(tdoData, numBytes, data);
 				dumpSimple(tdoMask, numBytes, mask);
 				dumpSimple(tdoExpected, numBytes, expected);
-				CHECK_STATUS(
-					true, FL_PROG_SVF_COMPARE, cleanup,
+				FAIL_RET(
+					FL_PROG_SVF_COMPARE, cleanup,
 					"csvfPlay(): XSDRTDO failed:\n  Got: %s\n  Mask: %s\n  Expecting: %s",
 					data, mask, expected);
 			}
@@ -208,8 +208,8 @@ FLStatus csvfPlay(struct FLContext *handle, const uint8 *csvfData, const char **
 			break;
 
 		default:
-			CHECK_STATUS(
-				true, FL_PROG_SVF_UNKNOWN_CMD, cleanup,
+			FAIL_RET(
+				FL_PROG_SVF_UNKNOWN_CMD, cleanup,
 				"csvfPlay(): Unsupported command 0x%02X", thisByte);
 		}
 		thisByte = *ptr++;

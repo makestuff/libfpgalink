@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <makestuff.h>
+#include <makestuff/common.h>
 #include "progOffsets.h"
 
 const uint16 *__xdata classList[] = {tdoList, tdiList, tmsList, tckList, ioaList};

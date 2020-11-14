@@ -17,11 +17,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <makestuff.h>
-#include <libbuffer.h>
-#include <libfx2loader.h>
-#include <liberror.h>
-#include "../firmware.h"
+#include <makestuff/common.h>
+#include <makestuff/libbuffer.h>
+#include <makestuff/libfx2loader.h>
+#include <makestuff/liberror.h>
 
 void dumpBytes(const uint8 *ptr, uint32 numBytes) {
 	const uint8 *const end = ptr + numBytes;
@@ -71,7 +70,7 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 		{
 			if ( vp ) {
 				fprintf(stderr, "%s: Refusing to override VID:PID@%04X with %04X\n", progName, vp, i);
-				FAIL(9, cleanup);
+				FAIL_RET(9, cleanup);
 			}
 			vp = i;
 			i += 3;
@@ -79,11 +78,11 @@ int dumpCode(const char *progName, const char *name, const struct Buffer *buf) {
 	}
 	if ( !vp ) {
 		fprintf(stderr, "%s: Not enough occurrances of vp\n", progName);
-		FAIL(10, cleanup);
+		FAIL_RET(10, cleanup);
 	}
 
 	printf("/*\n * THIS FILE IS MACHINE-GENERATED! DO NOT EDIT IT!\n */\n");
-	printf("#include \"../firmware.h\"\n\n");
+	printf("#include \"firmware.h\"\n\n");
 	printf("static const uint8 data[] = {\n");
 	dumpBytes(buf->data, (uint32)buf->length);
 	printf("};\n");
@@ -111,7 +110,7 @@ int main(int argc, const char *argv[]) {
 
 	if ( argc != 4 ) {
 		usage(argv[0]);
-		FAIL(1, cleanup);
+		FAIL_RET(1, cleanup);
 	}
 
 	if ( strstr(argv[2], "WithBoot") ) {
@@ -148,7 +147,7 @@ int main(int argc, const char *argv[]) {
 		CHECK_STATUS(dStatus, dStatus, cleanup);
 	} else {
 		usage(argv[0]);
-		FAIL(8, cleanup);
+		FAIL_RET(8, cleanup);
 	}
 
 cleanup:

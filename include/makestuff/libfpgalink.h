@@ -29,7 +29,7 @@
 #ifndef FPGALINK_H
 #define FPGALINK_H
 
-#include <makestuff.h>
+#include <makestuff/common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -131,6 +131,13 @@ extern "C" {
 	 *     - \c FL_USB_ERR if there were problems initialising LibUSB.
 	 */
 	DLLEXPORT(FLStatus) flInitialise(int debugLevel, const char **error);
+
+	/**
+	 * @brief Shutdown the library.
+	 *
+	 * This frees up any resources used by the libray itself (e.g LibUSB context).
+	 */
+	DLLEXPORT(void) flShutdown();
 
 	/**
 	 * @brief Free an error allocated when one of the other functions fails.
@@ -850,8 +857,8 @@ extern "C" {
 
 	// Special values for inData parameter of jtagShiftInOut() declared below
 	// @cond NEVER
-	#define SHIFT_ZEROS (const uint8*)NULL
-	#define SHIFT_ONES (SHIFT_ZEROS - 1)
+	#define SHIFT_ZEROS ((const uint8*)0)
+	#define SHIFT_ONES ((const uint8*)-1)
 	// @endcond
 
 	/**

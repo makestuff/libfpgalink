@@ -33,9 +33,8 @@
 #   make AS8051=asx8051
 #
 TARGET := firmware
-FX2LIBDIR := ../../../../3rd/fx2lib
-LIBS := -L$(FX2LIBDIR)/lib fx2.lib
-INCS := -I sdcc -I$(FX2LIBDIR)/include -I../../../../common
+LIBS := -Lfx2lib/lib fx2.lib
+INCS := -I sdcc -Ifx2lib/include -I../../../common/include
 
 BRANCH := $(shell TRY=$(CURDIR); BRANCH=dev; while [ "$${TRY}" != "/" ]; do if [ -e "$${TRY}/.branch" ]; then BRANCH=$$(cat "$${TRY}/.branch"); break; fi; TRY=$$(dirname $${TRY}); done; echo $${BRANCH})
 USE_BRANCH := $(shell echo $(BRANCH) | grep -Ec '^2[0-9][0-9][0-9][0-9][0-9][0-9][0-9]$$')
@@ -62,7 +61,7 @@ VID := 1D50
 PID := 602B
 DID := 0002
 
-all: date.inc progOffsets.h $(TARGET).hex
+all: fx2lib/lib/fx2.lib date.inc progOffsets.h $(TARGET).hex
 
 $(TARGET).hex: $(CC_OBJS) $(AS_OBJS) $(TARGET).rel
 	$(CC) $(CCFLAGS) -o $@ $+ $(LIBS)
@@ -82,8 +81,12 @@ date.inc:
 	echo PID=0x$(PID) >> $@
 	echo DID=0x$(DID) >> $@
 
-firmware.c: $(FX2LIBDIR)/fw/fw.c
-	cp $(FX2LIBDIR)/fw/fw.c firmware.c
+firmware.c: fx2lib/fw/fw.c
+	cp fx2lib/fw/fw.c firmware.c
+
+fx2lib/lib/fx2.lib:
+	git clone https://github.com/djmuhlestein/fx2lib.git
+	make -C fx2lib
 
 clean: FORCE
 	rm -f *.iic *.asm *.hex *.lnk *.lst *.map *.mem *.rel *.rst *.sym *.lk firmware.c progOffsets.h date.inc

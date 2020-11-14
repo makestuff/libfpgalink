@@ -16,9 +16,9 @@
  */
 #include <stdlib.h>
 #include <string.h>
-#include <makestuff.h>
-#include <libbuffer.h>
-#include <liberror.h>
+#include <makestuff/common.h>
+#include <makestuff/libbuffer.h>
+#include <makestuff/liberror.h>
 #include "svf2csvf.h"
 #include "xsvf.h"
 #include "private.h"
@@ -214,7 +214,7 @@ FLStatus headTail(
 			CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "headTail()");
 		} else {
 			// Ooops, this should never happen!
-			CHECK_STATUS(true, FL_INTERNAL_ERR, cleanup, "headTail(): Internal error");
+			FAIL_RET(FL_INTERNAL_ERR, cleanup, "headTail(): Internal error");
 		}
 		bStatus = bufAppendBlock(&newBuffer, dataBuf->data+1, dataBuf->length-1, error);
 		CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "headTail()");
@@ -422,8 +422,8 @@ FLStatus parseLine(
 			p += 3;
 			CHOMP();
 		} else {
-			CHECK_STATUS(
-				true, FL_SVF_PARSE_ERR, cleanup,
+			FAIL_RET(
+				FL_SVF_PARSE_ERR, cleanup,
 				"parseLine(): RUNTEST must be of the form \"RUNTEST [IDLE] <number> TCK|SEC [<number> TCK|SEC] [ENDSTATE IDLE]\"");
 		}
 		count2 = strtod(p, &end);
@@ -540,8 +540,8 @@ FLStatus parseLine(
 				*p++ = '\0';
 				FIX_ODD(mask);
 			} else {
-				CHECK_STATUS(
-					true, FL_SVF_PARSE_ERR, cleanup,
+				FAIL_RET(
+					FL_SVF_PARSE_ERR, cleanup,
 					"parseLine(): Junk in [HTS][IR]R line at column %d", p-line);
 			}
 			CHOMP();
@@ -672,8 +672,8 @@ FLStatus parseLine(
 			}
 		}
 	} else {
-		CHECK_STATUS(
-			true, FL_SVF_PARSE_ERR, cleanup,
+		FAIL_RET(
+			FL_SVF_PARSE_ERR, cleanup,
 			"parseLine(): Unrecognised command \"%s\"\n", line);
 	}
 cleanup:
@@ -794,6 +794,8 @@ FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char
 		switch ( thisByte ) {
 		case XSDRSIZE:
 			numBytes = bitsToBytes(readLongBE(ptr));
+			ptr += 4;
+			break;
 		case XRUNTEST:
 			ptr += 4;
 			break;
@@ -811,8 +813,8 @@ FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char
 			ptr += bitsToBytes(offset);
 			break;
 		default:
-			CHECK_STATUS(
-				true, FL_INTERNAL_ERR, cleanup,
+			FAIL_RET(
+				FL_INTERNAL_ERR, cleanup,
 				"buildIndex(): Unrecognised CSVF command (cmd=0x%02X, srcOffset=%d)!", thisByte, ptr - start);
 		}
 		thisByte = *ptr;
@@ -827,6 +829,9 @@ FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char
 		switch ( thisByte ) {
 		case XSDRSIZE:
 			numBytes = bitsToBytes(readLongBE(ptr + 1));
+			bStatus = bufAppendBlock(&newBuf, ptr, 5, error);
+			CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "buildIndex()");
+			break;
 		case XRUNTEST:
 			bStatus = bufAppendBlock(&newBuf, ptr, 5, error);
 			CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "buildIndex()");
@@ -848,8 +853,8 @@ FLStatus buildIndex(struct ParseContext *cxt, struct Buffer *csvfBuf, const char
 			CHECK_STATUS(bStatus, FL_ALLOC_ERR, cleanup, "buildIndex()");
 			break;
 		default:
-			CHECK_STATUS(
-				true, FL_INTERNAL_ERR, cleanup,
+			FAIL_RET(
+				FL_INTERNAL_ERR, cleanup,
 				"buildIndex(): Unrecognised CSVF command (cmd=0x%02X)!", thisByte);
 		}
 		cmdPtr++;
@@ -880,7 +885,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 	const uint8 *buffer = NULL, *p, *end, *line;
 	size_t fileLength;
 	bool gotSemicolon;
-	struct ParseContext cxt = {{0,},};
+	struct ParseContext cxt = {0,};
 
 	// Initialise context and line buffer
 	fStatus = cxtInitialise(&cxt, error);
@@ -894,7 +899,7 @@ DLLEXPORT(FLStatus) flLoadSvfAndConvertToCsvf(
 		//errRender(error, "flLoadSvfAndConvertToCsvf(): Unable to load SVF file %s", svfFile);
 		errRenderStd(error);
 		errPrefix(error, "flLoadSvfAndConvertToCsvf()");
-		FAIL(FL_FILE_ERR, cleanup);
+		FAIL_RET(FL_FILE_ERR, cleanup);
 	}
 	end = buffer + fileLength;
 	p = buffer;

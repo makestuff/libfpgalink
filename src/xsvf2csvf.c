@@ -14,10 +14,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <makestuff.h>
-#include <libfpgalink.h>
-#include <libbuffer.h>
-#include <liberror.h>
+#include <makestuff/common.h>
+#include <makestuff/libfpgalink.h>
+#include <makestuff/libbuffer.h>
+#include <makestuff/liberror.h>
 #include "xsvf.h"
 #include "private.h"
 
@@ -290,8 +290,8 @@ static FLStatus xsvfSwapBytes(XC *xc, struct Buffer *outBuf, uint32 *maxBufSize,
 
 		default:
 			// All other commands are unsupported, so fail if they're encountered.
-			CHECK_STATUS(
-				true, FL_UNSUPPORTED_CMD_ERR, cleanup,
+			FAIL_RET(
+				FL_UNSUPPORTED_CMD_ERR, cleanup,
 				"xsvfSwapBytes(): Unsupported command 0x%02X!", thisByte);
 		}
 		thisByte = getNextByte(xc);

@@ -17,8 +17,8 @@
 #ifndef SVF2CSVF_H
 #define SVF2CSVF_H
 
-#include <libbuffer.h>
-#include "libfpgalink.h"
+#include <makestuff/libbuffer.h>
+#include <makestuff/libfpgalink.h>
 
 #ifdef __cplusplus
 extern "C" {

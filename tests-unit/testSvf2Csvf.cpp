@@ -16,34 +16,32 @@
  */
 #include <cstdio>
 #include <cstring>
-#include <UnitTest++.h>
-#include <makestuff.h>
-#include <libbuffer.h>
-#include "../svf2csvf.h"
-#include "../xsvf.h"
-
-using namespace std;
+#include <gtest/gtest.h>
+#include <makestuff/common.h>
+#include <makestuff/libbuffer.h>
+#include "svf2csvf.h"
+#include "xsvf.h"
 
 void testReadBytes(struct Buffer *buf, const char *expected) {
 	FLStatus fStatus;
 	char result[1024];
-	const uint32 expectedLength = (uint32)strlen(expected)/2;
+	const uint32 expectedLength = (uint32)std::strlen(expected)/2;
 	bufZeroLength(buf);
 	fStatus = readBytes(buf, expected, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
-	CHECK_EQUAL(expectedLength, buf->length);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
+	ASSERT_EQ(expectedLength, buf->length);
 	for ( uint32 i = 0; i < 2*buf->length; i++ ) {
-		sprintf(result + 2*i, "%02X", buf->data[i]);
+		std::sprintf(result + 2*i, "%02X", buf->data[i]);
 	}
 	result[2*buf->length] = '\0';
-	CHECK_EQUAL(expected, result);
+	ASSERT_STREQ(expected, result);
 }
 
-TEST(FPGALink_testReadBytes) {
+TEST(FPGALink, testReadBytes) {
 	struct Buffer lineBuf;
 	BufferStatus bStatus;
 	bStatus = bufInitialise(&lineBuf, 1024, 0x00, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 
 	testReadBytes(&lineBuf, "FE");
 	testReadBytes(&lineBuf, "CAFE");
@@ -63,31 +61,31 @@ void testShift(const char *line, uint32 lineBits, const char *head, uint32 headB
 	FLStatus fStatus;
 	char resultHex[1024];
 	bStatus = bufInitialise(&lineBuf, 1024, 0x00, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	bStatus = bufInitialise(&headBuf, 1024, 0x00, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	bStatus = bufInitialise(&tailBuf, 1024, 0x00, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	fStatus = readBytes(&lineBuf, line, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
 	fStatus = readBytes(&headBuf, head, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
 	fStatus = readBytes(&tailBuf, tail, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
 	fStatus = headTail(&lineBuf, &headBuf, &tailBuf, lineBits, headBits, tailBits, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
-	CHECK_EQUAL(strlen(expectedHex)/2, lineBuf.length);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
+	ASSERT_EQ(std::strlen(expectedHex)/2, lineBuf.length);
 	for ( uint32 i = 0; i < 2*lineBuf.length; i++ ) {
-        sprintf(resultHex + 2*i, "%02X", lineBuf.data[i]);
+        std::sprintf(resultHex + 2*i, "%02X", lineBuf.data[i]);
     }
     resultHex[2*lineBuf.length] = '\0';
-    CHECK_EQUAL(expectedHex, resultHex);
+    ASSERT_STREQ(expectedHex, resultHex);
 	bufDestroy(&tailBuf);
 	bufDestroy(&headBuf);
 	bufDestroy(&lineBuf);
 }	
 
-TEST(FPGALink_testShift) {
+TEST(FPGALink, testShift) {
 	testShift(
 		"F1C2E093", 32,
 		"00", 0,
@@ -538,13 +536,13 @@ void parseString(ParseContext *cxt, const char *str, struct Buffer *csvfBuf) {
 	Buffer line;
 	BufferStatus bStatus;
 	FLStatus fStatus;
-	const uint32 lineLen = (uint32)strlen(str) + 1;
+	const uint32 lineLen = (uint32)std::strlen(str) + 1;
 	bStatus = bufInitialise(&line, lineLen, 0, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	bStatus = bufAppendBlock(&line, (const uint8 *)str, lineLen, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	fStatus = parseLine(cxt, &line, csvfBuf, NULL, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
 	bufDestroy(&line);
 }
 
@@ -553,7 +551,7 @@ void renderBuffer(char *&p, const Buffer *buf) {
 	uint32 length = (uint32)buf->length;
 	*p++ = '{';
 	while ( length-- ) {
-		sprintf(p, "%02X", *src & 0xFF);
+		std::sprintf(p, "%02X", *src & 0xFF);
 		src++;
 		p += 2;
 	}
@@ -561,8 +559,8 @@ void renderBuffer(char *&p, const Buffer *buf) {
 }
 
 void renderBitStore(char *&p, const BitStore *store) {
-	sprintf(p, "%d, ", store->numBits);
-	p += strlen(p);
+	std::sprintf(p, "%d, ", store->numBits);
+	p += std::strlen(p);
 	renderBuffer(p, &store->tdi);
 	*p++ = ','; *p++ = ' ';
 	renderBuffer(p, &store->tdo);
@@ -593,19 +591,19 @@ const char *renderCxt(const ParseContext *cxt) {
 	return result;
 }
 
-TEST(FPGALink_testParse) {
+TEST(FPGALink, testParse) {
 	FLStatus fStatus;
 	struct ParseContext cxt;
 	struct Buffer csvfBuf;
 	BufferStatus bStatus;
 	bStatus = bufInitialise(&csvfBuf, 1024, 0x00, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	fStatus = cxtInitialise(&cxt, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
 
 	// HDR, HIR, SDR, SIR, TDR, TIR
 	parseString(&cxt, "HDR 8 TDI (aa)", &csvfBuf);
-	CHECK_EQUAL(
+	ASSERT_STREQ(
 		"8, {AA}, {00}, {FF}, "    // HDR
 		"0, {}, {}, {}, "          // HIR
 		"0, {}, {}, {}, "          // SDR
@@ -616,7 +614,7 @@ TEST(FPGALink_testParse) {
 
 	// HDR, HIR, SDR, SIR, TDR, TIR
 	parseString(&cxt, "HDR 8 MASK (55)", &csvfBuf);
-	CHECK_EQUAL(
+	ASSERT_STREQ(
 		"8, {AA}, {00}, {55}, "    // HDR
 		"0, {}, {}, {}, "          // HIR
 		"0, {}, {}, {}, "          // SDR
@@ -627,7 +625,7 @@ TEST(FPGALink_testParse) {
 
 	// HDR, HIR, SDR, SIR, TDR, TIR
 	parseString(&cxt, "HDR 6 TDI (3A)", &csvfBuf);
-	CHECK_EQUAL(
+	ASSERT_STREQ(
 		"6, {3A}, {00}, {FF}, "    // HDR
 		"0, {}, {}, {}, "          // HIR
 		"0, {}, {}, {}, "          // SDR
@@ -645,16 +643,16 @@ static void compare(int j, CmdPtr pExpected, CmdPtr pActual) {
 	const char *const sActual = getCmdName(pActual);
 	uint32 expected = pExpected[0];
 	uint32 actual = pActual[0];
-	printf("  [%d] %s:%s\n", j, sExpected, sActual);
-	CHECK_EQUAL(sExpected, sActual);
+	std::printf("  [%d] %s:%s\n", j, sExpected, sActual);
+	ASSERT_EQ(sExpected, sActual);
 	if ( expected == XRUNTEST && actual == XRUNTEST ) {
 		expected = readLongBE(pExpected + 1);
 		actual = readLongBE(pActual + 1);
-		CHECK_EQUAL(expected, actual);
+		ASSERT_EQ(expected, actual);
 	}
 }
 
-TEST(FPGALink_testProcessIndex) {
+TEST(FPGALink, testProcessIndex) {
 	int i, j, num;
 	const CmdPtr *pExpected;
 	const CmdPtr *pActual;
@@ -817,7 +815,7 @@ TEST(FPGALink_testProcessIndex) {
 	const uint8 *dst[1024];  // worst case 2x
 	num = sizeof(src) / sizeof(src[0]);
 	for ( i = 0; i < num; i++ ) {
-		printf("Dataset %d\n", i);
+		std::printf("Dataset %d\n", i);
 		processIndex(src[i], dst);
 		pExpected = exp[i];
 		pActual = dst;
@@ -825,13 +823,13 @@ TEST(FPGALink_testProcessIndex) {
 		while ( **pExpected != XCOMPLETE && **pActual != XCOMPLETE ) {
 			compare(j++, *pExpected++, *pActual++);
 		}
-		printf("  [%d] %s:%s\n", j, getCmdName(*pExpected), getCmdName(*pActual));
-		CHECK(**pExpected == XCOMPLETE);
-		CHECK(**pActual == XCOMPLETE);
+		std::printf("  [%d] %s:%s\n", j, getCmdName(*pExpected), getCmdName(*pActual));
+		ASSERT_EQ(**pExpected, XCOMPLETE);
+		ASSERT_EQ(**pActual, XCOMPLETE);
 	}
 }
 
-TEST(FPGALink_testBuildIndex) {
+TEST(FPGALink, testBuildIndex) {
 	const uint8 src[] = {
 		0x02, 0x06, 0x09, 0x08,  0x00, 0x00, 0x00, 0x20,
 		0x01, 0xFF, 0xFF, 0xFF,  0x0F, 0x09, 0x00, 0x93,
@@ -844,12 +842,13 @@ TEST(FPGALink_testBuildIndex) {
 	FLStatus fStatus;
 	struct ParseContext cxt;
 	BufferStatus bStatus = bufInitialise(&csvfBuf, len, 0x00, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	memset(&cxt, 0, sizeof(cxt));
 	cxt.numCommands = 8;
 	bStatus = bufAppendBlock(&csvfBuf, src, len, NULL);
-	CHECK_EQUAL(BUF_SUCCESS, bStatus);
+	ASSERT_EQ(BUF_SUCCESS, bStatus);
 	fStatus = buildIndex(&cxt, &csvfBuf, NULL);
-	CHECK_EQUAL(FL_SUCCESS, fStatus);
+	ASSERT_EQ(FL_SUCCESS, fStatus);
+	ASSERT_EQ(csvfBuf.length, 40);
 	bufDestroy(&csvfBuf);
 }

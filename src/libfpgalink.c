@@ -16,12 +16,12 @@
  */
 #include <stdlib.h>
 #include <string.h>
-#include <makestuff.h>
-#include <libusbwrap.h>
-#include <liberror.h>
-#include <libbuffer.h>
+#include <makestuff/common.h>
+#include <makestuff/libusbwrap.h>
+#include <makestuff/liberror.h>
+#include <makestuff/libbuffer.h>
+#include <makestuff/libfpgalink.h>
 #include "vendorCommands.h"
-#include "libfpgalink.h"
 #include "private.h"
 
 static FLStatus getStatus(struct FLContext *handle, uint8 *statusBuffer, const char **error);
@@ -35,6 +35,13 @@ DLLEXPORT(FLStatus) flInitialise(int logLevel, const char **error) {
 cleanup:
 	return retVal;
 }
+
+// Shutdown the library.
+//
+DLLEXPORT(void) flShutdown() {
+	usbShutdown();
+}
+
 
 // Convenience function to avoid having to include liberror.h.
 //
@@ -344,7 +351,6 @@ DLLEXPORT(FLStatus) flWriteChannelAsync(
 {
 	FLStatus retVal = FL_SUCCESS, fStatus;
 	uint8 command[3];
-	USBStatus uStatus;
 	CHECK_STATUS(
 		count == 0, FL_PROTOCOL_ERR, cleanup,
 		"flWriteChannelAsync(): Zero-length writes are illegal!");

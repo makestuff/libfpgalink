@@ -1,5 +1,5 @@
 #include <fx2regs.h>
-#include <makestuff.h>
+#include <makestuff/common.h>
 #include "debug.h"
 
 #ifdef DEBUG

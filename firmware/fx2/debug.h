@@ -17,7 +17,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#include <makestuff.h>
+#include <makestuff/common.h>
 
 //#define DEBUG
 

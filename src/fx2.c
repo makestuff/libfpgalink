@@ -16,12 +16,12 @@
  */
 #include <stdlib.h>
 #include <string.h>
-#include <makestuff.h>
-#include <libfx2loader.h>
-#include <liberror.h>
-#include <libusbwrap.h>
+#include <makestuff/common.h>
+#include <makestuff/libfx2loader.h>
+#include <makestuff/liberror.h>
+#include <makestuff/libusbwrap.h>
+#include <makestuff/libfpgalink.h>
 #include "vendorCommands.h"
-#include "libfpgalink.h"
 #include "private.h"
 #include "firmware.h"
 

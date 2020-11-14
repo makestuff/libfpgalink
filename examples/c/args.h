@@ -20,7 +20,7 @@
 #define GET_ARG(argName, var, failCode, label) \
 	argv++; \
 	argc--; \
-	if ( !argc ) { requires(prog, argName); FAIL(failCode, label); } \
+	if ( !argc ) { requires(prog, argName); FAIL_RET(failCode, label); } \
 	var = *argv
 
 void suggest(const char *prog);
