@@ -25,16 +25,16 @@ tckList = []
 ioaList = []
 
 for line in fileinput.input():
-  m = re.search(r"^\s+([0-9A-F]+)\s+(A2|30) B0 (  |0C)\s+(\[\d+\]\s+)?\d+[^;]+_TDO.*?$", line)
+  m = re.search(r"^\s+([0-9A-F]+)\s+(72|82|A0|A2|10|20|30) B0 (  |[0-9A-F]+)\s+(\[\d+\]\s+)?\d+[^;]+_TDO.*?$", line)
   if ( m != None ):
     tdoList.append("0x{:04X}".format(1 + int(m.group(1), 16)))
-  m = re.search(r"^\s+([0-9A-F]+)\s+92 B1\s+(\[\d+\]\s+)?\d+[^;]+_TDI.*?$", line)
+  m = re.search(r"^\s+([0-9A-F]+)\s+[9BCD]2 B1\s+(\[\d+\]\s+)?\d+[^;]+_TDI.*?$", line)
   if ( m != None ):
     tdiList.append("0x{:04X}".format(1 + int(m.group(1), 16)))
-  m = re.search(r"^\s+([0-9A-F]+)\s+[9D]2 B2\s+(\[\d+\]\s+)?\d+[^;]+_TMS.*?$", line)
+  m = re.search(r"^\s+([0-9A-F]+)\s+[9BCD]2 B2\s+(\[\d+\]\s+)?\d+[^;]+_TMS.*?$", line)
   if ( m != None ):
     tmsList.append("0x{:04X}".format(1 + int(m.group(1), 16)))
-  m = re.search(r"^\s+([0-9A-F]+)\s+[CD]2 B3\s+(\[\d+\]\s+)?\d+[^;]+_TCK.*?$", line)
+  m = re.search(r"^\s+([0-9A-F]+)\s+[9BCD]2 B3\s+(\[\d+\]\s+)?\d+[^;]+_TCK.*?$", line)
   if ( m != None ):
     tckList.append("0x{:04X}".format(1 + int(m.group(1), 16)))
   m = re.search(r"^\s+([0-9A-F]+)\s+85 9C 80", line)
