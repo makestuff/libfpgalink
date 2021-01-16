@@ -9,4 +9,4 @@ set(APP_DEPENDS common buffer error fpgalink argtable2 dump)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${APP_DEPENDS})
 
 # What to install
-install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
